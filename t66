@@ -1,1848 +1,204 @@
+T68.jsp : 
+
 <%--
   Created by IntelliJ IDEA.
-  User: V1013226
-  Date: 14-02-2024
-  Time: 18:18
+  User: V1010939
+  Date: 10-02-2024
+  Time: 09:36
   To change this template use File | Settings | File Templates.
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
+    <title>Title</title>
     <style>
-        .form-control {
-            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-            font-weight: 400;
-            font-size: initial;
-            line-height: 1.3em;
-            width: 300px;
-            text-align: right;
+        .head-style {
+            text-align: center;
+            vertical-align: middle;
+            width: 280px;
+        }
+
+        .head1 {
+            top: 35px;
+            position: sticky;
+            z-index: 20;
+        }
+
+        .fixed-header {
+            z-index: 50;
+        }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
     </style>
-    <title></title>
-    <script src="./resources/js/frValidations.js"></script>
-    <script>
-
-
-
-        function checkPercentage66(numVal) {
-            let val = document.getElementById(numVal).value;
-            let result = false;
-            if (val.match(/\s/g)) {
-                alert("Space is not allowed");
-                document.getElementById(numVal).value = "";
-                document.getElementById(numVal).focus();
-                result = false;
-                return result;
-            }
-            let c = /^([0-9]\d?\d?\d?(\.\d\d?)?|10000(\.00?)?)\%?$/;
-            /*let c = /^([0-9]\d?(\.\d\d?)?|100(\.00?)?)\%?$/;*/
-            if (c.test(val) || val === "") {
-                let idot = val.indexOf('.');
-                let len = val.length;
-                if (len < 3 && !val.includes("-") || len < 4 && val.includes("-") || val === "") {
-                    if (idot === -1) {
-                        if (val === "") {
-                            document.getElementById(numVal).value = val.concat("0.00");
-                        } else {
-                            document.getElementById(numVal).value = val.concat(".00");
-                        }
-                    } else if (idot !== -1 && val.charAt(idot + 2) === "") {
-                        document.getElementById(numVal).value = val.concat("0");
-                    }
-                    result = true;
-                }
-            } else {
-                alert("Percentage is not allowed more than 10000 & only 2 decimal digits are allowed. Kindly check again.");
-                document.getElementById(numVal).value = "";
-                document.getElementById(numVal).focus();
-                result = false;
-                return result;
-            }
-            let finalVal = document.getElementById(numVal).value;
-            if (!finalVal.includes("%")) {
-                document.getElementById(numVal).value = finalVal.concat("%");
-            }
-            return result;
-        }
-
-    </script>
 </head>
+<body>
 <div class="wrapper">
     <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
         <div class="container">
             <div class="row tim-row">
                 <div class="col-md-8 col-md-offset-2">
                     <div class="brand">
-                        <h3 style="color: white;">FR Return</h3>
+                        <h3 style="color: white;">FR Return : Details of Micro Small Medium Enterprises</h3>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <div class="main main-raised">
         <div class="section">
             <div class="container">
-                <div class="row" ng-init="T66.insertOrUpdate(); T66.updateField('CY37'); T66.updateField('CY93');"
-                     style="vertical-align: inherit;">
-                    <div class="col-xs-1">
-                        <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
-                            <i class="material-icons">arrow_left</i>
-                        </button>
-                    </div>
-                    <div class="col-xs-11">
-                        <h3> Other Disclosures and Notes to Accounts </h3>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <div class="row" style="background: #b9def0; height: 40px;">
-                        <div class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>Sr No</h4>
-                        </div>
-                        <div class="col-md-5" style="text-align: center; vertical-align: middle;"><h4>
-                            Particulars</h4>
-                        </div>
-                        <div class="col-md-6" style="text-align: center; vertical-align: middle;"><h4>Current
-                            Year</h4>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(1)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of foreign exchange transactions</h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY1" id="CY1"
-                                      maxlength="4000" rows cols="90"
-                                      ng-blur="T66.updateField('CY1');" style="width:100%; text-align: left; resize: none;">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(2)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Determination of foreign currency rates at the time of initial recognition of
-                                transaction</h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY2" id="CY2"
-                                      maxlength="4000" rows cols="90"
-                                      ng-blur="T66.updateField('CY2');" style="width:100%; text-align: left; resize: none;">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(3)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Determination of rate for translation of monetary items into foreign currency
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY3" id="CY3"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY3');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(4)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Determination of rate for translation of non monetary items into foreign currency
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY4" id="CY4"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY4');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(5)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures relating to cash and bank balances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY5" id="CY5"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY5');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(6)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of components of cash and bank balances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY6" id="CY6"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY6');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(7)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of balances with foreign banks
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY7" id="CY7"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY7');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(8)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Reconciliation of cash and cash equivalents reported in balance sheet to cash and cash
-                                equivalents per cash flow statement
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY8" placeholder="0.00" id="CY8"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY8'); T66.updateField('CY8');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(9)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of significant cash and cash equivalents held that are not available for use
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY9" id="CY9"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY9');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(10)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Detailed information relating to earnings per share
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY10" id="CY10"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY10');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(11)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Net profit loss attributable to equity shareholders, basic
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY11" placeholder="0.00" id="CY11"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY11'); T66.updateField('CY11');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(12)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details on numbers of shares used for basic earnings per share
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY12" id="CY12"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY12');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(13)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Net profit(loss) attributable to equity shareholders, diluted
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY13" placeholder="0.00" id="CY13"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY13'); T66.updateField('CY13');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(14)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details on numbers of potentially dilutive shares
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY14" id="CY14"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY14');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(15)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Reconciliation of inter branch and inter bank transaction balances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY15" id="CY15"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY15');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(16)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Detailed note on lease transactions
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY16" id="CY16"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY16');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(17)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of finance lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY17" id="CY17"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY17');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(18)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Value of asset acquired on financial lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY18" placeholder="0.00" id="CY18"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY18'); T66.updateField('CY18');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(19)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Depreciation on asset acquired on financial lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY19" placeholder="0.00" id="CY19"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY19'); T66.updateField('CY19');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(20)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Asset acquired on financial lease, net
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY20" placeholder="0.00" id="CY20"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY20'); T66.updateField('CY20');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(21)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Future lease rentals on assets acquired under finance lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY21" placeholder="0.00" id="CY21"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY21'); T66.updateField('CY21');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(22)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable, not Later than one year, gross, finance lease
-                                obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY22" placeholder="0.00" id="CY22"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY22'); T66.updateField('CY22');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(23)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable, later than one year but less than five years, gross,
-                                finance lease obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY23" placeholder="0.00" id="CY23"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY23'); T66.updateField('CY23');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(24)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable, over five years, gross, finance lease obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY24" placeholder="0.00" id="CY24"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY24'); T66.updateField('CY24');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(25)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of operating lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY25" id="CY25"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY25');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(26)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Future lease rentals on assets acquired under operating lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY26" placeholder="0.00" id="CY26"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY26'); T66.updateField('CY26');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(27)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable not later than one year of operating lease obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY27" placeholder="0.00" id="CY27"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY27'); T66.updateField('CY27');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(28)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable later than one year but less than five years operating
-                                lease obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY28" placeholder="0.00" id="CY28"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY28'); T66.updateField('CY28');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(29)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum lease payments payable over five years operating lease obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY29" placeholder="0.00" id="CY29"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY29'); T66.updateField('CY29');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(30)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures relating to assets given on financial lease and operating lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY30" id="CY30"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY30');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(31)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Future lease rentals on assets given under operating lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY31" id="CY31"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY31');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(32)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum Lease Payments recievable, not Later than one Year, Operating Lease Obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY32" id="CY32"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY32');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(33)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum Lease Payments recievable, Later than one Year but Less than Five Years,
-                                Operating Lease Obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY33" id="CY33"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY33');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(34)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Minimum Lease Payments recievable, Over Five Years, Operating Lease Obligations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY34" id="CY34"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY34');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(35)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Net Value of the Asset Acquired on Financial Lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY35" id="CY35"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY35');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(36)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Assets given on lease
-                            </h4></div>
-
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(37)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Assets given on lease, gross, at beginning of period
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY37" placeholder="0.00" id="CY37"
-                                   maxlength="19" style="width:100%; text-align:right;" disabled
-                                   >
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(38)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Additions in assets given on lease during year
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY38" placeholder="0.00" id="CY38"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY38'); T66.updateField('CY38'); T66.updateField('CY43'); T66.updateField('CY37');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(39)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Deductions in assets given on lease during year
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY39" placeholder="0.00" id="CY39"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY39'); T66.updateField('CY39');  T66.updateField('CY43'); T66.updateField('CY37');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(40)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Revaluation on Assets given on Lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY40" placeholder="0.00" id="CY40"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY40'); T66.updateField('CY40');  T66.updateField('CY43'); T66.updateField('CY37');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(41)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Accumulated depreciation and amortisation on assets given on lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY41" placeholder="0.00" id="CY41"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY41'); T66.updateField('CY41');  T66.updateField('CY43'); T66.updateField('CY37');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(42)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Accumulated impairment on assets given on lease
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY42" placeholder="0.00" id="CY42"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY42'); T66.updateField('CY42'); T66.updateField('CY43'); T66.updateField('CY37');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(43)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Assets Given on lease, gross, at end of period
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY43" placeholder="0.00" id="CY43"
-                                   maxlength="19" style="width:100%; text-align:right;" disabled
-                                  >
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(44)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of employee benefits
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY44" id="CY44"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY44');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(45)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Changes in present value defined benefit plan obligation during year
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY45" id="CY45"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY45');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(46)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Changes in fair value plan assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY46"   id="CY46"
-                                   maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                   ng-blur=" T66.updateField('CY46');"></textarea>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(47)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Actuarial gains (losses) defined benefit plan obligation
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY47"  placeholder="0.00" id="CY47"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                      ng-blur= "T66.checkAmount66('CY47'); T66.updateField('CY47');"/>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(48)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Other amounts recognized in balance sheet
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY48" id="CY48"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY48');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(49)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Expenses recognised in profit (loss) statement
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY49" id="CY49"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY49');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(50)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Movements in employee benefit liability
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY50" id="CY50"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY50');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(51)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Investment percentage of employee benefits
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY51" placeholder="0.00%"
-                                   id="CY51"
-                                   maxlength="19" style="width:100%; text-align:right;" onblur="checkPercentage66('CY51');"
-                                   ng-blur=" T66.updateField('CY51');">
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(52)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Principal actuarial assumptions used in defined benefit plan
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY52" id="CY52"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY52');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(53)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Investment details of plan assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY53"  id="CY53"
-                                   maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                   ng-blur=" T66.updateField('CY53');"></textarea>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(54)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Experience adjustments
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY54" placeholder="0.00" id="CY54"
-                                      maxlength="19" style="width:100%; text-align:right;"
-                                      ng-blur="T66.checkAmount66('CY54');T66.updateField('CY54');"/>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(55)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Estimated contribution next year
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY55"  id="CY55"
-                                   maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                   ng-blur=" T66.updateField('CY55');"></textarea>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(56)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Expenditure voluntary retirement scheme
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY56" placeholder="0.00" id="CY56"
-                                      maxlength="19" style="width:100%; text-align:right;"
-                                      ng-blur="T66.checkAmount66('CY56');T66.updateField('CY56');"/>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(57)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures on ESOPS
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY57" id="CY57"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY57');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(58)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures regarding subsidiaries
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY58" id="CY58"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY58');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(59)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of investments in associates and joint ventures
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY59" id="CY59"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY59');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(60)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures of investment in associates
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY60" id="CY60"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY60');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(61)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures of investment in joint ventures
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY61" id="CY61"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY61');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(62)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of share of aggregate amount assets in jointly controlled operations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY62" id="CY62"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY62');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(63)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of share of aggregate amount liabilities in jointly controlled operations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY63" id="CY63"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY63');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(64)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of share of aggregate amount of income in jointly controlled operations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY64" id="CY64"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY64');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(65)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of share of aggregate amount of expenditure in jointly controlled operations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY65" id="CY65"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY65');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(66)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of investments
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY66" id="CY66"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY66');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(67)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of further categorisation as per RBI norms
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY67" id="CY67"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY67');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(68)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures non performing investments as per RBI norms
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY68"  id="CY68"
-                                   maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY68');"></textarea>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(69)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Interest fixed dividend installment due and remains unpaid for more than ninety days
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY69" placeholder="0.00" id="CY69"
-                                      maxlength="19" style="width:100%; text-align:right;"
-                                      ng-blur="T66.checkAmount66('CY69'); T66.updateField('CY69');"/>
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(70)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure negative net worth of company
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY70" id="CY70"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY70');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(71)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure non performing investments against non performing advances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY71" id="CY71"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY71');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(72)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure investments on which scripts/certificates are not received
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY72" id="CY72"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY72');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(73)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure amount of profit on sale of investments based on category type investment
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY73" id="CY73"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY73');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(74)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure market value of investment as per RBI prescribed norms
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY74" id="CY74"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY74');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(75)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of fixed assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY75" id="CY75"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY75');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(76)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details and amount premises on which title deed is yet to be executed
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY76" id="CY76"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY76');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(77)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Revaluation of assets disclosures
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY77" id="CY77"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY77');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(78)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of intangible assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY78" id="CY78"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY78');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(79)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of impairment of assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY79" id="CY79"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY79');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(80)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures relating to advances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY80" id="CY80"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY80');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(81)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Prudential norms issued by RBI compliance certification
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY81" id="CY81"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY81');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(82)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of classification of performing and non performing advances
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY82" id="CY82"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY82');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(83)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure of Further Classification of Advances To Standard, SubStandard, Doubtful And
-                                Loss
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY83" id="CY83"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY83');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(84)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure provision made for each category as per RBI norms
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY84" id="CY84"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY84');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(85)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure amount of claim received from ECGC/ DICGC
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY85" id="CY85"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY85');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(86)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure additional provision created on NPA over prudential norms of RBI
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY86" id="CY86"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY86');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(87)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure provision made for foreign branches as per statutory requirement of foreign
-                                country
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY87" id="CY87"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY87');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(88)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Method of treatment of partial recoveries in non performing assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY88" id="CY88"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY88');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(89)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure method of treatment for sale of financial assets to assets reconstruction
-                                securitization company
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY89" id="CY89"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY89');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(90)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of disclosures on deferred tax assets and liabilities
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY90" id="CY90"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY90');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(91)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details deferred tax assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY91" id="CY91"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY91');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(92)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details deferred tax liabilities
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY92" id="CY92"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY92');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(93)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Provisions at beginning of period
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY93" placeholder="0.00" id="CY93"
-                                   maxlength="19" style="width:100%; text-align:right;" disabled
-                                  >
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(94)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Changes in provisions
-                            </h4></div>
-
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(95)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Additions to provisions
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY95" placeholder="0.00" id="CY95"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY95'); T66.updateField('CY95'); T66.updateField('CY97'); T66.updateField('CY93');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(96)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Deductions from provisions
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY96" placeholder="0.00" id="CY96"
-                                   maxlength="19" style="width:100%; text-align:right;"
-                                   ng-blur="T66.checkAmount66('CY96'); T66.updateField('CY96'); T66.updateField('CY97'); T66.updateField('CY93');">
-
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(97)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Changes in provisions
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY97" placeholder="0.00" id="CY97"
-                                   maxlength="19" style="width:100%; text-align:right;" disabled
-                                  >
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(98)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Provisions at end of period
-                            </h4></div>
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" ng-model="T66.row.CY98" placeholder="0.00" id="CY98"
-                                   maxlength="19" style="width:100%; text-align:right;" disabled
-                                  >
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(99)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosure on provisions, contingent liabilities and contingent assets
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY99" id="CY99"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY99');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(100)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Details of disclosures of mortgages in respect of loans
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY100" id="CY100"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY100');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(101)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures relating to events occurring after balance sheet date
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY101" id="CY101"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY101');">
-                            </textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="col-md-12">
-                    <div class="row">
-                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>(102)
-                        </h4></span>
-                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
-                            <h4>Disclosures relating to amalgamations
-                            </h4></div>
-                        <div class="col-md-6">
-                            <textarea type="text" class="form-control" ng-model="T66.row.CY102" id="CY102"
-                                      maxlength="4000" rows cols="90" style="width:100%; text-align: left; resize: none;"
-                                      ng-blur="T66.updateField('CY102');">
-                            </textarea>
-                        </div>
-                    </div>
+                <div class="row" style="padding-bottom: 10px">
+                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                        <i class="material-icons">arrow_back</i>
+                    </button>
+                </div>
+                <div class="row table-responsive">
+                    <table class="table my-table table-hover table-bordered no-padding dataTable table-freeze-multi"
+                           data-scroll-height="650" data-cols-number="1">
+                        <caption>Details of Micro Small Medium Enterprises</caption>
+                        <thead>
+                        <tr style="background-color: #b9def0">
+                            <th class="head-style fixed-header head1" ng-hide="true">Row Id</th>
+                            <th class="head-style">Details of Micro Small Medium Enterprises</th>
+                            <th class="head-style">Principal Due Remaining Unpaid</th>
+                            <th class="head-style">Interest Due Remaining Unpaid</th>
+                            <th class="head-style">Total Principal and Interest Due Remaining Unpaid</th>
+                            <th class="head-style">Amount of Interest Paid Under MSMED Act 2006</th>
+                            <th class="head-style">Amount of Payments Made to Supplier Beyond Due Date During Year</th>
+                            <th class="head-style">Amount of Interest Due and Payable for Period</th>
+                            <th class="head-style">Amount of Interest Accrued and Remaining Unpaid at End of
+                                AccountingYear
+                            </th>
+                            <th class="head-style">Amount of Further Interest Due and Payable Even in Succeeding Year
+                            </th>
+                            <th class="head-style">Maximum Amount Outstanding for Period From Micro Small
+                                MediumEnterprise
+                            </th>
+                            <th class="head-style">Name Supplier Being Micro Small Medium Enterprises</th>
+                            <th class="head-style">CIN of Micro Small and Medium Enterprise</th>
+                            <th style="text-align: center;vertical-align: middle; width:150px">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr data-ng-repeat="row in T68ListOfRows track by $index">
+                            <script type="text/javascript">
+                                $(".decimal-2-places").numeric({ decimalPlaces: 2 });
+
+                            </script>
+                            <td ng-hide="true">
+                                <input type="text" style="background-image:none" class="form-control"
+                                       ng-model="row.srno" name="srno"
+                                       id="value0" placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none" class="form-control"
+                                       ng-model="row.insertedVal1" name="insertedVal1"
+                                       id="value1{{row.srno}}" maxlength="430"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal2" name="insertedVal2" maxlength="19"
+                                       id="value2{{row.srno}}" ng-change="T68.sum(row.insertedVal2,row.insertedVal3,row.srno)"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal3" name="insertedVal3" maxlength="19"
+                                       id="value3{{row.srno}}" ng-change="T68.sum(row.insertedVal2,row.insertedVal3,row.srno)"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto;background-color: lavender">
+                                <input type="text" style="background: inherit; text-align: right" class="form-control"
+                                       ng-model="row.insertedVal4" name="insertedVal4"  maxlength="20"
+                                       ng-disabled="true" id="value4{{row.srno}}"
+                                       placeholder="Calculated value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal5" name="insertedVal5" maxlength="19"
+                                       id="value5{{row.srno}}"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal6" name="insertedVal6" maxlength="19"
+                                       id="value6{{row.srno}}"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal7" name="insertedVal7" maxlength="19"
+                                       id="value7{{row.srno}}"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal8" name="insertedVal8" maxlength="19"
+                                       id="value8{{row.srno}}"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal9" name="insertedVal9" maxlength="19"
+                                       id="value9{{row.srno}}"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
+                                       ng-model="row.insertedVal10" maxlength="19"
+                                       name="insertedVal10" id="value10{{row.srno}}"
+                                       placeholder="Enter value"/>
+                            </td>
+                            <td style="width: auto">
+                                <textarea type="text" style="background-image:none; text-align:left; vertical-align: middle;
+                                       padding-top: 3px; padding-bottom: 3px; !important; resize: none;" class="form-control"
+                                       maxlength="280" ng-blur="T68.checkInputField('value11'+row.srno, 'N');"
+                                       ng-model="row.insertedVal11" name="insertedVal11" id="value11{{row.srno}}" rows cols="90" >
+                                </textarea>
+                            </td>
+                            <td style="width: auto">
+                                <textarea type="text" style="background-image:none; text-align:left; vertical-align: middle;
+                                       !important; resize: none;" class="form-control" maxlength="130" ng-blur="T68.checkInputField('value12'+row.srno, 'A');"
+                                       ng-model="row.insertedVal12" name="insertedVal12" id="value12{{row.srno}}" rows cols="90">
+                                </textarea>
+                                <input type="hidden" ng-model="row.flag" id="dataFlag{{row.srno}}" name="dataFlag" value="{{row.flag}}"/>
+                            </td>
+                            <td style="width: auto">
+                                <button style="text-align: center;padding: 7px"
+                                        id="save{{row.srno}}" class="btn btn-success btn-sm btn-round"
+                                        rel="tooltip" title="Save This Row" ng-click="T68.saveVal(row.insertedVal1,
+                                        row.insertedVal2,row.insertedVal3,row.insertedVal2+row.insertedVal3,row.insertedVal5,row.insertedVal6,
+                                        row.insertedVal7,row.insertedVal8,row.insertedVal9,row.insertedVal10,row.insertedVal11,
+                                        row.insertedVal12,row.srno, row.flag, $index);">
+                                    <i class="material-icons">save</i>
+                                </button>
+                                <button style="text-align: center;padding: 7px"
+                                        class="btn btn-warning btn-sm btn-round" id="edit{{row.srno}}"
+                                        rel="tooltip" title="Edit This Row" ng-click="T68.editRow(row.srno);"
+                                        disabled>
+                                    <i class="material-icons">edit</i>
+                                </button>
+                                <button style="text-align: center;padding: 7px" rel="tooltip"
+                                        title="Delete this Row"
+                                        class="btn btn-danger btn-sm btn-round" id="delete{{row.srno}}"
+                                        ng-click="T68.deleteRow(row.srno, $index);" disabled>
+                                    <i class="material-icons">delete</i>
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline btn-round" style="background-color: #664162"
+                            ng-disabled="T68.addFlag"
+                            ng-click="addT68Row();">
+                        Add Row
+                    </button>
                 </div>
                 <div style="text-align: center">
-                    <button class="btn btn-success" ng-click="T66.submitIndividual()">
+                    <button class="btn btn-success" ng-click="T68.submitIndividual()">
                         Complete
                     </button>
                 </div>
             </div>
         </div>
     </div>
-</div>
-</div>
 </div>
 <div class="example-modal">
     <div class="modal fade" id="modalSubmit">
@@ -1854,15 +210,16 @@
             </div>
             <div class="modal-content">
                 <div class="modal-body" id="popup1">
-                    <b>{{T66.displayMessage}}</b>
+                    <b>{{T68.displayMessage}}</b>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T66.redirectToFRReturn()" >Continue</button>
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T68.redirectToFRReturn()" >Continue</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+</body>
 </html>
 
 
@@ -1873,281 +230,245 @@
 
 
 
+T68Controller : 
 
+app.controller('T68Controller', function ($scope, $rootScope, $timeout, AES256, $state, T68Factory, $sessionStorage,frReturnFactory, blockUI) {
 
-
-
-
-
-controller : 
-
-app.controller('T66Controller', function ($scope, $rootScope, $timeout, AES256, $state, T66Factory,frReturnFactory, $sessionStorage) {
-    let T66 = this;
+    let T68 = this;
     $scope.started = false;
     $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
     let qed = $scope.sessionUser.quarterEndDate;
     let userId = $scope.sessionUser.userId;
     let status = sessionStorage.getItem("frReportSts");
     let reportId = sessionStorage.getItem("frReportId");
-    T66.reportName = sessionStorage.getItem("frSubReportName");
-    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
-    T66.reportId = reportId;
-    T66.row = {};
+    T68.reportName = sessionStorage.getItem("frSubReportName");
+    $scope.T68ListOfRows = [];
+    T68.srno = {};
+    let idList = [];
+    T68.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0;
+        }
+        return (value * 1);
+    }
 
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
 
     $('.modal-backdrop').remove();
     $('body').removeClass("modal-open");
-    T66.backToIndex = function () {
-        $state.go('frt_maker.frReturn');
+
+    var rmlParams = {
+        'qed': qed,
+        'userId': userId,
+        'rMId': "40024003"
     }
 
-    T66.insertOrUpdate = function () {
-        let params = {
-            'qed': qed,
-            'userId': userId,
-            'rMId': "40024001"
-        };
-        if (status === null || status === '') {
-            T66Factory.insertOnLoad(params).then(function (data) {
-                T66.reportId = data;
-                T66Factory.getT66Data(data).then(function (data1) {
-                    T66.row = data1;
-                    window.setTimeout(function(){
-                        T66.saveRow(T66.row.CY37);
-                    },3000);
+    if (status == '' || status.length == 0 || status == null) {
+        T68Factory.rmlEntry(rmlParams).then(function (data) {
+            reportId = data;
+        }, function (errorResponse) {
+            console.log('Error while rml Insert.' + errorResponse);
+        });
+    }else{
+        T68Factory.getRml(rmlParams).then(function (data){
+            T68.reportId = data;
+            if (status > 10) {
+                var param = {
+                    'reportId':reportId,
+                    'qed':qed
+                }
+                T68Factory.getSavedData(param).then(function (data) {
 
-                }, function (errResponse) {
-                    console.error('data failed. ' + errResponse);
-                })
-            }, function (errResponse) {
-                console.error('data not inserted. ' + errResponse);
-            })
-        } else {
-            T66Factory.getT66Data(reportId).then(function (data) {
-                T66.row = data;
-            }, function (errResponse) {
-                console.error('data failed. ' + errResponse);
-            })
-        }
+                    console.log(data);
+                    data.forEach(function (s) {
+                        $scope.T68ListOfRows.push(s);
+                        idList.push(s.srno);
+                        T68.srno = T68.srno + ":" + s.srno;
+                      /*  T68.editable = T68.editable + ":" + s.editable;*/
+
+                    });
+                    setTimeout(function () {
+                        for (let i = 1; i <= data.length; i++) {
+
+                            $('input').prop('disabled', true);
+                            $('textarea').prop('disabled', true);
+                            document.getElementById('save' + T68.srno.split(':')[i]).disabled = true;
+                            document.getElementById('edit' + T68.srno.split(':')[i]).disabled = false;
+                            document.getElementById('delete' + T68.srno.split(':')[i]).disabled = false;
+                        }
+                    }, 1);
+                }, function (errorResponse) {
+                    console.log('Error while getting saved data.' + errorResponse);
+                });
+            }
+        },function(errorResponse){
+            console.log('Error while rml fetching.' + errorResponse);
+        });
+
     }
 
+    $scope.addT68Row = function () {
+        var rowID;
+        T68Factory.getReportId().then(function (data) {
+            rowID = data;
 
-    // Setting 2 Decimal Digit
-    T66.parseFloat = function (value) {
-        if (isNaN(value)) {
-            value = 0.00;
-        }
-        return parseFloat(value * 1);
-    }
+            if (rowID != null || rowID != undefined) {
+                blockUI.start();
+                $scope.T68ListOfRows.push({
+                    'srno': rowID,
+                    'flag': 'I',
+                    'insertedVal1': $scope.insertedVal1,
+                    'insertedVal2': $scope.insertedVal2,
+                    'insertedVal3': $scope.insertedVal3,
+                    'insertedVal4': $scope.insertedVal4,
+                    'insertedVal5': $scope.insertedVal5,
+                    'insertedVal6': $scope.insertedVal6,
+                    'insertedVal7': $scope.insertedVal7,
+                    'insertedVal8': $scope.insertedVal8,
+                    'insertedVal9': $scope.insertedVal9,
+                    'insertedVal10': $scope.insertedVal10,
+                    'insertedVal11': $scope.insertedVal11,
+                    'insertedVal12': $scope.insertedVal12
+                });
+                document.getElementById('value1'+rowID).disabled = false;
+                document.getElementById('value2'+rowID).disabled = false;
+                document.getElementById('value3'+rowID).disabled = false;
+                document.getElementById('value4'+rowID).disabled = false;
+                document.getElementById('value5'+rowID).disabled = false;
+                document.getElementById('value6'+rowID).disabled = false;
+                document.getElementById('value7'+rowID).disabled = false;
+                document.getElementById('value8'+rowID).disabled = false;
+                document.getElementById('value9'+rowID).disabled = false;
+                document.getElementById('value10'+rowID).disabled = false;
+                document.getElementById('value11'+rowID).disabled = false;
+                document.getElementById('value12'+rowID).disabled = false;
+                document.getElementById('edit'+rowID).disabled = false;
+                document.getElementById('delete'+rowID).disabled = false;
 
-    if (T66.row != undefined) {
-        $scope.$watchCollection('T66.row', function (newValue, oldValue) {
+                blockUI.stop();
+            }
 
-            /*<><><><><><><><><>< validations and calculation for Previous year data & Current year data ><><><><><><><><><>*/
-            T66.row.PY43 = T66.parseFloat((T66.parseFloat(T66.row.PY37)) + T66.parseFloat((T66.row.PY38)) - T66.parseFloat((T66.row.PY39)) + T66.parseFloat((T66.row.PY40)) - T66.parseFloat((T66.row.PY41)) - T66.parseFloat((T66.row.PY42))).toFixed(2);
-
-            T66.row.CY37 = T66.row.PY43;
-
-            T66.row.CY43 = T66.parseFloat(T66.parseFloat((T66.row.CY37)) + T66.parseFloat((T66.row.CY38))
-                - T66.parseFloat((T66.row.CY39)) + T66.parseFloat((T66.row.CY40)) - T66.parseFloat((T66.row.CY41))
-                - T66.parseFloat((T66.row.CY42))).toFixed(2);
-
-            T66.row.PY97 = T66.parseFloat(T66.parseFloat((T66.row.PY95)) - T66.parseFloat((T66.row.PY96))).toFixed(2);
-
-            T66.row.PY98 = T66.parseFloat(T66.parseFloat((T66.row.PY93)) + T66.parseFloat((T66.row.PY97))).toFixed(2);
-
-            T66.row.CY93 = T66.row.PY98;
-            T66.row.CY97 = (T66.parseFloat(T66.row.CY95) - T66.parseFloat(T66.row.CY96)).toFixed(2);
-            T66.row.CY98 = (T66.parseFloat(T66.row.CY93) + T66.parseFloat(T66.row.CY97)).toFixed(2);
+        }, function (errResponse) {
+            console.error('Error while getting rowId +' +errResponse);
         });
     }
 
+    T68.saveVal = function (amt1, amt2, amt3, amt4, amt5, amt6, amt7, amt8, amt9, amt10, amt11, amt12, rowId, dataFlag,index) {
+        let dataFlag1 = $('#dataFlag' + rowId).val();
 
-    T66.checkAmount66 = function(numVal) {
-        let amt = String(document.getElementById(numVal).value);
-        if(amt != 0 || amt != 0.00){
-            amt=amt.replace(/^0+/, "");
+        console.log(dataFlag1);
+        console.log(reportId);
+        var param = {
+            'reportId': reportId,
+            'T68_DESC': amt1,
+            'qed':qed,
+            'PRN_AMT': parseFloat(amt2),
+            'INT_AMT': parseFloat(amt3),
+            'TOT_AMT': parseFloat($('#value4'+rowId).val()),
+            'INT_MSMED': parseFloat(amt5),
+            'SUPR_AMT': parseFloat(amt6),
+            'INT_PRD_AMT': parseFloat(amt7),
+            'INT_ACC_REM': parseFloat(amt8),
+            'FUR_SUC_AMT': parseFloat(amt9),
+            'MAX_AMT_MSME': parseFloat(amt10),
+            'SUPR_NAME_MSME': amt11,
+            'CIN_MSME': amt12,
+            'rowId': parseInt(rowId),
+            'dataFlag': dataFlag1
         }
-        document.getElementById(numVal).value = amt;
-        if (amt.match(/\s/g)) {
-            alert("Space is not allowed");
-            document.getElementById(numVal).value = "";
-            document.getElementById(numVal).focus();
-            return false;
-        }
-        if (isNaN(amt)) {
-            alert("Please enter Numeric Value only");
-            document.getElementById(numVal).value = "";
-            document.getElementById(numVal).focus();
-            return false;
-        }
-        let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
-        if (c.test(amt) || amt === "") {
-            let idot = amt.indexOf('.');
-            if (idot === -1) {
-                if (amt === "") {
-                    document.getElementById(numVal).value = amt.concat("0.00");
-                } else if ((numVal == "CY2") || (numVal == "CY4") || (numVal == "CY7")) {
-                    document.getElementById(numVal).value = Math.trunc(document.getElementById(numVal).value);
-                } else {
-                    document.getElementById(numVal).value = amt.concat(".00");
-                }
-            } else if ((numVal == "CY2") || (numVal == "CY4") || (numVal == "CY7")) {
-                document.getElementById(numVal).value = Math.trunc(document.getElementById(numVal).value);
-            } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
-                document.getElementById(numVal).value = amt.concat("0");
+
+        T68Factory.saveRow(param).then(function (data) {
+            console.log(data);
+            if(data){
+                $('#dataFlag' + index).val('U');
+                $('#save'+rowId).prop('disabled', true);
+                $('#edit'+rowId).prop('disabled', false);
+                $('#delete'+rowId).prop('disabled', false);
+                $('#value1'+rowId).prop('disabled',true);
+                $('#value2'+rowId).prop('disabled',true);
+                $('#value3'+rowId).prop('disabled',true);
+                $('#value4'+rowId).prop('disabled',true);
+                $('#value5'+rowId).prop('disabled',true);
+                $('#value6'+rowId).prop('disabled',true);
+                $('#value7'+rowId).prop('disabled',true);
+                $('#value8'+rowId).prop('disabled',true);
+                $('#value9'+rowId).prop('disabled',true);
+                $('#value10'+rowId).prop('disabled',true);
+                $('#value11'+rowId).prop('disabled',true);
+                $('#value12'+rowId).prop('disabled',true);
+
             }
-        } else {
-            alert("Amount is not allowed more than 15 digits and two decimal digits.");
-            T66.Checkwatch(numVal);
-            document.getElementById(numVal).value = "";
-            document.getElementById(numVal).focus();
-            return false;
-        }
-        return true;
-    }
-
-
-
-    T66.Checkwatch = function(numVal) {
-        var no = (numVal.substring(2));
-        if (no == "38") {
-            document.getElementById('CY43').value= parseFloat(document.getElementById('CY43').value - document.getElementById('CY43').value
-                + parseFloat(document.getElementById('CY37').value)
-                - parseFloat(document.getElementById('CY39').value) + parseFloat(document.getElementById('CY40').value)
-                - parseFloat(document.getElementById('CY41').value) - parseFloat(document.getElementById('CY42').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY43');
-            setTimeout(function(){
-                $state.reload();
-                document.getElementById(numVal).focus();
-            },2000);
-        }else if (no == "39") {
-            document.getElementById('CY43').value= parseFloat(document.getElementById('CY43').value - document.getElementById('CY43').value
-                - parseFloat(document.getElementById('CY37').value)
-                - parseFloat(document.getElementById('CY38').value) - parseFloat(document.getElementById('CY40').value)
-                + parseFloat(document.getElementById('CY41').value) + parseFloat(document.getElementById('CY42').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY43');
-            setTimeout(function(){
-                $state.reload();
-                document.getElementById(numVal).focus();
-            },2000);
-        }else if (no == "40") {
-            document.getElementById('CY43').value= parseFloat(document.getElementById('CY43').value - document.getElementById('CY43').value
-                - parseFloat(document.getElementById('CY37').value)
-                - parseFloat(document.getElementById('CY38').value) + parseFloat(document.getElementById('CY39').value)
-                + parseFloat(document.getElementById('CY41').value) + parseFloat(document.getElementById('CY42').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY43');
-            setTimeout(function(){
-                $state.reload();
-                document.getElementById(numVal).focus();
-            },2000);
-        }else if (no == "41") {
-            document.getElementById('CY43').value= parseFloat(document.getElementById('CY43').value - document.getElementById('CY43').value
-                + parseFloat(document.getElementById('CY37').value)
-                + parseFloat(document.getElementById('CY38').value) - parseFloat(document.getElementById('CY39').value)
-                + parseFloat(document.getElementById('CY40').value) - parseFloat(document.getElementById('CY42').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY43');
-            setTimeout(function(){
-                $state.reload();
-                document.getElementById(numVal).focus();
-            },2000);
-        }else if (no == "42") {
-            document.getElementById('CY43').value= parseFloat(document.getElementById('CY43').value - document.getElementById('CY43').value
-                - parseFloat(document.getElementById('CY37').value)
-                - parseFloat(document.getElementById('CY38').value) + parseFloat(document.getElementById('CY39').value)
-                - parseFloat(document.getElementById('CY40').value) + parseFloat(document.getElementById('CY41').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY43');
-            setTimeout(function(){
-                $state.reload();
-                document.getElementById(numVal).focus();
-            },2000);
-        }else if(no == "95") {
-            document.getElementById('CY97').value= (parseFloat(parseFloat(document.getElementById('CY97').value)
-                -parseFloat(document.getElementById('CY97').value) + parseFloat(document.getElementById('CY96').value))*(-1)).toFixed(2);
-
-            document.getElementById('CY98').value=parseFloat(parseFloat(document.getElementById('CY93').value)+ parseFloat(document.getElementById('CY97').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY97');
-            T66.updateField('CY98');
-            setTimeout(function(){
-                $state.reload();
-                },2000);
-        }else if(no == "96") {
-            document.getElementById('CY97').value= parseFloat(parseFloat(document.getElementById('CY97').value)
-                -parseFloat(document.getElementById('CY97').value) - parseFloat(document.getElementById('CY95').value) ).toFixed(2);
-
-            document.getElementById('CY98').value=parseFloat(parseFloat(document.getElementById('CY93').value)+ parseFloat(document.getElementById('CY97').value)).toFixed(2);
-            document.getElementById(numVal).value=0.00;
-            T66.updateField(numVal);
-            T66.updateField('CY97');
-            T66.updateField('CY98');
-            setTimeout(function(){
-                $state.reload();
-            },2000);
-        }
-        T66.updateField('CY43');
-    }
-
-
-    T66.saveRow = function(value){
-
-        let reportId = T66.reportId.toString();
-        console.log("T66.row.CY37 : "+value);
-        console.log("T66.row.CY43 : "+T66.row.CY43);
-        console.log("T66.row.CY93 : "+T66.row.CY93);
-        console.log("T66.row.CY97 : "+T66.row.CY97);
-        console.log("T66.row.CY98 : "+T66.row.CY98);
-        let params = {
-            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
-            'salt': salt,
-            'iv': iv,
-            'value1': aesUtil.encrypt(salt, iv, passphrase, value),
-            'value2': aesUtil.encrypt(salt, iv, passphrase, T66.row.CY43),
-            'value3': aesUtil.encrypt(salt, iv, passphrase, T66.row.CY93),
-            'value4': aesUtil.encrypt(salt, iv, passphrase, T66.row.CY97),
-            'value5': aesUtil.encrypt(salt, iv, passphrase, T66.row.CY98),
-        };
-        T66Factory.saveRow(params).then(function (data) {
         }, function (errResponse) {
-            console.error('update failed. ' + errResponse);
-        })
-
-    }
-
-
-    T66.updateField = function (value) {
-
-        let key = value.substring(2);
-        let fieldVal = document.getElementById(value).value;
-        let reportId = T66.reportId.toString();
-        let params = {
-            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
-            'key': aesUtil.encrypt(salt, iv, passphrase, key),
-            'salt': salt,
-            'iv': iv,
-            'value': aesUtil.encrypt(salt, iv, passphrase, fieldVal)
-        };
-
-        /*All params in payload are encrypted: V1010939*/
-        T66Factory.updateField(params).then(function (data) {
-        }, function (errResponse) {
-            console.error('update failed. ' + errResponse);
+            console.log('Error response for ./saveRow' + errResponse);
         })
     }
 
-    T66.submitIndividual = function (){
-        let reportId = T66.reportId.toString();
+    T68.checkInputField = function(inputId, flag){
+        if(flag == 'N'){
+            regExp = /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z]+[ ]+[A-Za-z])+$/;
+            var inputValue= document.getElementById(inputId).value;
+            if(!regExp.test(inputValue)){
+                alert('At least 2 words are required and Numbers & Special Characters are not allowed.');
+                document.getElementById(inputId).value="";
+            }
+        }else if(flag == 'A'){
+            regExp = /^[A-Za-z. ]*$/;
+            var inputValue= document.getElementById(inputId).value;
+            if(!regExp.test(inputValue)){
+                alert('Only alphabets are allowed.');
+                document.getElementById(inputId).value="";
+            }
+        }
+
+    }
+
+    T68.editRow = function(index, rowId){
+        $('#dataFlag' + index).val('U');
+        $('#save'+index).prop('disabled', false);
+        $('#edit'+index).prop('disabled', true);
+        $('#delete'+index).prop('disabled', false);
+        $('#value1'+index).prop('disabled',false);
+        $('#value2'+index).prop('disabled',false);
+        $('#value3'+index).prop('disabled',false);
+        $('#value5'+index).prop('disabled',false);
+        $('#value6'+index).prop('disabled',false);
+        $('#value7'+index).prop('disabled',false);
+        $('#value8'+index).prop('disabled',false);
+        $('#value9'+index).prop('disabled',false);
+        $('#value10'+index).prop('disabled',false);
+        $('#value11'+index).prop('disabled',false);
+        $('#value12'+index).prop('disabled',false);
+    }
+
+    T68.deleteRow = function(rowId, index){
+        var params = {
+            'rowId':rowId,
+            'reportId':reportId,
+            'qed':qed
+        }
+
+        T68Factory.deleteRow(params).then(function (data){
+         console.log(data);
+         if (data){
+             $scope.T68ListOfRows.splice(index, 1);
+         }
+        }, function (errResponse){
+            console.log('Error response for ./deleteRow' + errResponse);
+        });
+
+    }
+
+    T68.sum = function (amt1,amt2,srno){
+        console.log(amt1+'  '+amt2);
+        console.log();
+        console.log(T68.parseFloat(amt1));
+        console.log(T68.parseFloat(amt2));
+        console.log(T68.parseFloat(amt1)+T68.parseFloat(amt2));
+        console.log(amt1+amt2);
+        $('#value4'+srno).val((T68.parseFloat(amt1)+T68.parseFloat(amt2)).toFixed(2));
+    }
+
+    T68.submitIndividual = function (){
         let params = {
             // 'reportId' :  reportId,
             'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
@@ -2159,8 +480,8 @@ app.controller('T66Controller', function ($scope, $rootScope, $timeout, AES256, 
         frReturnFactory.submitIndividual(params).then(function (data){
             console.log("data-"+data);
             if(data==1){
-                T66.displayMessage = T66.reportName +" report has been submitted successfully.";
-                console.log(T66.displayMessage);
+                T68.displayMessage = T68.reportName +" report has been submitted successfully.";
+                console.log(T68.displayMessage);
                 $('#modalSubmit').modal({
                     backdrop: 'static',
                     keyboard: false,
@@ -2176,14 +497,111 @@ app.controller('T66Controller', function ($scope, $rootScope, $timeout, AES256, 
         })
     }
 
-    T66.redirectToFRReturn = function () {
+    T68.redirectToFRReturn = function () {
         $timeout(function () {
             $state.go('frt_maker.frReturn');
             // $state.reload();
         }, 500);
     }
-
 });
+
+
+
+
+
+factory code : 
+
+app.factory('T68Factory', ['$http', '$q', function ($http, $q) {
+    /*declare uri's for mapping*/
+    const T68_GET_ROW_ID = './T68/rowId';
+    const T68_SAVE_ROW = './T68/saveRow';
+    const T68_DELETE_ROW = './T68/deleteRow';
+    const T68_INSERT_RML = './T68/insertRml';
+    const T68_GET_RML = './T68/getRml';
+    const T68_SAVED_DATA = './T68/getSavedData';
+    return {
+        getReportId: getReportId,
+        saveRow:saveRow,
+        getRml:getRml,
+        rmlEntry:rmlEntry,
+        deleteRow:deleteRow,
+        getSavedData:getSavedData
+    }
+
+    function getReportId() {
+        var deferred = $q.defer();
+        $http.post(T68_GET_ROW_ID).then(function (response) {
+            console.log(response.data);
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while getting reportId for T68 :' +errResponse);
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+
+    function rmlEntry(params) {
+        var deferred = $q.defer();
+        $http.post(T68_INSERT_RML, params).then(function (response) {
+            console.log(response.data);
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while getting reportId for T68 :' +errResponse);
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+
+    function getRml(params) {
+        var deferred = $q.defer();
+        $http.post(T68_GET_RML, params).then(function (response) {
+            console.log(response.data);
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while getting reportId for T68 :' +errResponse);
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+
+    function saveRow(params) {
+        var deferred = $q.defer();
+        $http.post(T68_SAVE_ROW, params).then(function (response) {
+            console.log('Response Success')
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while fetching params');
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+
+    function deleteRow(params) {
+        var deferred = $q.defer();
+        $http.post(T68_DELETE_ROW, params).then(function (response) {
+            console.log('Response Success')
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while fetching params');
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+
+    function getSavedData(params) {
+        var deferred = $q.defer();
+        $http.post(T68_SAVED_DATA, params).then(function (response) {
+            console.log('Response Success')
+            deferred.resolve(response.data);
+        }, function (errResponse) {
+            console.error('Error while fetching params for saved rows');
+            deferred.reject(errResponse);
+        });
+        return deferred.promise;
+    }
+}]);
+
+
 
 
 
