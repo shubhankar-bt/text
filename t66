@@ -1,608 +1,699 @@
-T68.jsp : 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Container,
+  Typography,
+  Button,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Paper,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  CircularProgress,
+  Backdrop,
+  useTheme,
+  Stack,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Save as SaveIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ArrowBack as ArrowBackIcon,
+} from '@mui/icons-material';
+import { T68ApiService, FrReturnApiService } from '../notes-to-accounts/Table68Api';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FormInput from '../../../../common/components/ui/FormInput';
+import { current } from '@reduxjs/toolkit';
 
-<%--
-  Created by IntelliJ IDEA.
-  User: V1010939
-  Date: 10-02-2024
-  Time: 09:36
-  To change this template use File | Settings | File Templates.
---%>
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<html>
-<head>
-    <title>Title</title>
-    <style>
-        .head-style {
-            text-align: center;
-            vertical-align: middle;
-            width: 280px;
-        }
+const parseFloatOrZero = (value) => {
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : parsed;
+};
 
-        .head1 {
-            top: 35px;
-            position: sticky;
-            z-index: 20;
-        }
+const Table68 = () => {
+  const [rows, setRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ open: false, message: '' });
 
-        .fixed-header {
-            z-index: 50;
-        }
+  const { callApi } = useApi();
+  const showSnackBar = useCustomSnackbar();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+  const [reportId, setReportId] = useState(null);
+  const reportName = report.subReportName;
+  const qed = user.quarterEndDate;
+  const navigate = useNavigate();
+  const [editCache, setEditCache] = useState({});
 
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-    </style>
-</head>
-<body>
-<div class="wrapper">
-    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
-        <div class="container">
-            <div class="row tim-row">
-                <div class="col-md-8 col-md-offset-2">
-                    <div class="brand">
-                        <h3 style="color: white;">FR Return : Details of Micro Small Medium Enterprises</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="main main-raised">
-        <div class="section">
-            <div class="container">
-                <div class="row" style="padding-bottom: 10px">
-                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
-                        <i class="material-icons">arrow_back</i>
-                    </button>
-                </div>
-                <div class="row table-responsive">
-                    <table class="table my-table table-hover table-bordered no-padding dataTable table-freeze-multi"
-                           data-scroll-height="650" data-cols-number="1">
-                        <caption>Details of Micro Small Medium Enterprises</caption>
-                        <thead>
-                        <tr style="background-color: #b9def0">
-                            <th class="head-style fixed-header head1" ng-hide="true">Row Id</th>
-                            <th class="head-style">Details of Micro Small Medium Enterprises</th>
-                            <th class="head-style">Principal Due Remaining Unpaid</th>
-                            <th class="head-style">Interest Due Remaining Unpaid</th>
-                            <th class="head-style">Total Principal and Interest Due Remaining Unpaid</th>
-                            <th class="head-style">Amount of Interest Paid Under MSMED Act 2006</th>
-                            <th class="head-style">Amount of Payments Made to Supplier Beyond Due Date During Year</th>
-                            <th class="head-style">Amount of Interest Due and Payable for Period</th>
-                            <th class="head-style">Amount of Interest Accrued and Remaining Unpaid at End of
-                                AccountingYear
-                            </th>
-                            <th class="head-style">Amount of Further Interest Due and Payable Even in Succeeding Year
-                            </th>
-                            <th class="head-style">Maximum Amount Outstanding for Period From Micro Small
-                                MediumEnterprise
-                            </th>
-                            <th class="head-style">Name Supplier Being Micro Small Medium Enterprises</th>
-                            <th class="head-style">CIN of Micro Small and Medium Enterprise</th>
-                            <th style="text-align: center;vertical-align: middle; width:150px">Action</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr data-ng-repeat="row in T68ListOfRows track by $index">
-                            <script type="text/javascript">
-                                $(".decimal-2-places").numeric({ decimalPlaces: 2 });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('report : ', report);
 
-                            </script>
-                            <td ng-hide="true">
-                                <input type="text" style="background-image:none" class="form-control"
-                                       ng-model="row.srno" name="srno"
-                                       id="value0" placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none" class="form-control"
-                                       ng-model="row.insertedVal1" name="insertedVal1"
-                                       id="value1{{row.srno}}" maxlength="430"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal2" name="insertedVal2" maxlength="19"
-                                       id="value2{{row.srno}}" ng-change="T68.sum(row.insertedVal2,row.insertedVal3,row.srno)"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal3" name="insertedVal3" maxlength="19"
-                                       id="value3{{row.srno}}" ng-change="T68.sum(row.insertedVal2,row.insertedVal3,row.srno)"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto;background-color: lavender">
-                                <input type="text" style="background: inherit; text-align: right" class="form-control"
-                                       ng-model="row.insertedVal4" name="insertedVal4"  maxlength="20"
-                                       ng-disabled="true" id="value4{{row.srno}}"
-                                       placeholder="Calculated value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal5" name="insertedVal5" maxlength="19"
-                                       id="value5{{row.srno}}"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal6" name="insertedVal6" maxlength="19"
-                                       id="value6{{row.srno}}"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal7" name="insertedVal7" maxlength="19"
-                                       id="value7{{row.srno}}"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal8" name="insertedVal8" maxlength="19"
-                                       id="value8{{row.srno}}"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal9" name="insertedVal9" maxlength="19"
-                                       id="value9{{row.srno}}"
-                                       placeholder="Enter value"/></td>
-                            <td style="width: auto">
-                                <input type="text" style="background-image:none; text-align: right" class="form-control decimal-2-places"
-                                       ng-model="row.insertedVal10" maxlength="19"
-                                       name="insertedVal10" id="value10{{row.srno}}"
-                                       placeholder="Enter value"/>
-                            </td>
-                            <td style="width: auto">
-                                <textarea type="text" style="background-image:none; text-align:left; vertical-align: middle;
-                                       padding-top: 3px; padding-bottom: 3px; !important; resize: none;" class="form-control"
-                                       maxlength="280" ng-blur="T68.checkInputField('value11'+row.srno, 'N');"
-                                       ng-model="row.insertedVal11" name="insertedVal11" id="value11{{row.srno}}" rows cols="90" >
-                                </textarea>
-                            </td>
-                            <td style="width: auto">
-                                <textarea type="text" style="background-image:none; text-align:left; vertical-align: middle;
-                                       !important; resize: none;" class="form-control" maxlength="130" ng-blur="T68.checkInputField('value12'+row.srno, 'A');"
-                                       ng-model="row.insertedVal12" name="insertedVal12" id="value12{{row.srno}}" rows cols="90">
-                                </textarea>
-                                <input type="hidden" ng-model="row.flag" id="dataFlag{{row.srno}}" name="dataFlag" value="{{row.flag}}"/>
-                            </td>
-                            <td style="width: auto">
-                                <button style="text-align: center;padding: 7px"
-                                        id="save{{row.srno}}" class="btn btn-success btn-sm btn-round"
-                                        rel="tooltip" title="Save This Row" ng-click="T68.saveVal(row.insertedVal1,
-                                        row.insertedVal2,row.insertedVal3,row.insertedVal2+row.insertedVal3,row.insertedVal5,row.insertedVal6,
-                                        row.insertedVal7,row.insertedVal8,row.insertedVal9,row.insertedVal10,row.insertedVal11,
-                                        row.insertedVal12,row.srno, row.flag, $index);">
-                                    <i class="material-icons">save</i>
-                                </button>
-                                <button style="text-align: center;padding: 7px"
-                                        class="btn btn-warning btn-sm btn-round" id="edit{{row.srno}}"
-                                        rel="tooltip" title="Edit This Row" ng-click="T68.editRow(row.srno);"
-                                        disabled>
-                                    <i class="material-icons">edit</i>
-                                </button>
-                                <button style="text-align: center;padding: 7px" rel="tooltip"
-                                        title="Delete this Row"
-                                        class="btn btn-danger btn-sm btn-round" id="delete{{row.srno}}"
-                                        ng-click="T68.deleteRow(row.srno, $index);" disabled>
-                                    <i class="material-icons">delete</i>
-                                </button>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="row">
-                    <button class="btn btn-outline btn-round" style="background-color: #664162"
-                            ng-disabled="T68.addFlag"
-                            ng-click="addT68Row();">
-                        Add Row
-                    </button>
-                </div>
-                <div style="text-align: center">
-                    <button class="btn btn-success" ng-click="T68.submitIndividual()">
-                        Complete
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="example-modal">
-    <div class="modal fade" id="modalSubmit">
-        <div class="modal-dialog">
-            <div class="modal-header bg-success">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span></button>
-                <div class="modal-title"><b>Success !</b></div>
-            </div>
-            <div class="modal-content">
-                <div class="modal-body" id="popup1">
-                    <b>{{T68.displayMessage}}</b>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T68.redirectToFRReturn()" >Continue</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</body>
-</html>
+        const status = report.subReportStatus;
+        console.log('status : ', status);
 
-
-
-
-
-
-
-
-
-T68Controller : 
-
-app.controller('T68Controller', function ($scope, $rootScope, $timeout, AES256, $state, T68Factory, $sessionStorage,frReturnFactory, blockUI) {
-
-    let T68 = this;
-    $scope.started = false;
-    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
-    let qed = $scope.sessionUser.quarterEndDate;
-    let userId = $scope.sessionUser.userId;
-    let status = sessionStorage.getItem("frReportSts");
-    let reportId = sessionStorage.getItem("frReportId");
-    T68.reportName = sessionStorage.getItem("frSubReportName");
-    $scope.T68ListOfRows = [];
-    T68.srno = {};
-    let idList = [];
-    T68.parseFloat = function (value) {
-        if (isNaN(value)) {
-            value = 0;
-        }
-        return (value * 1);
-    }
-
-    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
-
-    $('.modal-backdrop').remove();
-    $('body').removeClass("modal-open");
-
-    var rmlParams = {
-        'qed': qed,
-        'userId': userId,
-        'rMId': "40024003"
-    }
-
-    if (status == '' || status.length == 0 || status == null) {
-        T68Factory.rmlEntry(rmlParams).then(function (data) {
-            reportId = data;
-        }, function (errorResponse) {
-            console.log('Error while rml Insert.' + errorResponse);
-        });
-    }else{
-        T68Factory.getRml(rmlParams).then(function (data){
-            T68.reportId = data;
-            if (status > 10) {
-                var param = {
-                    'reportId':reportId,
-                    'qed':qed
-                }
-                T68Factory.getSavedData(param).then(function (data) {
-
-                    console.log(data);
-                    data.forEach(function (s) {
-                        $scope.T68ListOfRows.push(s);
-                        idList.push(s.srno);
-                        T68.srno = T68.srno + ":" + s.srno;
-                      /*  T68.editable = T68.editable + ":" + s.editable;*/
-
-                    });
-                    setTimeout(function () {
-                        for (let i = 1; i <= data.length; i++) {
-
-                            $('input').prop('disabled', true);
-                            $('textarea').prop('disabled', true);
-                            document.getElementById('save' + T68.srno.split(':')[i]).disabled = true;
-                            document.getElementById('edit' + T68.srno.split(':')[i]).disabled = false;
-                            document.getElementById('delete' + T68.srno.split(':')[i]).disabled = false;
-                        }
-                    }, 1);
-                }, function (errorResponse) {
-                    console.log('Error while getting saved data.' + errorResponse);
-                });
-            }
-        },function(errorResponse){
-            console.log('Error while rml fetching.' + errorResponse);
-        });
-
-    }
-
-    $scope.addT68Row = function () {
-        var rowID;
-        T68Factory.getReportId().then(function (data) {
-            rowID = data;
-
-            if (rowID != null || rowID != undefined) {
-                blockUI.start();
-                $scope.T68ListOfRows.push({
-                    'srno': rowID,
-                    'flag': 'I',
-                    'insertedVal1': $scope.insertedVal1,
-                    'insertedVal2': $scope.insertedVal2,
-                    'insertedVal3': $scope.insertedVal3,
-                    'insertedVal4': $scope.insertedVal4,
-                    'insertedVal5': $scope.insertedVal5,
-                    'insertedVal6': $scope.insertedVal6,
-                    'insertedVal7': $scope.insertedVal7,
-                    'insertedVal8': $scope.insertedVal8,
-                    'insertedVal9': $scope.insertedVal9,
-                    'insertedVal10': $scope.insertedVal10,
-                    'insertedVal11': $scope.insertedVal11,
-                    'insertedVal12': $scope.insertedVal12
-                });
-                document.getElementById('value1'+rowID).disabled = false;
-                document.getElementById('value2'+rowID).disabled = false;
-                document.getElementById('value3'+rowID).disabled = false;
-                document.getElementById('value4'+rowID).disabled = false;
-                document.getElementById('value5'+rowID).disabled = false;
-                document.getElementById('value6'+rowID).disabled = false;
-                document.getElementById('value7'+rowID).disabled = false;
-                document.getElementById('value8'+rowID).disabled = false;
-                document.getElementById('value9'+rowID).disabled = false;
-                document.getElementById('value10'+rowID).disabled = false;
-                document.getElementById('value11'+rowID).disabled = false;
-                document.getElementById('value12'+rowID).disabled = false;
-                document.getElementById('edit'+rowID).disabled = false;
-                document.getElementById('delete'+rowID).disabled = false;
-
-                blockUI.stop();
-            }
-
-        }, function (errResponse) {
-            console.error('Error while getting rowId +' +errResponse);
-        });
-    }
-
-    T68.saveVal = function (amt1, amt2, amt3, amt4, amt5, amt6, amt7, amt8, amt9, amt10, amt11, amt12, rowId, dataFlag,index) {
-        let dataFlag1 = $('#dataFlag' + rowId).val();
-
-        console.log(dataFlag1);
-        console.log(reportId);
-        var param = {
-            'reportId': reportId,
-            'T68_DESC': amt1,
-            'qed':qed,
-            'PRN_AMT': parseFloat(amt2),
-            'INT_AMT': parseFloat(amt3),
-            'TOT_AMT': parseFloat($('#value4'+rowId).val()),
-            'INT_MSMED': parseFloat(amt5),
-            'SUPR_AMT': parseFloat(amt6),
-            'INT_PRD_AMT': parseFloat(amt7),
-            'INT_ACC_REM': parseFloat(amt8),
-            'FUR_SUC_AMT': parseFloat(amt9),
-            'MAX_AMT_MSME': parseFloat(amt10),
-            'SUPR_NAME_MSME': amt11,
-            'CIN_MSME': amt12,
-            'rowId': parseInt(rowId),
-            'dataFlag': dataFlag1
-        }
-
-        T68Factory.saveRow(param).then(function (data) {
-            console.log(data);
-            if(data){
-                $('#dataFlag' + index).val('U');
-                $('#save'+rowId).prop('disabled', true);
-                $('#edit'+rowId).prop('disabled', false);
-                $('#delete'+rowId).prop('disabled', false);
-                $('#value1'+rowId).prop('disabled',true);
-                $('#value2'+rowId).prop('disabled',true);
-                $('#value3'+rowId).prop('disabled',true);
-                $('#value4'+rowId).prop('disabled',true);
-                $('#value5'+rowId).prop('disabled',true);
-                $('#value6'+rowId).prop('disabled',true);
-                $('#value7'+rowId).prop('disabled',true);
-                $('#value8'+rowId).prop('disabled',true);
-                $('#value9'+rowId).prop('disabled',true);
-                $('#value10'+rowId).prop('disabled',true);
-                $('#value11'+rowId).prop('disabled',true);
-                $('#value12'+rowId).prop('disabled',true);
-
-            }
-        }, function (errResponse) {
-            console.log('Error response for ./saveRow' + errResponse);
-        })
-    }
-
-    T68.checkInputField = function(inputId, flag){
-        if(flag == 'N'){
-            regExp = /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z]+[ ]+[A-Za-z])+$/;
-            var inputValue= document.getElementById(inputId).value;
-            if(!regExp.test(inputValue)){
-                alert('At least 2 words are required and Numbers & Special Characters are not allowed.');
-                document.getElementById(inputId).value="";
-            }
-        }else if(flag == 'A'){
-            regExp = /^[A-Za-z. ]*$/;
-            var inputValue= document.getElementById(inputId).value;
-            if(!regExp.test(inputValue)){
-                alert('Only alphabets are allowed.');
-                document.getElementById(inputId).value="";
-            }
-        }
-
-    }
-
-    T68.editRow = function(index, rowId){
-        $('#dataFlag' + index).val('U');
-        $('#save'+index).prop('disabled', false);
-        $('#edit'+index).prop('disabled', true);
-        $('#delete'+index).prop('disabled', false);
-        $('#value1'+index).prop('disabled',false);
-        $('#value2'+index).prop('disabled',false);
-        $('#value3'+index).prop('disabled',false);
-        $('#value5'+index).prop('disabled',false);
-        $('#value6'+index).prop('disabled',false);
-        $('#value7'+index).prop('disabled',false);
-        $('#value8'+index).prop('disabled',false);
-        $('#value9'+index).prop('disabled',false);
-        $('#value10'+index).prop('disabled',false);
-        $('#value11'+index).prop('disabled',false);
-        $('#value12'+index).prop('disabled',false);
-    }
-
-    T68.deleteRow = function(rowId, index){
-        var params = {
-            'rowId':rowId,
-            'reportId':reportId,
-            'qed':qed
-        }
-
-        T68Factory.deleteRow(params).then(function (data){
-         console.log(data);
-         if (data){
-             $scope.T68ListOfRows.splice(index, 1);
-         }
-        }, function (errResponse){
-            console.log('Error response for ./deleteRow' + errResponse);
-        });
-
-    }
-
-    T68.sum = function (amt1,amt2,srno){
-        console.log(amt1+'  '+amt2);
-        console.log();
-        console.log(T68.parseFloat(amt1));
-        console.log(T68.parseFloat(amt2));
-        console.log(T68.parseFloat(amt1)+T68.parseFloat(amt2));
-        console.log(amt1+amt2);
-        $('#value4'+srno).val((T68.parseFloat(amt1)+T68.parseFloat(amt2)).toFixed(2));
-    }
-
-    T68.submitIndividual = function (){
-        let params = {
-            // 'reportId' :  reportId,
-            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
-            'salt': salt,
-            'iv': iv,
-            'qed': qed,
-
+        const rmlParams = {
+          qed: qed,
+          userId: user.userId,
+          rMId: '40024003',
         };
-        frReturnFactory.submitIndividual(params).then(function (data){
-            console.log("data-"+data);
-            if(data==1){
-                T68.displayMessage = T68.reportName +" report has been submitted successfully.";
-                console.log(T68.displayMessage);
-                $('#modalSubmit').modal({
-                    backdrop: 'static',
-                    keyboard: false,
-                    modal: true
-                });
-                $('#modalSubmit').on('shown.bs.modal', function () {
-                    $('#modalSubmit').trigger('focus');
-                });
+
+        if (!status || status.length === 0) {
+          console.log('No report status found, creating new report entry...');
+          const newReportId = await T68ApiService.rmlEntry(rmlParams, callApi);
+          setReportId(newReportId);
+        } else {
+          console.log('Existing report status found, validating report ID...');
+          const validatedReportId = await T68ApiService.getRml(rmlParams, callApi);
+          if (validatedReportId) {
+            setReportId(validatedReportId);
+
+            if (status && parseInt(status, 10) > 10) {
+              console.log('Status > 10, fetching saved data...');
+              const params = { reportId: validatedReportId, qed };
+
+              const savedData = await T68ApiService.getSavedData(params, callApi);
+
+              if (Array.isArray(savedData)) {
+                const initialRows = savedData.map((row) => ({
+                  ...row,
+                  id: row.srno,
+                  isEditing: false,
+                  flag: 'U',
+                }));
+                setRows(initialRows);
+              }
             }
-            //modal
-        }, function (errResponse){
-            console.error('Submit individual failed. '+errResponse);
-        })
+          } else {
+            console.log('Failed to retrive report ID');
+            showSnackBar('Some unexpected event occurred, Please refresh the page', 'warning');
+          }
+        }
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error(error);
+          showSnackBar('Failed to initialize data!', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // --- Event Handlers ---
+
+  const handleInputChange = (id, event) => {
+    const { name, value } = event.target;
+
+    // Use the functional update form of setRows (prevRows => ...)
+    // This ensures each update works on the most recent state, preventing race conditions.
+    setRows((prevRows) =>
+      prevRows.map((row) => {
+        if (row.id === id) {
+          const updatedRow = { ...row, [name]: value };
+
+          // Keep the auto-calculation logic for the total amount
+          if (name === 'insertedVal2' || name === 'insertedVal3') {
+            const principal = parseFloatOrZero(name === 'insertedVal2' ? value : row.insertedVal2);
+            const interest = parseFloatOrZero(name === 'insertedVal3' ? value : row.insertedVal3);
+            updatedRow.insertedVal4 = (principal + interest).toFixed(2);
+          }
+
+          return updatedRow;
+        }
+
+        // For all other rows, return them unchanged
+        return row;
+      })
+    );
+  };
+
+  const handleAddRow = async () => {
+    setIsLoading(true);
+    try {
+      const newRowId = await T68ApiService.getNewRowId('40024003', callApi);
+      const newRow = {
+        id: newRowId,
+        srno: newRowId,
+        flag: 'I', // Insert flag
+        isEditing: true, // New rows are immediately editable
+        insertedVal1: '',
+        insertedVal2: '',
+        insertedVal3: '',
+        insertedVal4: '0.00',
+        insertedVal5: '',
+        insertedVal6: '',
+        insertedVal7: '',
+        insertedVal8: '',
+        insertedVal9: '',
+        insertedVal10: '',
+        insertedVal11: '',
+        insertedVal12: '',
+      };
+      setRows((prevRows) => [...prevRows, newRow]);
+    } catch (error) {
+      console.error('Failed to get new row ID:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    T68.redirectToFRReturn = function () {
-        $timeout(function () {
-            $state.go('frt_maker.frReturn');
-            // $state.reload();
-        }, 500);
+  const handleEditRow = (id) => {
+    const rowToEdit = rows.find((row) => row.id === id);
+
+    setEditCache((prevCache) => ({
+      ...prevCache,
+      [id]: { ...rowToEdit, isEditing: false },
+    }));
+    setRows((currentRows) => currentRows.map((row) => (row.id === id ? { ...row, isEditing: true } : row)));
+    // setRows(rows.map((row) => (row.id === id ? { ...row, isEditing: true } : row)));
+  };
+
+  const handleCancelEdit = (id) => {
+    // Find the row in the current state to check its properties
+    const rowToCancel = rows.find((row) => row.id === id);
+
+    // If for some reason the row doesn't exist, do nothing.
+    if (!rowToCancel) return;
+
+    // SCENARIO 1: The row is a new one that hasn't been saved yet.
+    if (rowToCancel.flag === 'I') {
+      // To "cancel" an add, we simply filter the new row out of our state.
+      setRows((prevRows) => prevRows.filter((r) => r.id !== id));
     }
-});
+    // SCENARIO 2: The row is an existing one that was being edited.
+    else {
+      const originalRow = editCache[id];
+      if (originalRow) {
+        // Restore the original data from the cache for the existing row.
+        setRows((currentRows) => currentRows.map((row) => (row.id === id ? originalRow : row)));
 
-
-
-
-
-factory code : 
-
-app.factory('T68Factory', ['$http', '$q', function ($http, $q) {
-    /*declare uri's for mapping*/
-    const T68_GET_ROW_ID = './T68/rowId';
-    const T68_SAVE_ROW = './T68/saveRow';
-    const T68_DELETE_ROW = './T68/deleteRow';
-    const T68_INSERT_RML = './T68/insertRml';
-    const T68_GET_RML = './T68/getRml';
-    const T68_SAVED_DATA = './T68/getSavedData';
-    return {
-        getReportId: getReportId,
-        saveRow:saveRow,
-        getRml:getRml,
-        rmlEntry:rmlEntry,
-        deleteRow:deleteRow,
-        getSavedData:getSavedData
-    }
-
-    function getReportId() {
-        var deferred = $q.defer();
-        $http.post(T68_GET_ROW_ID).then(function (response) {
-            console.log(response.data);
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while getting reportId for T68 :' +errResponse);
-            deferred.reject(errResponse);
+        // Clean up the cache by removing the entry.
+        setEditCache((prevCache) => {
+          const { [id]: removedItem, ...restOfCache } = prevCache;
+          return restOfCache;
         });
-        return deferred.promise;
+      }
     }
 
-    function rmlEntry(params) {
-        var deferred = $q.defer();
-        $http.post(T68_INSERT_RML, params).then(function (response) {
-            console.log(response.data);
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while getting reportId for T68 :' +errResponse);
-            deferred.reject(errResponse);
+    // const originalData = editCache[id];
+    // if (originalData) {
+    //   setRows((currentRows) => currentRows.map((row) => (row.id === id ? originalData : row)));
+    // }
+
+    // setEditCache((prevCache) => {
+    //   const newCache = { ...prevCache };
+    //   delete newCache[id];
+    //   return newCache;
+    // });
+  };
+
+  const handleSaveRow = async (id) => {
+    const rowToSave = rows.find((row) => row.id === id);
+    if (!rowToSave) return;
+
+    setIsLoading(true);
+    const payload = {
+      reportId: reportId.toString(),
+      qed: qed,
+      rowId: parseInt(rowToSave.id, 10),
+      dataFlag: rowToSave.flag,
+      T68_DESC: rowToSave.insertedVal1,
+      PRN_AMT: parseFloatOrZero(rowToSave.insertedVal2),
+      INT_AMT: parseFloatOrZero(rowToSave.insertedVal3),
+      TOT_AMT: parseFloatOrZero(rowToSave.insertedVal4),
+      INT_MSMED: parseFloatOrZero(rowToSave.insertedVal5),
+      SUPR_AMT: parseFloatOrZero(rowToSave.insertedVal6),
+      INT_PRD_AMT: parseFloatOrZero(rowToSave.insertedVal7),
+      INT_ACC_REM: parseFloatOrZero(rowToSave.insertedVal8),
+      FUR_SUC_AMT: parseFloatOrZero(rowToSave.insertedVal9),
+      MAX_AMT_MSME: parseFloatOrZero(rowToSave.insertedVal10),
+      SUPR_NAME_MSME: rowToSave.insertedVal11,
+      CIN_MSME: rowToSave.insertedVal12,
+    };
+
+    try {
+      const response = await T68ApiService.saveRow(payload, callApi);
+      if (response.toString() === 'true') {
+        showSnackBar('Row saved succesfully.', 'success');
+        setRows(rows.map((row) => (row.id === id ? { ...row, isEditing: false, flag: 'U' } : row)));
+        // Clean up the cache by removing the entry.
+      } else {
+        showSnackBar('Failed to save row', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to save row:', error);
+      showSnackBar('Failed to save row', 'error');
+    } finally {
+      setIsLoading(false);
+      setEditCache((prevCache) => {
+        const { [id]: removedItem, ...restOfCache } = prevCache;
+        return restOfCache;
+      });
+    }
+  };
+
+  const handleDeleteRow = async (id) => {
+    setIsLoading(true);
+    try {
+      const payload = { rowId: id, reportId: reportId.toString(), qed: qed };
+      const response = await T68ApiService.deleteRow(payload, callApi);
+      setRows(rows.filter((row) => row.id !== id));
+      if (response.toString() === 'true') {
+        showSnackBar('Row deleted succesfully.', 'warning');
+      } else {
+        showSnackBar('Failed to delete row', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete row:', error);
+      showSnackBar('Failed to delete row', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        reportId: reportId.toString(),
+        qed: qed,
+      };
+      const response = await FrReturnApiService.submitIndividual(payload, callApi);
+      if (response === 1) {
+        showSnackBar('report has been submitted successfully.', 'success');
+        navigate('../');
+      } else {
+        setModal({
+          open: true,
+          message: `Error: Failed to submit report.`,
         });
-        return deferred.promise;
+      }
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      setModal({
+        open: true,
+        message: `Error: Failed to submit report.`,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    function getRml(params) {
-        var deferred = $q.defer();
-        $http.post(T68_GET_RML, params).then(function (response) {
-            console.log(response.data);
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while getting reportId for T68 :' +errResponse);
-            deferred.reject(errResponse);
-        });
-        return deferred.promise;
-    }
+  const handleCloseModal = () => {
+    setModal({ open: false, message: '' });
+  };
 
-    function saveRow(params) {
-        var deferred = $q.defer();
-        $http.post(T68_SAVE_ROW, params).then(function (response) {
-            console.log('Response Success')
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while fetching params');
-            deferred.reject(errResponse);
-        });
-        return deferred.promise;
-    }
+  const handleValidation = useCallback(
+    (rowId, event) => {
+      const { name, value } = event.target;
 
-    function deleteRow(params) {
-        var deferred = $q.defer();
-        $http.post(T68_DELETE_ROW, params).then(function (response) {
-            console.log('Response Success')
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while fetching params');
-            deferred.reject(errResponse);
-        });
-        return deferred.promise;
-    }
+      if (!value) return;
 
-    function getSavedData(params) {
-        var deferred = $q.defer();
-        $http.post(T68_SAVED_DATA, params).then(function (response) {
-            console.log('Response Success')
-            deferred.resolve(response.data);
-        }, function (errResponse) {
-            console.error('Error while fetching params for saved rows');
-            deferred.reject(errResponse);
-        });
-        return deferred.promise;
-    }
-}]);
+      let isValid = true;
+      let errorMessage = '';
+      let validationType = '';
 
+      // Determine which validation to run based on the input's name
+      if (name === 'insertedVal11') {
+        validationType = 'name';
+      } else if (name === 'insertedVal12') {
+        validationType = 'alpha';
+      } else {
+        return;
+      }
 
+      if (validationType === 'name') {
+        const nameRegex = /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z]+[ ]+[A-Za-z])+$/;
+        if (!nameRegex.test(value)) {
+          isValid = false;
+          errorMessage = 'At least 2 words are required. Numbers & special characters are not allowed.';
+        }
+      } else if (validationType === 'alpha') {
+        const alphaRegex = /^[A-Za-z.\s]*$/;
+        if (!alphaRegex.test(value)) {
+          isValid = false;
+          errorMessage = 'Only alphabets, dots, and spaces are allowed.';
+        }
+      }
 
+      if (!isValid) {
+        showSnackBar(errorMessage, 'error');
 
+        setRows((prevRows) =>
+          prevRows.map((row) => {
+            if (row.id === rowId) {
+              // Return a new version of the row with the invalid field cleared.
+              return { ...row, [name]: '' };
+            }
+            return row;
+          })
+        );
+      }
+      console.log('In onBlur', name, value);
+    },
+    [showSnackBar]
+  ); // useCallback with an empty dependency array as setRows is stable.
 
+  const columns = [
+    {
+      id: 'insertedVal1',
+      label: 'Details of Micro Small Medium Enterprises',
+      minWidth: 250,
+      align: 'left',
+      renderCell: (row) => (
+        <FormInput
+          inputType="inputValue"
+          name="insertedVal1"
+          value={row.insertedVal1 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          maxLength={50}
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal2',
+      label: 'Principal Due Remaining Unpaid',
+      minWidth: 220,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal2"
+          value={row.insertedVal2 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal3',
+      label: 'Interest Due Remaining Unpaid',
+      minWidth: 220,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal3"
+          value={row.insertedVal3 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal4',
+      label: 'Total Principal and Interest Due Remaining Unpaid',
+      minWidth: 220,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal4"
+          value={row.insertedVal4 || '0.00'}
+          readOnly={true}
+          placeholder="Calculated value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal5',
+      label: 'Amount of Interest Paid Under MSMED Act 2006',
+      minWidth: 220,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal5"
+          value={row.insertedVal5 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal6',
+      label: 'Amount of Payments Made to Supplier Beyond Due Date During Year',
+      minWidth: 250,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal6"
+          value={row.insertedVal6 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal7',
+      label: 'Amount of Interest Due and Payable for Period',
+      minWidth: 220,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal7"
+          value={row.insertedVal7 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal8',
+      label: 'Amount of Interest Accrued and Remaining Unpaid at End of AccountingYear',
+      minWidth: 260,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal8"
+          value={row.insertedVal8 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal9',
+      label: 'Amount of Further Interest Due and Payable Even in Succeeding Year',
+      minWidth: 260,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal9"
+          value={row.insertedVal9 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal10',
+      label: 'Maximum Amount Outstanding for Period From Micro Small MediumEnterprise',
+      minWidth: 260,
+      align: 'right',
+      renderCell: (row) => (
+        <FormInput
+          inputType="amountInput"
+          name="insertedVal10"
+          value={row.insertedVal10 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal11',
+      label: 'Name Supplier Being Micro Small Medium Enterprises',
+      minWidth: 260,
+      align: 'left',
+      renderCell: (row) => (
+        <FormInput
+          inputType="alphaNumWithSpaceTrim"
+          name="insertedVal11"
+          value={row.insertedVal11 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          validateOnlyOnBlur
+          onBlur={(e) => handleValidation(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          maxLength={50}
+          debounceDuration={500}
+        />
+      ),
+    },
+    {
+      id: 'insertedVal12',
+      label: 'CIN of Micro Small and Medium Enterprise',
+      minWidth: 250,
+      align: 'left',
+      renderCell: (row) => (
+        <FormInput
+          inputType="alphaInput"
+          name="insertedVal12"
+          value={row.insertedVal12 || ''}
+          onChange={(e) => handleInputChange(row.id, e)}
+          onBlur={(e) => handleValidation(row.id, e)}
+          readOnly={!row.isEditing}
+          placeholder="Enter value"
+          debounceDuration={500}
+        />
+      ),
+    },
+  ];
 
+  return (
+    <Box>
+      <Backdrop sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading || isSubmitting}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'left' }}>
+        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={handleAddRow} disabled={isLoading} />
+        <CustomButton
+          buttonType={'submit'}
+          label={'Complete'}
+          disabled={isSubmitting || rows.some((r) => r.isEditing)}
+          onClickHandler={handleSubmitReport}
+        />
+      </Box>
+
+      <Box component={Paper} elevation={3} sx={{ mt: 1 }}>
+        <TableContainer component={Paper} sx={{ maxHeight: 650 }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                {columns.map((col) => (
+                  <TableCell
+                    key={col.id}
+                    align={col.align}
+                    sx={{
+                      fontWeight: 'bold',
+                      minWidth: col.minWidth, // Apply the minimum width here
+                    }}
+                  >
+                    {col.label}
+                  </TableCell>
+                ))}
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 150, textAlign: 'center' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                  {columns.map((col) => (
+                    <TableCell key={col.id} align={col.align}>
+                      {/* The rendering logic is now extremely clean. It just calls the function. */}
+                      {col.renderCell(row)}
+                    </TableCell>
+                  ))}
+                  <TableCell align="center">
+                    {row.isEditing ? (
+                      <Stack direction={'row'} sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        <CustomButton
+                          onClickHandler={() => handleSaveRow(row.id)}
+                          buttonType={'save'}
+                          onlyIconButton={true}
+                          toolTip={'Save this row'}
+                        />
+
+                        <CustomButton
+                          onClickHandler={() => handleCancelEdit(row.id)}
+                          buttonType={'reject'}
+                          onlyIconButton={true}
+                          toolTip={'Cancel Edit'}
+                        />
+                      </Stack>
+                    ) : (
+                      <Stack direction={'row'} sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        <CustomButton
+                          onClickHandler={() => handleEditRow(row.id)}
+                          buttonType={'edit'}
+                          onlyIconButton={true}
+                          toolTip={'Edit this row'}
+                        />
+                        <CustomButton
+                          onClickHandler={() => handleDeleteRow(row.id)}
+                          buttonType={'delete'}
+                          onlyIconButton={true}
+                          toolTip={'Delete this row'}
+                        />
+                      </Stack>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {rows.some((r) => r.isEditing) && (
+          <Typography variant="caption" color="error.light" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>
+            * Please save all edited rows to enable complete button.
+          </Typography>
+        )}
+      </Box>
+
+      <Dialog
+        open={modal.open}
+        onClose={handleCloseModal}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">Submission Status</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">{modal.message}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal} color="primary" autoFocus>
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default Table68;
