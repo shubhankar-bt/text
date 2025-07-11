@@ -1,0 +1,639 @@
+// src/common/components/ui/GenericTable.js
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
+  TableRow, Backdrop, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogContentText, DialogTitle, Button, Stack, Typography
+} from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
+
+/**
+ * A reusable, configuration-driven table component for handling CRUD operations.
+ *
+ * @param {object} props - The component props.
+ * @param {object} props.tableConfig - A configuration object that defines the table's behavior and structure.
+ * - `columns`: {Array<object>} - Defines the table columns. Each object needs id, label, minWidth, etc.
+ * - `getNewRowDefaults`: {function} - A function that returns an object with default values for a new row.
+ * - `createSavePayload`: {function} - A function that transforms a row's data into the required payload for the save API.
+ * - `autoCalculate`: {?function} - An optional function for auto-calculating field values based on other inputs.
+ * @param {object} props.apiService - An object containing the API functions required by the table (e.g., getSavedData, saveRow, deleteRow).
+ * @param {string} props.reportManagementId - The unique identifier (rMId) for the specific report table being displayed.
+ * @param {object} props.frReturnApiService - The API service for handling the final submission of the report.
+ * @returns {JSX.Element} The rendered GenericTable component.
+ */
+const GenericTable = ({ tableConfig, apiService, reportManagementId, frReturnApiService }) => {
+  const [rows, setRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modal, setModal] = useState({ open: false, message: '' });
+  const [editCache, setEditCache] = useState({});
+  const [reportId, setReportId] = useState(null);
+  const [selectOptions, setSelectOptions] = useState({}); // Holds options for dropdowns
+
+  const { callApi } = useApi();
+  const showSnackBar = useCustomSnackbar();
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const status = report.subReportStatus;
+        const rmlParams = { qed: user.quarterEndDate, userId: user.userId, rMId: reportManagementId };
+
+        if (!status || status.length === 0) {
+          const newReportId = await apiService.rmlEntry(rmlParams, callApi);
+          setReportId(newReportId);
+        } else {
+          const validatedReportId = await apiService.getRml(rmlParams, callApi);
+          if (validatedReportId) {
+            setReportId(validatedReportId);
+            if (status && parseInt(status, 10) > 10) {
+              const params = { reportId: validatedReportId, qed: user.quarterEndDate };
+              const savedData = await apiService.getSavedData(params, callApi);
+              if (Array.isArray(savedData)) {
+                const initialRows = savedData.map((row) => ({
+                  ...row,
+                  id: row.srno,
+                  isEditing: false,
+                  flag: 'U',
+                }));
+                setRows(initialRows);
+              }
+            }
+          } else {
+            showSnackBar('Some unexpected event occurred, Please refresh the page', 'warning');
+          }
+        }
+        
+        // Fetch data for any dropdown columns defined in the config
+        const optionPromises = tableConfig.columns
+            .filter(col => col.inputType === 'select' && col.optionsApi)
+            .map(async (col) => {
+                const options = await apiService[col.optionsApi]({}, callApi);
+                return { [col.id]: options };
+            });
+        
+        const allOptions = await Promise.all(optionPromises);
+        setSelectOptions(Object.assign({}, ...allOptions));
+
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          showSnackBar('Failed to initialize data!', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [report, user, reportManagementId, apiService, callApi, showSnackBar, tableConfig.columns]);
+
+  const handleInputChange = (id, event) => {
+    const { name, value } = event.target;
+    setRows((prevRows) =>
+      prevRows.map((row) => {
+        if (row.id === id) {
+          let updatedRow = { ...row, [name]: value };
+          if (tableConfig.autoCalculate) {
+            updatedRow = tableConfig.autoCalculate(updatedRow, name, value);
+          }
+          return updatedRow;
+        }
+        return row;
+      })
+    );
+  };
+
+  const handleAddRow = async () => {
+    setIsLoading(true);
+    try {
+      const newRowId = await apiService.getNewRowId(reportManagementId, callApi);
+      const newRow = {
+        id: newRowId,
+        srno: newRowId,
+        flag: 'I',
+        isEditing: true,
+        ...tableConfig.getNewRowDefaults(),
+      };
+      setRows((prevRows) => [...prevRows, newRow]);
+    } catch (error) {
+      console.error('Failed to get new row ID:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditRow = (id) => {
+    const rowToEdit = rows.find((row) => row.id === id);
+    setEditCache((prevCache) => ({ ...prevCache, [id]: { ...rowToEdit, isEditing: false } }));
+    setRows((currentRows) => currentRows.map((row) => (row.id === id ? { ...row, isEditing: true } : row)));
+  };
+
+  const handleCancelEdit = (id) => {
+    const rowToCancel = rows.find((row) => row.id === id);
+    if (!rowToCancel) return;
+    if (rowToCancel.flag === 'I') {
+      setRows((prevRows) => prevRows.filter((r) => r.id !== id));
+    } else {
+      const originalRow = editCache[id];
+      if (originalRow) {
+        setRows((currentRows) => currentRows.map((row) => (row.id === id ? originalRow : row)));
+        setEditCache((prevCache) => {
+          const { [id]: removedItem, ...restOfCache } = prevCache;
+          return restOfCache;
+        });
+      }
+    }
+  };
+
+  const handleSaveRow = async (id) => {
+    const rowToSave = rows.find((row) => row.id === id);
+    if (!rowToSave) return;
+    setIsLoading(true);
+
+    const payload = tableConfig.createSavePayload(rowToSave, reportId, user.quarterEndDate);
+
+    try {
+      const response = await apiService.saveRow(payload, callApi);
+      if (response.toString() === 'true') {
+        showSnackBar('Row saved successfully.', 'success');
+        setRows(rows.map((row) => (row.id === id ? { ...row, isEditing: false, flag: 'U' } : row)));
+        setEditCache((prevCache) => {
+          const { [id]: removedItem, ...restOfCache } = prevCache;
+          return restOfCache;
+        });
+      } else {
+        showSnackBar('Failed to save row', 'error');
+      }
+    } catch (error) {
+      showSnackBar('Failed to save row', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRow = async (id) => {
+    setIsLoading(true);
+    try {
+      const payload = { rowId: id, reportId: reportId.toString(), qed: user.quarterEndDate };
+      const response = await apiService.deleteRow(payload, callApi);
+      if (response.toString() === 'true') {
+        setRows(rows.filter((row) => row.id !== id));
+        showSnackBar('Row deleted successfully.', 'warning');
+      } else {
+        showSnackBar('Failed to delete row', 'error');
+      }
+    } catch (error) {
+      showSnackBar('Failed to delete row', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    setIsSubmitting(true);
+    try {
+      const payload = { reportId: reportId.toString(), qed: user.quarterEndDate };
+      const response = await frReturnApiService.submitIndividual(payload, callApi);
+      if (response === 1) {
+        showSnackBar('Report has been submitted successfully.', 'success');
+        navigate('../');
+      } else {
+        setModal({ open: true, message: 'Error: Failed to submit report.' });
+      }
+    } catch (error) {
+      setModal({ open: true, message: 'Error: Failed to submit report.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleValidation = useCallback((rowId, event) => {
+    const { name, value } = event.target;
+    if (!value) return;
+
+    const validationRule = tableConfig.columns.find(c => c.id === name)?.validation;
+    if (!validationRule) return;
+
+    const { isValid, errorMessage } = validationRule(value);
+
+    if (!isValid) {
+      showSnackBar(errorMessage, 'error');
+      setRows((prevRows) =>
+        prevRows.map((row) => (row.id === rowId ? { ...row, [name]: '' } : row))
+      );
+    }
+  }, [showSnackBar, tableConfig.columns]);
+
+  return (
+    <Box>
+      <Backdrop sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading || isSubmitting}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'left' }}>
+        <CustomButton label={'Add Row'} buttonType={'create'} onClickHandler={handleAddRow} disabled={isLoading} />
+        <CustomButton buttonType={'submit'} label={'Complete'} disabled={isSubmitting || rows.some((r) => r.isEditing)} onClickHandler={handleSubmitReport} />
+      </Box>
+
+      <Box component={Paper} elevation={3} sx={{ mt: 1 }}>
+        <TableContainer component={Paper} sx={{ maxHeight: 650 }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                {tableConfig.columns.map((col) => (
+                  <TableCell key={col.id} align={col.align} sx={{ fontWeight: 'bold', minWidth: col.minWidth }}>
+                    {col.label}
+                  </TableCell>
+                ))}
+                <TableCell sx={{ fontWeight: 'bold', minWidth: 150, textAlign: 'center' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow hover role="checkbox" tabIndex={-1} key={row.id}>
+                  {tableConfig.columns.map((col) => (
+                    <TableCell key={col.id} align={col.align}>
+                      <FormInput
+                        inputType={col.inputType || 'inputValue'}
+                        name={col.id}
+                        value={row[col.id] || ''}
+                        onChange={(e) => handleInputChange(row.id, e)}
+                        onBlur={col.validation ? (e) => handleValidation(row.id, e) : undefined}
+                        readOnly={!row.isEditing || col.readOnly}
+                        placeholder={col.placeholder || 'Enter value'}
+                        maxLength={col.maxLength}
+                        options={col.inputType === 'select' ? selectOptions[col.id] : undefined}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell align="center">
+                    {row.isEditing ? (
+                      <Stack direction={'row'} sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        <CustomButton onClickHandler={() => handleSaveRow(row.id)} buttonType={'save'} onlyIconButton={true} toolTip={'Save this row'} />
+                        <CustomButton onClickHandler={() => handleCancelEdit(row.id)} buttonType={'reject'} onlyIconButton={true} toolTip={'Cancel Edit'} />
+                      </Stack>
+                    ) : (
+                      <Stack direction={'row'} sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                        <CustomButton onClickHandler={() => handleEditRow(row.id)} buttonType={'edit'} onlyIconButton={true} toolTip={'Edit this row'} />
+                        <CustomButton onClickHandler={() => handleDeleteRow(row.id)} buttonType={'delete'} onlyIconButton={true} toolTip={'Delete this row'} />
+                      </Stack>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {rows.some((r) => r.isEditing) && (
+          <Typography variant="caption" color="error.light" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>
+            * Please save all edited rows to enable complete button.
+          </Typography>
+        )}
+      </Box>
+
+      <Dialog open={modal.open} onClose={() => setModal({ open: false, message: '' })}>
+        <DialogTitle>Submission Status</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{modal.message}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModal({ open: false, message: '' })} color="primary" autoFocus>
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default GenericTable;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/table-configs/t68Config.js
+
+const parseFloatOrZero = (value) => {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
+export const t68Config = {
+    // Defines the columns for the table
+    columns: [
+        { id: 'insertedVal1', label: 'Details of Micro Small Medium Enterprises', minWidth: 250, align: 'left', maxLength: 50 },
+        { id: 'insertedVal2', label: 'Principal Due Remaining Unpaid', minWidth: 220, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal3', label: 'Interest Due Remaining Unpaid', minWidth: 220, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal4', label: 'Total Principal and Interest Due Remaining Unpaid', minWidth: 220, align: 'right', inputType: 'amountInput', readOnly: true },
+        { id: 'insertedVal5', label: 'Amount of Interest Paid Under MSMED Act 2006', minWidth: 220, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal6', label: 'Amount of Payments Made to Supplier Beyond Due Date During Year', minWidth: 250, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal7', label: 'Amount of Interest Due and Payable for Period', minWidth: 220, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal8', label: 'Amount of Interest Accrued and Remaining Unpaid at End of AccountingYear', minWidth: 260, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal9', label: 'Amount of Further Interest Due and Payable Even in Succeeding Year', minWidth: 260, align: 'right', inputType: 'amountInput' },
+        { id: 'insertedVal10', label: 'Maximum Amount Outstanding for Period From Micro Small MediumEnterprise', minWidth: 260, align: 'right', inputType: 'amountInput' },
+        {
+            id: 'insertedVal11', label: 'Name Supplier Being Micro Small Medium Enterprises', minWidth: 260, align: 'left', inputType: 'alphaNumWithSpaceTrim', maxLength: 50,
+            validation: (value) => ({
+                isValid: /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z]+[ ]+[A-Za-z])+$/.test(value),
+                errorMessage: 'At least 2 words are required. Numbers & special characters are not allowed.'
+            })
+        },
+        {
+            id: 'insertedVal12', label: 'CIN of Micro Small and Medium Enterprise', minWidth: 250, align: 'left', inputType: 'alphaInput',
+            validation: (value) => ({
+                isValid: /^[A-Za-z.\s]*$/.test(value),
+                errorMessage: 'Only alphabets, dots, and spaces are allowed.'
+            })
+        },
+    ],
+
+    // Provides default values for a new row
+    getNewRowDefaults: () => ({
+        insertedVal1: '', insertedVal2: '', insertedVal3: '',
+        insertedVal4: '0.00', insertedVal5: '', insertedVal6: '',
+        insertedVal7: '', insertedVal8: '', insertedVal9: '',
+        insertedVal10: '', insertedVal11: '', insertedVal12: '',
+    }),
+
+    // Handles auto-calculation of fields
+    autoCalculate: (row, name, value) => {
+        if (name === 'insertedVal2' || name === 'insertedVal3') {
+            const principal = parseFloatOrZero(name === 'insertedVal2' ? value : row.insertedVal2);
+            const interest = parseFloatOrZero(name === 'insertedVal3' ? value : row.insertedVal3);
+            row.insertedVal4 = (principal + interest).toFixed(2);
+        }
+        return row;
+    },
+
+    // Creates the payload for the save API call
+    createSavePayload: (row, reportId, qed) => ({
+        reportId: reportId.toString(), qed: qed,
+        rowId: parseInt(row.id, 10), dataFlag: row.flag,
+        T68_DESC: row.insertedVal1,
+        PRN_AMT: parseFloatOrZero(row.insertedVal2),
+        INT_AMT: parseFloatOrZero(row.insertedVal3),
+        TOT_AMT: parseFloatOrZero(row.insertedVal4),
+        INT_MSMED: parseFloatOrZero(row.insertedVal5),
+        SUPR_AMT: parseFloatOrZero(row.insertedVal6),
+        INT_PRD_AMT: parseFloatOrZero(row.insertedVal7),
+        INT_ACC_REM: parseFloatOrZero(row.insertedVal8),
+        FUR_SUC_AMT: parseFloatOrZero(row.insertedVal9),
+        MAX_AMT_MSME: parseFloatOrZero(row.insertedVal10),
+        SUPR_NAME_MSME: row.insertedVal11,
+        CIN_MSME: row.insertedVal12,
+    })
+};
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/Table68.js
+import React from 'react';
+import GenericTable from '../../common/components/ui/GenericTable';
+import { t68Config } from './table-configs/t68Config';
+import { T68ApiService, FrReturnApiService } from './Table68Api';
+
+const Table68 = () => {
+    return (
+        <GenericTable
+            tableConfig={t68Config}
+            apiService={T68ApiService}
+            reportManagementId="40024003"
+            frReturnApiService={FrReturnApiService}
+        />
+    );
+};
+
+export default Table68;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/Table70Api.js
+
+// This is a representative structure. The actual implementation depends on your project setup.
+export const T70ApiService = {
+    rmlEntry: (params, callApi) => callApi('/T70/insertRml', 'POST', params), // from insertOnLoad
+    getRml: (params, callApi) => callApi('/T36/getRml', 'POST', params), // As seen in T70Controller
+    getSavedData: (params, callApi) => callApi('/T70/getlistOfScreenParam', 'POST', params),
+    getNewRowId: (rmId, callApi) => callApi('/T70/rowId', 'POST', { rmId }), // from getRowId
+    saveRow: (payload, callApi) => callApi('/T70/saveRow', 'POST', payload),
+    deleteRow: (payload, callApi) => callApi('/T70/deleteRow', 'POST', payload),
+    getAuditorCategories: (params, callApi) => callApi('/T70/getListOfDetails', 'POST', params), // for dropdown
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/table-configs/t70Config.js
+
+export const t70Config = {
+    columns: [
+        { id: 'COL1', label: 'Details of Auditors', minWidth: 200, align: 'left' },
+        {
+            id: 'COL2', label: 'Category of Auditor', minWidth: 220, align: 'left',
+            inputType: 'select',
+            optionsApi: 'getAuditorCategories' // Function name in T70ApiService
+        },
+        { id: 'COL3', label: 'Name of Audit Firm', minWidth: 200, align: 'left' },
+        {
+            id: 'COL4', label: 'Name of Auditor Signing Report', minWidth: 220, align: 'left',
+            validation: (value) => ({
+                isValid: /^([A-Za-z]+[ ]*)+$/.test(value),
+                errorMessage: 'At least 1 word is required. Numbers & special characters are not allowed.'
+            })
+        },
+        { id: 'COL5', label: 'Firms Registration Number of Audit Firm', minWidth: 220, align: 'right' },
+        {
+            id: 'COL6', label: 'Membership Number of Auditor', minWidth: 200, align: 'right',
+            inputType: 'amountInput', // Assuming this handles numeric input
+            validation: (value) => ({
+                isValid: /^[0-9]{0,19}$/.test(value),
+                errorMessage: 'Only numbers are allowed.'
+            })
+        },
+        { id: 'COL7', label: 'Address of Auditors', minWidth: 250, align: 'left' },
+        {
+            id: 'COL8', label: 'Permanent Account Number of Auditor/Firm', minWidth: 220, align: 'left',
+            validation: (value) => ({
+                isValid: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value.toUpperCase()),
+                errorMessage: 'Please enter a valid PAN number.'
+            })
+        },
+        [span_0](start_span){ id: 'COL9', label: 'SRN of Form 23B', minWidth: 200, align: 'left' }, // Not mandatory[span_0](end_span)
+        { id: 'COL10', label: 'Date of Signing Audit Report by Auditors', minWidth: 220, align: 'center', inputType: 'date' },
+        { id: 'COL11', label: 'Date of Signing of Balance Sheet by Auditors', minWidth: 220, align: 'center', inputType: 'date' }
+    ],
+
+    getNewRowDefaults: () => ({
+        COL1: '', COL2: '', COL3: '', COL4: '', COL5: '',
+        COL6: '', COL7: '', COL8: '', COL9: '', COL10: '', COL11: ''
+    }),
+
+    // T70 does not have auto-calculated fields
+    autoCalculate: null,
+
+    [span_1](start_span)// Creates the payload for the save API call, mimicking the old controller [cite: 96-99]
+    createSavePayload: (row, reportId, qed) => ({
+        reportId: reportId.toString(),
+        qed: qed,
+        rowId: parseInt(row.ID, 10),
+        dataFlag: row.flag, // Assuming 'I' or 'U' flag exists
+        COL1: row.COL1,
+        COL2: row.COL2,
+        COL3: row.COL3,
+        COL4: row.COL4,
+        COL5: row.COL5,
+        COL6: row.COL6,
+        COL7: row.COL7,
+        COL8: row.COL8,
+        [cite_start]COL9: row.COL9 || "", // Handle optional field[span_1](end_span)
+        COL10: row.COL10,
+        COL11: row.COL11
+    })
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/Table70.js
+import React from 'react';
+import GenericTable from '../../common/components/ui/GenericTable';
+import { t70Config } from './table-configs/t70Config';
+import { T70ApiService } from './T70Api';
+import { FrReturnApiService } from '../notes-to-accounts/Table68Api'; // Re-use this if submission is common
+
+const Table70 = () => {
+    return (
+        <GenericTable
+            tableConfig={t70Config}
+            apiService={T70ApiService}
+            [span_2](start_span)reportManagementId="40024101" // rMId for T70[span_2](end_span)
+            frReturnApiService={FrReturnApiService}
+        />
+    );
+};
+
+export default Table70;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
