@@ -1,0 +1,617 @@
+t70.jsp
+
+
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1012297
+  Date: 22-03-2024
+  Time: 13:04
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+    <script type="text/javascript">
+    </script>
+
+    <style>
+
+        .centered {
+            text-align: center;
+            vertical-align: center;
+        }
+
+        #table1 {
+            width: 100%;
+        }
+
+        td {
+            border: 1px solid #ccc;
+            padding: 0;
+            margin: 0;
+        }
+
+        tr {
+            height: 3em;
+        }
+
+        input {
+            inline-size: 150px;
+            overflow-wrap: break-word;
+        }
+
+    </style>
+    <script>
+        function checkInputField(inputId, flag){
+            if(flag == 'N'){
+                regExp = /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z]+[ ]+[A-Za-z])+$/;
+                var inputValue= document.getElementById(inputId).value;
+                if(regExp.test(inputValue)){
+                    alert('At least 2 words are required and Numbers & Special Characters are not allowed.');
+                    document.getElementById(inputId).value="";
+                }
+            }else if(flag == 'No'){
+                regExp = /^[1-9]{1}[0-9]{0,9}$/;
+                var inputValue= document.getElementById(inputId).value;
+                if(regExp.test(inputValue)){
+                    alert('Only numbers are allowed upto 10 digits.');
+                    document.getElementById(inputId).value="";
+                }
+            }else if(flag == "PAN"){
+                regExp = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+                var inputValue= document.getElementById(inputId).value;
+                if(regExp.test(inputValue)){
+                    alert('Please enter valid PAN number.');
+                    document.getElementById(inputId).value="";
+                }
+            }
+
+        }
+    </script>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;"> Details of Auditors</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" ng-init="T70.insertOrUpdate();"></div>
+                <div class="row" style="padding-bottom: 10px">
+                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                        <i class="material-icons">arrow_back</i>
+                    </button>
+                </div>
+                <div class="row">
+                    <table class="table table-responsive table-hover table-bordered" id="table1">
+                        <caption id="cap1"></caption>
+                        <thead>
+                        <tr style="background: #b9def0; height: 40px">
+                            <td class="centered" rowspan="2"> Details of Auditors</td>
+                            <td style="text-align: center; vertical-align: middle">Category of Auditor</td>
+                            <td style="text-align: center; vertical-align: middle">Name of Audit Firm</td>
+                            <td style="text-align: center; vertical-align: middle">Name of Auditor Signing Report</td>
+                            <td style="text-align: center; vertical-align: middle">Firms Registration Number of Audit
+                                Firm
+                            </td>
+                            <td style="text-align: center; vertical-align: middle"> Membership Number of Auditor</td>
+                            <td style="text-align: center; vertical-align: middle"> Address of Auditors</td>
+                            <td style="text-align: center; vertical-align: middle"> Permanent Account Number of
+                                Auditoror Auditors Firm
+                            </td>
+                            <td style="text-align: center; vertical-align: middle"> SRN of Form 23B</td>
+                            <td style="text-align: center; vertical-align: middle"> Date of Signing Audit Report by
+                                Auditors
+                            </td>
+                            <td style="text-align: center; vertical-align: middle"> Date of Signing of Balance Sheet
+                                by Auditors
+                            </td>
+                            <td style="text-align: center; vertical-align: middle"> Action</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr data-ng-repeat="row in T70.row track by $index">
+
+                            <input type="hidden" class="form-control"
+                                   ng-model="row.ID" name="ID"
+                                   id="value0" placeholder="Enter value"/>
+
+                            <td>
+                                <!--DETAILS OF AUDITOR-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL1" name="COL1" ng-change="T70.inputChange();"
+                                       id="value1{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+
+                            <td>
+                                <!--X010-->
+                                <select class="form-control" ng-model="row.COL2" name="COL2" id="value12{{row.ID}}" >
+                                    <option ng-if="!rowData" value="" selected="selected">--SELECT--</option>
+                                    <option ng-repeat="rowData in T70.rows1" value="{{rowData}}">{{rowData}} </option>
+                                </select>
+                            </td>
+
+                            <td>
+                                <!--X020-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL3" name="COL3" ng-change="T70.inputChange();"
+                                       id="value3{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+
+                            <td>
+                                <!--X030-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL4" name="COL4" ng-blur="T70.checkInputField('value4'+row.ID, 'N');" ng-change="T70.inputChange();"
+                                       id="value4{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+
+                            <td>
+                                <!--X040-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL5" name="COL5" ng-change="T70.inputChange();"
+                                       id="value5{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+
+                            <td>
+                                <!--X050-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL6" name="COL6" ng-blur="T70.checkInputField('value6'+row.ID, 'No');" ng-change="T70.inputChange();"
+                                       id="value6{{row.ID}}" maxlength="19"
+                                       placeholder="Enter value"/>
+                            </td>
+
+
+                            <td>
+                                <!--X060-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL7" name="COL7" ng-change="T70.inputChange();"
+                                       id="value7{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+                            <td>
+                                <!--X070-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL8" name="COL8" ng-change="T70.inputChange();" ng-blur="T70.checkInputField('value8'+row.ID, 'PAN');"
+                                       id="value8{{row.ID}}" maxlength="10"
+                                       placeholder="Enter value"/>
+                            </td>
+
+                            <td>
+                                <!--X080-->
+                                <input type="text" class="form-control"
+                                       ng-model="row.COL9" name="COL9" ng-change="T70.inputChange();"
+                                       id="value9{{row.ID}}" maxlength="20"
+                                       placeholder="Enter value"/>
+                            </td>
+
+                            <td>
+                                <!--X0100-->
+                                <input type="date" class="form-control"
+                                       ng-model="row.COL10" name="COL10" min="2024-01-01"
+                                       onfocus="this.max=new Date().toISOString().split('T')[0]" ng-change="T70.inputChange();"
+                                       id="value10{{row.ID}}" required/>
+                            </td>
+
+                            <td>
+                                <!--X110-->
+                                <input type="date" class="form-control"
+                                       ng-model="row.COL11" name="COL11" min="2024-01-01"
+                                       onfocus="this.max=new Date().toISOString().split('T')[0]" ng-change="T70.inputChange();"
+                                       id="value11{{row.ID}}" required />
+                            </td>
+
+                            <td style="width: 9%;"  style="text-align: center">
+                                <button style="text-align: center;padding: 10px; alignment: center"
+                                        id="save{{row.ID}}"
+                                        class="btn btn-success btn-sm btn-round btn1"
+                                        ng-click="T70.saveRow($index);"
+                                        rel="tooltip" title="Save This Row">
+                                    <i class="material-icons">save</i>
+                                </button>
+
+                                <button style="text-align: center;padding: 10px; alignment: center"
+                                        class="btn btn-warning btn-sm btn-round btn2"
+                                        id="edit{{row.ID}}"
+                                        ng-click="T70.editRow($index, row.ID);"
+                                        rel="tooltip" title="Edit This Row" disabled>
+                                    <i class="material-icons">edit</i>
+                                </button>
+                                <button style="text-align: center;padding: 10px; alignment: center" rel="tooltip"
+                                        id="delete{{row.ID}}"
+                                        class="btn btn-danger btn-sm btn-round btn3"
+                                        ng-click="T70.deleteRow(row.ID, $index);"
+                                        title="Delete this Row" disabled>
+                                    <i class="material-icons">delete</i>
+                                </button>
+
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline btn-round" style="background-color: #664162"
+                            ng-click="T70.addCommonRow();">
+                        Add Row
+                    </button>
+                </div>
+            </div>
+            <div style="text-align: center">
+                <button class="btn btn-success" ng-click="T70.submitIndividual()">
+                    Complete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{T70.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T70.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+T70Controller : 
+
+app.controller('T70Controller', function ($scope, $rootScope, $timeout, AES256, $state, T70Factory, T36Factory,frReturnFactory,blockUI, $sessionStorage) {
+
+    let T70 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("reportId");
+    T70.reportName = sessionStorage.getItem("frSubReportName");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    T70.backToIndex = function () {
+        $state.go('frt_maker.frReturn');
+    }
+
+    T70.row=[];
+    //T70.reportId=reportId;
+    T70.change=0;
+
+    // On Empty Status Insert Desc Inside Table
+    T70.insertOrUpdate= function () {
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'rMId': "40024101"
+        };
+
+        // Checking RML Status
+        if (status === null || status === '') {
+            T70Factory.insertOnLoad(params).then(function (data) {
+                sessionStorage.setItem("reportId", data);
+                T70.reportId = data;
+                T70.getlistOfScreenParam(T70.reportId);
+                T70.getAuditorCategory();
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        } else {
+            T36Factory.getRml(params).then(function (data) {
+                T70.reportId = data;
+                T70.getlistOfScreenParam(T70.reportId);
+                T70.getAuditorCategory();
+            }, function (errResponse) {
+                console.log('Error while rml fetching.');
+            })
+        }
+    }
+
+    // Adding New Row
+    T70.addCommonRow = function () {
+        var rowID;
+        T70Factory.getRowId().then(function (data) {
+            rowID = data;
+            
+            if (rowID != null || rowID != undefined) {
+                blockUI.start();
+                T70.row.push({
+                    'ID': rowID,
+                    'COL1': T70.row.COL1,
+                    'COL2': T70.row.COL2,
+                    'COL3': T70.row.COL3,
+                    'COL4': T70.row.COL4,
+                    'COL5': T70.row.COL5,
+                    'COL6': T70.row.COL6,
+                    'COL7': T70.row.COL7,
+                    'COL8': T70.row.COL8,
+                    'COL9': T70.row.COL9,
+                    'COL10': T70.row.COL10,
+                    'COL11': T70.row.COL11,
+                });
+                blockUI.stop();
+            }
+
+        }, function (errResponse) {
+            console.error('Error while getting rowId +' + errResponse);
+        });
+       
+
+    }
+
+    T70.getlistOfScreenParam = function (reportID) {
+        params1 = {
+            'qed': qed,
+            'userId': userId,
+            'reportId':  reportID,
+        };
+
+
+        T70Factory.getlistOfScreenParam(params1).then(function (data) {
+
+            for(let key in data)
+            {
+                var d = new Date(data[key].COL10);
+                data[key].COL10 = new Date(data[key].COL10);
+                data[key].COL11 = new Date(data[key].COL11);
+            }
+              T70.row = data;
+
+            setTimeout(function () {
+                $("input").prop("disabled", true);
+                $("select").prop("disabled", true);
+
+                for (let i = 0; i < data.length; i++) {
+                    let id = data[i].ID;
+                    $('#save' + id).prop('disabled', true);
+                    $('#edit' + id).prop('disabled', false);
+                    $('#value' + i).prop('disabled', true);
+                    document.getElementsByName('COL2').disabled=true;
+                    $('#delete' + id).prop('disabled', false);
+                }
+
+            },1);
+
+        }, function (errResponse) {
+            console.error('data failed. ' + errResponse);
+        });
+    }
+
+    T70.saveRow = function (index) {
+
+        var rowData= T70.row[index];
+        var rowId=rowData.ID;
+        if(rowData.COL1 ==null || (rowData.COL1.toString()).length ==0 ||
+            rowData.COL2 ==null || (rowData.COL2.toString()).length ==0 ||
+            rowData.COL3 ==null || (rowData.COL3.toString()).length ==0 ||
+            rowData.COL4 ==null || (rowData.COL4.toString()).length ==0 ||
+            rowData.COL5 ==null || (rowData.COL5.toString()).length ==0 ||
+            rowData.COL6 ==null || (rowData.COL6.toString()).length ==0 ||
+            rowData.COL7 ==null || (rowData.COL7.toString()).length ==0 ||
+            rowData.COL8 ==null || (rowData.COL8.toString()).length ==0 ||
+            /*rowData.COL9 ==null || (rowData.COL9.toString()).length ==0 ||*/
+            rowData.COL10 ==null || (rowData.COL10.toString()).length ==0 ||
+            rowData.COL11 ==null || (rowData.COL11.toString()).length ==0
+        ){
+            alert("All fields are mandatory (except 'SRN of Form 23B') !");
+        }else{
+            if(rowData.COL9 ==null || (rowData.COL9.toString()).length ==0){
+                rowData.COL9 ="";
+            }
+            var dateObject=new Date(rowData.COL10.toString());
+            var dateObject1=new Date(rowData.COL11.toString());
+            let reportId = (T70.reportId).toString();
+            let params = {
+                'reportId': reportId,
+                'qed': aesUtil.encrypt(salt, iv, passphrase, qed.toString()),
+                'salt': salt,
+                'iv': iv,
+                'rowId':rowData.ID,
+                'COL1':aesUtil.encrypt(salt, iv, passphrase,rowData.COL1.toString()),
+                'COL2':aesUtil.encrypt(salt, iv, passphrase,rowData.COL2.toString()),
+                'COL3':aesUtil.encrypt(salt, iv, passphrase,rowData.COL3.toString()),
+                'COL4':aesUtil.encrypt(salt, iv, passphrase,rowData.COL4.toString()),
+                'COL5':aesUtil.encrypt(salt, iv, passphrase,rowData.COL5.toString()),
+                'COL6':aesUtil.encrypt(salt, iv, passphrase,rowData.COL6.toString()),
+                'COL7':aesUtil.encrypt(salt, iv, passphrase,rowData.COL7.toString()),
+                'COL8':aesUtil.encrypt(salt, iv, passphrase,rowData.COL8.toString()),
+                'COL9':aesUtil.encrypt(salt, iv, passphrase,rowData.COL9.toString()),
+                'COL10':aesUtil.encrypt(salt, iv, passphrase,dateObject.toString()),
+                'COL11':aesUtil.encrypt(salt, iv, passphrase,dateObject1.toString())
+            }
+
+
+            T70Factory.saveRow(params).then(function (data) {
+                if (data) {
+                    $('#value1'+rowId).prop('disabled', true);
+                    $('#value2'+rowId).prop('disabled', true);
+                    $('#value3'+rowId).prop('disabled', true);
+                    $('#value4'+rowId).prop('disabled', true);
+                    $('#value5'+rowId).prop('disabled', true);
+                    $('#value6'+rowId).prop('disabled', true);
+                    $('#value7'+rowId).prop('disabled', true);
+                    $('#value8'+rowId).prop('disabled', true);
+                    $('#value9'+rowId).prop('disabled', true);
+                    $('#value10'+rowId).prop('disabled', true);
+                    $('#value11'+rowId).prop('disabled', true);
+                    $('#value12'+rowId).prop('disabled', true);
+                    $('#save' + rowId).prop('disabled', true);
+                    $('#edit' + rowId).prop('disabled', false);
+                    $('#delete' + rowId).prop('disabled', false);
+                    $state.go('frt_maker.T70');
+                }
+            }, function (errResponse) {
+                console.log('Error response for saveRow' + errResponse);
+            });
+        }
+
+
+
+    }
+
+    T70.inputChange=function()
+    {
+        T70.change=1;
+    }
+    T70.checkInputField=function(inputId, flag){
+        var inputValue="";
+        if(flag == 'N'){
+            regExp = /^([A-Za-z]+[ ]+)+[A-Za-z]+$|^([A-Za-z])+$/;
+            inputValue= document.getElementById(inputId).value;
+            if(!regExp.test(inputValue)){
+                alert('At least 1 word is required and Numbers & Special Characters are not allowed.');
+                document.getElementById(inputId).value="";
+            }
+        }else if(flag == 'No'){
+            regExp = /^[0-9]{0,19}$/;
+            inputValue= document.getElementById(inputId).value;
+            if(!regExp.test(inputValue)){
+                alert('Only numbers are allowed.');
+                document.getElementById(inputId).value="";
+            }
+        }else if(flag == 'PAN'){
+            regExp = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+            document.getElementById(inputId).value=(document.getElementById(inputId).value).toUpperCase();
+            inputValue= document.getElementById(inputId).value;
+            if(!regExp.test(inputValue)){
+                alert('Please enter valid PAN number.');
+                document.getElementById(inputId).value="";
+            }
+        }
+    }
+
+    T70.editRow = function (rowId, editable) {
+        for(var i=1;i<=11;i++)
+        {
+            $('#value1'+ editable).prop('disabled', false);
+            $('#value2'+ editable).prop('disabled', false);
+            $('#value3'+ editable).prop('disabled', false);
+            $('#value4'+ editable).prop('disabled', false);
+            $('#value5'+ editable).prop('disabled', false);
+            $('#value6'+ editable).prop('disabled', false);
+            $('#value7'+ editable).prop('disabled', false);
+            $('#value8'+ editable).prop('disabled', false);
+            $('#value9'+ editable).prop('disabled', false);
+            $('#value10'+ editable).prop('disabled', false);
+            $('#value11'+ editable).prop('disabled', false);
+        }
+            $('#value12' + editable).prop('disabled', false);
+            $('#save' + editable).prop('disabled', false);
+            $('#edit' + editable).prop('disabled', true);
+            $('#delete' + editable).prop('disabled', true);
+    }
+
+    T70.getAuditorCategory=function ()
+    {
+        T70Factory.getlistOfDetails().then(function (data) {
+                T70.rows1=data;
+            }, function (errResponse) {
+                console.error('Error while getting Qdate');
+            }
+        );
+    }
+
+    T70.deleteRow = function (rowId, index) {
+        var params = {
+            'rowId': rowId,
+            'reportId': reportId,
+            'qed': qed
+        }
+
+        T70Factory.deleteRow(params).then(function (data) {
+
+            if (data) {
+                $scope.T70.row.splice(index, 1);
+            }
+        }, function (errResponse) {
+            console.log('Error response for deleteRow');
+        });
+
+    }
+
+    T70.submitIndividual = function (){
+        let params = {
+            // 'reportId' : T70.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, T70.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T70.displayMessage = T70.reportName+" report has been submitted successfully.";
+                console.log(T70.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T70.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+    });
+
+
+
+
+
+
