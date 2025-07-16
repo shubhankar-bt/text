@@ -1,0 +1,306 @@
+
+T71.jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1010938
+  Date: 02-02-2024
+  Time: 13:18
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" %>
+<html>
+<head>
+    <style>
+        .form-control {
+            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+            font-weight: 400;
+            font-size: initial;
+            line-height: 1.3em;
+            width: 300px;
+            text-align: right;
+        }
+    </style>
+    <title></title>
+    <script src="./resources/js/frValidations.js"></script>
+    <script>
+        function checkVal() {
+            console.log("into checkval");
+            if(document.getElementById('val2').value== 'No')
+             document.getElementById('val3').value ="";
+        }
+
+        const textArea = document.getElementById("val1");
+        textArea.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = this.scrollHeight + "px";
+        });
+        const textArea1 = document.getElementById("val3");
+        textArea1.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = this.scrollHeight + "px";
+        });
+    </script>
+</head>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" ng-init="T71.insertOrUpdate();" style="vertical-align: inherit;">
+                    <div class="col-xs-1">
+                        <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                            <i class="material-icons">arrow_left</i>
+                        </button>
+                    </div>
+                    <div class="col-xs-11">
+                        <h3> Auditors Report</h3>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row" style="background: #b9def0; height: 40px;">
+                        <div class="col-md-4" style="text-align: center; vertical-align: middle;"><h4>Particulars</h4>
+                        </div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center; vertical-align: middle;"><h4>Current Year</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Disclosure In Auditors Report</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <textarea placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
+                                          id="val1" maxlength="4000" class="form-control"
+                                          ng-model="T71.val1"
+                                          ng-blur="T71.updateField('val1')"></textarea>
+                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val1" maxlength="4000"
+                                       ng-blur="T71.updateField('val1')"
+                                       style="text-align: left;height: 38px; width: 400px;">--%>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Whether Auditors Report Has Been Qualified Or Has Any Reservations Or
+                            Contains Adverse Remarks</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <select class="form-control" id="val2"  ng-model="T71.val2" ng-change="T71.updateField('val2');" onchange="checkVal()" >
+                                    <option value="No" >No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Auditors Qualifications Reservations Or Adverse Remarks In Auditors
+                            Report</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <textarea  placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
+                                           ng-model="T71.val3"
+                                           id="val3" maxlength="4000" class="form-control"
+                                          ng-disabled="T71.val2 != 'Yes'" ng-blur=" T71.updateField('val3');"></textarea>
+                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val3" maxlength="4000"
+                                       ng-disabled="val2 != 'Yes'" ng-blur=" T71.updateField('val3');">--%>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="T71.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{T71.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T71.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</html>
+
+
+
+
+
+
+
+
+t71Controller.js  :
+app.controller('T71Controller', function ($scope, $rootScope, $timeout, AES256, $state, T71Factory,frReturnFactory, $sessionStorage) {
+    let T71 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId =sessionStorage.getItem("frReportId");
+    T71.reportName = sessionStorage.getItem("frSubReportName");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    console.log("Status :"+status);
+    T71.reportId=reportId;
+    //$scope.states = ['NO', 'Yes'];
+   /* $scope.states = [{
+        name: 'NO',
+        value: 'NO'
+    }, {
+        name: 'Yes',
+        value: 'Yes'
+    }];*/
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    T71.backToIndex = function (){
+        $state.go('frt_maker.frReturn');
+    }
+
+    T71.insertOrUpdate = function (){
+        let params = {
+            'qed' : qed,
+            'userId' : userId,
+            'rMId' : "40024102"
+        };
+        if(status === null || status === ''){
+            T71Factory.insertOnLoad(params).then(function (data){
+                console.log("data"+data);
+                T71.reportId = data;
+                //console.log("reportId-"+T71.reportId);
+                // document.getElementById('val1').value = openingBal;
+            }, function (errResponse) {
+                console.error('data not inserted. '+errResponse);
+            })
+        }
+        else{
+            T71Factory.getT71Data(reportId).then(function (data){
+                let dataLen = data.length;
+                console.log("dataLen-"+dataLen);
+                for(let i = 0; i < dataLen;i++){
+                    let n = i + 1;
+                    let id = 'val' + n;
+                    document.getElementById(id).value = data[i];
+                    // checkAmount(id);
+                }
+                T71.val2=data[1]
+                console.log("T71.val2-"+T71.val2);
+
+
+            }, function (errResponse) {
+                console.error('data failed. '+errResponse);
+            })
+        }
+    }
+
+    T71.updateField = function (value){
+        let key = value.substring(3);
+        let fieldVal = document.getElementById(value).value;
+        console.log(fieldVal);
+        console.log("T71.reportId******-"+ T71.reportId);
+        let reportId= T71.reportId.toString();
+        let params = {
+            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'key': aesUtil.encrypt(salt, iv, passphrase, key),
+            'salt': salt,
+            'iv': iv,
+            'value': aesUtil.encrypt(salt, iv, passphrase, fieldVal),
+        };
+        T71Factory.updateField(params).then(function (data){
+        }, function (errResponse){
+            console.error('update failed. '+errResponse);
+        })
+    }
+
+    T71.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  T71.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase,T71.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T71.displayMessage = T71.reportName +" report has been submitted successfully.";
+                console.log(T71.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T71.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+    /*T71.updateField = function (val1,val2,val3){
+        console.log("val1-"+val1+" val2-"+ val2+" val3-" +val3);
+        //let key = value.substring(3);
+       // let fieldVal1 = document.getElementById(value).value;
+        //console.log(fieldVal);
+        console.log("T71.reportId******-"+ T71.reportId);
+        let reportId= T71.reportId.toString();
+        let params = {
+            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'val1': aesUtil.encrypt(salt, iv, passphrase, val1),
+            'val2': aesUtil.encrypt(salt, iv, passphrase, val2),
+            'val3': aesUtil.encrypt(salt, iv, passphrase, val3),
+            'salt': salt,
+            'iv': iv,
+        };
+        T71Factory.updateField(params).then(function (data){
+        }, function (errResponse){
+            console.error('update failed. '+errResponse);
+        })
+    }*/
+});
+
