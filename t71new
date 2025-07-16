@@ -1,0 +1,1376 @@
+
+T71.jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1010938
+  Date: 02-02-2024
+  Time: 13:18
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" %>
+<html>
+<head>
+    <style>
+        .form-control {
+            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+            font-weight: 400;
+            font-size: initial;
+            line-height: 1.3em;
+            width: 300px;
+            text-align: right;
+        }
+    </style>
+    <title></title>
+    <script src="./resources/js/frValidations.js"></script>
+    <script>
+        function checkVal() {
+            console.log("into checkval");
+            if(document.getElementById('val2').value== 'No')
+             document.getElementById('val3').value ="";
+        }
+
+        const textArea = document.getElementById("val1");
+        textArea.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = this.scrollHeight + "px";
+        });
+        const textArea1 = document.getElementById("val3");
+        textArea1.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = this.scrollHeight + "px";
+        });
+    </script>
+</head>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" ng-init="T71.insertOrUpdate();" style="vertical-align: inherit;">
+                    <div class="col-xs-1">
+                        <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                            <i class="material-icons">arrow_left</i>
+                        </button>
+                    </div>
+                    <div class="col-xs-11">
+                        <h3> Auditors Report</h3>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row" style="background: #b9def0; height: 40px;">
+                        <div class="col-md-4" style="text-align: center; vertical-align: middle;"><h4>Particulars</h4>
+                        </div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center; vertical-align: middle;"><h4>Current Year</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Disclosure In Auditors Report</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <textarea placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
+                                          id="val1" maxlength="4000" class="form-control"
+                                          ng-model="T71.val1"
+                                          ng-blur="T71.updateField('val1')"></textarea>
+                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val1" maxlength="4000"
+                                       ng-blur="T71.updateField('val1')"
+                                       style="text-align: left;height: 38px; width: 400px;">--%>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Whether Auditors Report Has Been Qualified Or Has Any Reservations Or
+                            Contains Adverse Remarks</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <select class="form-control" id="val2"  ng-model="T71.val2" ng-change="T71.updateField('val2');" onchange="checkVal()" >
+                                    <option value="No" >No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <div class="col-md-4"><h4>Auditors Qualifications Reservations Or Adverse Remarks In Auditors
+                            Report</h4></div>
+                        <div class="col-md-2"></div>
+                        <div class="col-md-6" style="text-align: center;">
+                            <label>
+                                <textarea  placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
+                                           ng-model="T71.val3"
+                                           id="val3" maxlength="4000" class="form-control"
+                                          ng-disabled="T71.val2 != 'Yes'" ng-blur=" T71.updateField('val3');"></textarea>
+                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val3" maxlength="4000"
+                                       ng-disabled="val2 != 'Yes'" ng-blur=" T71.updateField('val3');">--%>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="T71.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{T71.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T71.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</html>
+
+
+
+
+
+
+
+
+t71Controller.js  :
+app.controller('T71Controller', function ($scope, $rootScope, $timeout, AES256, $state, T71Factory,frReturnFactory, $sessionStorage) {
+    let T71 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId =sessionStorage.getItem("frReportId");
+    T71.reportName = sessionStorage.getItem("frSubReportName");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    console.log("Status :"+status);
+    T71.reportId=reportId;
+    //$scope.states = ['NO', 'Yes'];
+   /* $scope.states = [{
+        name: 'NO',
+        value: 'NO'
+    }, {
+        name: 'Yes',
+        value: 'Yes'
+    }];*/
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    T71.backToIndex = function (){
+        $state.go('frt_maker.frReturn');
+    }
+
+    T71.insertOrUpdate = function (){
+        let params = {
+            'qed' : qed,
+            'userId' : userId,
+            'rMId' : "40024102"
+        };
+        if(status === null || status === ''){
+            T71Factory.insertOnLoad(params).then(function (data){
+                console.log("data"+data);
+                T71.reportId = data;
+                //console.log("reportId-"+T71.reportId);
+                // document.getElementById('val1').value = openingBal;
+            }, function (errResponse) {
+                console.error('data not inserted. '+errResponse);
+            })
+        }
+        else{
+            T71Factory.getT71Data(reportId).then(function (data){
+                let dataLen = data.length;
+                console.log("dataLen-"+dataLen);
+                for(let i = 0; i < dataLen;i++){
+                    let n = i + 1;
+                    let id = 'val' + n;
+                    document.getElementById(id).value = data[i];
+                    // checkAmount(id);
+                }
+                T71.val2=data[1]
+                console.log("T71.val2-"+T71.val2);
+
+
+            }, function (errResponse) {
+                console.error('data failed. '+errResponse);
+            })
+        }
+    }
+
+    T71.updateField = function (value){
+        let key = value.substring(3);
+        let fieldVal = document.getElementById(value).value;
+        console.log(fieldVal);
+        console.log("T71.reportId******-"+ T71.reportId);
+        let reportId= T71.reportId.toString();
+        let params = {
+            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'key': aesUtil.encrypt(salt, iv, passphrase, key),
+            'salt': salt,
+            'iv': iv,
+            'value': aesUtil.encrypt(salt, iv, passphrase, fieldVal),
+        };
+        T71Factory.updateField(params).then(function (data){
+        }, function (errResponse){
+            console.error('update failed. '+errResponse);
+        })
+    }
+
+    T71.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  T71.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase,T71.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T71.displayMessage = T71.reportName +" report has been submitted successfully.";
+                console.log(T71.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T71.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+    /*T71.updateField = function (val1,val2,val3){
+        console.log("val1-"+val1+" val2-"+ val2+" val3-" +val3);
+        //let key = value.substring(3);
+       // let fieldVal1 = document.getElementById(value).value;
+        //console.log(fieldVal);
+        console.log("T71.reportId******-"+ T71.reportId);
+        let reportId= T71.reportId.toString();
+        let params = {
+            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'val1': aesUtil.encrypt(salt, iv, passphrase, val1),
+            'val2': aesUtil.encrypt(salt, iv, passphrase, val2),
+            'val3': aesUtil.encrypt(salt, iv, passphrase, val3),
+            'salt': salt,
+            'iv': iv,
+        };
+        T71Factory.updateField(params).then(function (data){
+        }, function (errResponse){
+            console.error('update failed. '+errResponse);
+        })
+    }*/
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// new FrReturnsReport component
+
+
+import {
+  Box,
+  Card,
+  Divider,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
+import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
+import { useCallback, useState } from 'react';
+import ActionResultDialog from '../../../../common/components/ui/dialogs/ActionResultDialog';
+import { useNavigate } from 'react-router-dom';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import { callComplete, isEmptyFunction } from './FRReturnsReportServices';
+
+const Header = ({ header, note }) => {
+  if (!header && !note) return;
+  return (
+    <>
+      <Card>
+        <Stack direction={'column'} spacing={1}>
+          {header && (
+            <Typography color={'text.secondary'} variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+              {header}
+            </Typography>
+          )}
+          {header && note && <Divider />}
+          {note && (
+            <Stack direction={'column'}>
+              <Typography color={'error.light'} variant="body2">
+                Note:
+              </Typography>
+              <Typography color={'error.light'} variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {note}
+              </Typography>
+            </Stack>
+          )}
+        </Stack>
+      </Card>
+    </>
+  );
+};
+
+const Actions = ({ completeButtonEnabled, onCompleteClick }) => {
+  return (
+    <>
+      <Stack direction={'row'}>
+        <CustomButton
+          buttonType={'submit'}
+          label={'Complete'}
+          disabled={!completeButtonEnabled}
+          onClickHandler={onCompleteClick}
+        />
+      </Stack>
+    </>
+  );
+};
+
+/**
+ * A React component for rendering a FR Returns reports with customizable columns, rows, and data.
+ *
+ * @param {Object} props - The props for the component.
+ * @param {string} props.reportId - Report id of current report.
+ * @param {string} props.qed - Current quarter end date.
+ * @param {Array<Object>} props.columns - The column definitions for the report. Each column object should include:
+ *   @param {string} props.columns[].title - The title of the column.
+ *   @param {Object} [props.columns[].cellProps] - Additional properties for the column cells.
+ * @param {Array<Array<Object>>} props.rows - The row definitions for the report. Each row is an array of cell objects:
+ *   @param {string} [props.rows[].title] - The title of the row.
+ *   @param {number} [props.rows[].dataIndex] - The index of the data in the `data` array for this cell.
+ *   @param {Object} [props.rows[].cellProps] - Additional properties for the cell.
+ * @param {Array<number|string>} props.data - The data to populate the report cells, indexed by `dataIndex` in rows.
+ * @param {boolean} props.isLoading - Whether the report is in a loading state.
+ * @param {Function} props.onCellChange - Callback function triggered when a cell value changes.
+ *   @param {number} props.onCellChange.rowIndex - The index of the row where the change occurred.
+ *   @param {number} props.onCellChange.columnIndex - The index of the column where the change occurred.
+ *   @param {any} props.onCellChange.newValue - The new value of the cell.
+ * @param {Function} props.onCellBlur - Callback function triggered when a cell loses focus.
+ *   @param {number} props.onCellBlur.rowIndex - The index of the row where the blur occurred.
+ *   @param {number} props.onCellBlur.columnIndex - The index of the column where the blur occurred.
+ * @param {string} [props.header] - The header text for the report.
+ * @param {string} [props.note] - Additional notes or descriptions for the report.
+ * @param {boolean} props.completeButtonEnabled - Whether the "Complete" button is enabled.
+ * @param {Function} [props.handleOnComplete] - Callback function triggered when complete button is clicked. If you have to validate the form before submitting, then pass this, otherwise dont pass anything, default method will handle the submission.
+ *
+ * @returns {JSX.Element} The rendered financial returns report component.
+ *
+ * @example <caption>Basic usage of FRReturnsReport</caption>
+ * <FRReturnsReport
+ *   reportId={reportId}
+ *   qed={qed}
+ *   columns={[
+ *     { title: 'Sr. No.', cellProps: {} },
+ *     { title: 'Particulars', cellProps: {} },
+ *     { title: 'Current Year', cellProps: {} },
+ *   ]}
+ *   rows={[
+ *     [
+ *       { title: 'I', cellProps: {} },
+ *       { title: 'Capital and Liabilities', cellProps: { sx: { fontWeight: 800 } } },
+ *       { cellProps: {} },
+ *     ],
+ *     [
+ *       { title: null, cellProps: {} },
+ *       { title: 'Capital (Schedule - 1)', cellProps: {} },
+ *       { dataIndex: 0, cellProps: { readOnly: false } },
+ *     ],
+ *   ]}
+ *   data={[1000, 2000]}
+ *   header="Financial Returns Report"
+ *   note="This is a sample note for the report."
+ *   isLoading={false}
+ *   onCellChange={(rowIndex, columnIndex, newValue) => console.log(rowIndex, columnIndex, newValue)}
+ *   onCellBlur={(rowIndex, columnIndex) => console.log(rowIndex, columnIndex)}
+ *   completeButtonEnabled={true}
+ * />
+ *
+ */
+
+export default function FRReturnsReport({
+  reportId,
+  qed,
+  columns,
+  rows,
+  data,
+  isLoading,
+  onCellChange,
+  onCellBlur,
+  header,
+  note,
+  completeButtonEnabled,
+  handleOnComplete = () => {},
+}) {
+  const [isSuccessDialogVisible, setIsSuccessDialogVisible] = useState(false);
+  const navigate = useNavigate();
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const onCompleteClick = useCallback(() => {
+    const submitIndividual = async () => {
+      try {
+        const response = await callComplete(reportId.toString(), qed.toString(), callApi);
+        if (response !== 1) {
+          snackbar('Failed to Complete the Action!', 'error');
+          return;
+        }
+        setIsSuccessDialogVisible(true);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        console.log(error);
+        snackbar('Failed to Complete the Action!', 'error');
+      }
+    };
+
+    if (isEmptyFunction(handleOnComplete)) {
+      submitIndividual();
+    } else {
+      handleOnComplete();
+    }
+  }, [handleOnComplete, reportId, qed, callApi, snackbar]);
+
+  const handleSuccessDialogClose = useCallback(() => {
+    setIsSuccessDialogVisible(false);
+    navigate('../');
+  }, [navigate]);
+
+  if (!data) {
+    if (isLoading) {
+      return (
+        <>
+          <SkeletonWrapper
+            isLoading={isLoading}
+            skeletonType="table"
+            skeletonConfig={{
+              rows: 15,
+              columns: 2,
+              hasHeader: true,
+              hasActions: true,
+            }}
+          />
+        </>
+      );
+    } else {
+      return (
+        <Typography textAlign={'center'} color="error.light" variant="h6">
+          Failed to Load the Data!
+        </Typography>
+      );
+    }
+  }
+
+  return (
+    <>
+      <Stack direction={'column'} spacing={1}>
+        <Actions completeButtonEnabled={completeButtonEnabled} onCompleteClick={onCompleteClick} />
+        <Header header={header} note={note} />
+        <TableContainer component={Card} sx={{ p: 0 }}>
+          <Table size="medium">
+            <TableHead>
+              <TableRow key={'header'}>
+                {columns.map((column, index) => (
+                  <TableCell
+                    key={index + column.title}
+                    {...column.cellProps}
+                    sx={{ fontWeight: 'bold', ...column.cellProps.sx }}
+                  >
+                    {column.title}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <>
+                {rows.map((row, rowIndex) => (
+                  <TableRow hover key={rowIndex}>
+                    {row.map((item, index) => (
+                      <TableCell key={rowIndex + '' + index + item.title}>
+                        {item.title && !(item.dataIndex >= 0) && (
+                          <Typography /* color={'text.secondary'} */ {...item.cellProps}>{item.title}</Typography>
+                        )}
+                        {!item.title && item.dataIndex >= 0 && (
+                          <FormInput
+                            // value={(data[item.dataIndex] || item.defaultValue) ?? '0.00'}
+                            value={data[item.dataIndex] || item.defaultValue}
+                            onChange={(e) => {
+                              onCellChange(item, e.target.value);
+                            }}
+                            onBlur={(e) => {
+                              onCellBlur(item, e.target.value);
+                            }}
+                            inputType={item.cellProps?.inputType || 'wholeAmountDecimal'}
+                            debounceDuration={1}
+                            size={'full'}
+                            {...item.cellProps}
+                          />
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Stack>
+      <ActionResultDialog
+        open={isSuccessDialogVisible}
+        onClose={handleSuccessDialogClose}
+        message={'Report has been submitted successfully!'}
+      />
+    </>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+// sample report made using the reusable generic frreturnsReport.jsx :
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+/**
+ * Validates and formats a value as a percentage.
+ * @param {string} value The input value.
+ * @returns {{isValid: boolean, value: string, error: string | null}} The validation result.
+ */
+const validateAndFormatPercentage = (value) => {
+  if (!value) return { isValid: true, value: '0.00%', error: null };
+  if (/\s/g.test(value)) {
+    return { isValid: false, value, error: 'Space is not allowed.' };
+  }
+  const regex = /^([0-9]\d?\d?\d?(\.\d\d?)?|10000(\.00?)?)$/;
+  const numericValue = value.replace('%', '');
+
+  if (!regex.test(numericValue)) {
+    return {
+      isValid: false,
+      value,
+      error: 'Percentage cannot exceed 10000 and allows only up to 2 decimal places.',
+    };
+  }
+
+  let formattedValue = numericValue;
+  if (!formattedValue.includes('.')) {
+    formattedValue += '.00';
+  } else if (formattedValue.split('.')[1].length === 1) {
+    formattedValue += '0';
+  }
+
+  return { isValid: true, value: `${formattedValue}%`, error: null };
+};
+
+/**
+ * Parses a string value to a number, returning 0 if invalid.
+ * @param {string | number} value The value to parse.
+ * @returns {number} The parsed number.
+ */
+const parseToNumber = (value) => {
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
+// --- React Component ---
+
+export default function Table66() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  // FIX: State is now an object to mirror the API response, not an array.
+  const [data, setData] = useState(null);
+  const [editable, setEditable] = useState(true);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const api = {
+    // existing data
+    callT66FetchData: async (reportId) => {
+      console.log(`Fetching data for reportId: ${reportId}...`);
+      const REST_SERVICE_URI = '/T66/getT66Data';
+      const response = await callApi(REST_SERVICE_URI, { reportId }, 'POST');
+      return response;
+    },
+
+    callT66InsertOnLoad: async (params) => {
+      console.log('Creating new report with params:', params);
+      let INSERT_URI = '/T66/insertOnLoad';
+      const newReportId = await callApi(INSERT_URI, params, 'POST');
+      return newReportId;
+    },
+
+    updateField: async (params) => {
+      console.log('Updating field:', params);
+
+      let UPDATE_URI = '/T66/updateField';
+      const response = await callApi(UPDATE_URI, params, 'POST');
+
+      return { success: response };
+    },
+  };
+
+  const saveField = useCallback(
+    async (fieldName, value) => {
+      if (!reportId) return;
+      try {
+        // The key for the backend is 1-based, so add 1 to the dataIndex
+        const payload = {
+          reportId: reportId.toString(),
+          key: String(fieldName).substring(2).toString(),
+          value: value.toString(),
+        };
+        await api.updateField(payload);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error(error);
+          snackbar('Failed to save data!', 'error');
+        }
+      }
+    },
+    [reportId, callApi, snackbar]
+  );
+
+  const runCalculations = useCallback((currentData) => {
+    if (!currentData) return null;
+
+    // Create a mutable copy for calculations
+    const newData = { ...currentData };
+
+    // --- Calculation Block 1: Assets Given on Lease ---
+    const py43 = parseToNumber(newData.PY43);
+    newData.CY37 = py43.toFixed(2); // CY37 = PY43[span_0](end_span)
+
+    const cy37 = parseToNumber(newData.CY37);
+    const cy38 = parseToNumber(newData.CY38);
+    const cy39 = parseToNumber(newData.CY39);
+    const cy40 = parseToNumber(newData.CY40);
+    const cy41 = parseToNumber(newData.CY41);
+    const cy42 = parseToNumber(newData.CY42);
+
+    const cy43 = cy37 + cy38 - cy39 + cy40 - cy41 - cy42;
+    newData.CY43 = cy43.toFixed(2);
+    // CY43 = CY37 + CY38
+
+    // --- Calculation Block 2: Provisions ---
+    const py98 = parseToNumber(newData.PY98);
+    newData.CY93 = py98.toFixed(2);
+    // CY93 = PY98
+
+    const cy93 = parseToNumber(newData.CY93);
+    const cy95 = parseToNumber(newData.CY95);
+    const cy96 = parseToNumber(newData.CY96);
+
+    const cy97 = cy95 - cy96;
+    newData.CY97 = cy97.toFixed(2);
+    // CY97 = CY95 - CY96
+
+    const cy98 = cy93 + cy97;
+    newData.CY98 = cy98.toFixed(2);
+    // CY98 = CY93 + CY97
+
+    return newData;
+  }, []);
+
+  const handleCellChange = (item, value) => {
+    // Determine the field name (e.g., "CY1") from the dataIndex
+    const fieldName = `CY${item.dataIndex + 1}`;
+
+    // Create a new object with the updated value
+    const updatedData = { ...data, [fieldName]: value };
+
+    // Run calculations on the newly updated data and set the final state
+    const calculatedData = runCalculations(updatedData);
+    setData(calculatedData);
+  };
+
+  const handleCellBlur = (item, value) => {
+    if (!item) return;
+    const fieldName = `CY${item.dataIndex + 1}`;
+    let finalValue = value;
+
+    if (item.dataIndex === 50) {
+      // Specific validation for Percentage field CY51
+      const { isValid, value: pctValue, error } = validateAndFormatPercentage(value);
+      if (!isValid) {
+        snackbar(error, 'error');
+        // Revert to the last valid value on failed validation
+        setData((prev) => ({ ...prev }));
+        return;
+      }
+      finalValue = pctValue;
+    }
+
+    // Update the state with the potentially formatted value
+    setData((prev) => ({ ...prev, [fieldName]: finalValue }));
+    // Persist the change to the backend
+    saveField(fieldName, finalValue);
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        let responseData;
+        const reportStatus = report?.subReportStatus;
+
+        if (reportStatus === null || reportStatus === '') {
+          const payload = {
+            qed: user.quarterEndDate,
+            userId: user.userId,
+            rMId: '40024001',
+          };
+          responseData = await api.callT66InsertOnLoad(payload);
+          if (responseData) {
+            setReportId(responseData);
+            responseData.pop();
+          }
+        } else {
+          responseData = await api.callT66FetchData(reportId);
+        }
+
+        if (responseData) {
+          const calculatedData = runCalculations(responseData);
+          setData(calculatedData);
+          await Promise.all([
+            saveField(36, calculatedData[36]), // CY37
+            saveField(42, calculatedData[42]), // CY43
+            saveField(92, calculatedData[92]), // CY93
+            saveField(96, calculatedData[96]), // CY97
+            saveField(97, calculatedData[97]), // CY98
+          ]);
+        } else {
+          setData({}); // Initialize with an empty object if no data
+        }
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error(error);
+          snackbar('Failed to Fetch Data!', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, []);
+
+  // FIX: Create a derived array for the view from the state object.
+  // This ensures the reusable FRReturnsReport component gets the flat array it expects,
+  // while our logic uses a robust object state. This solves the PY/CY data mix-up.
+  const viewData = useMemo(() => {
+    if (!data) return [];
+    const cyArray = [];
+    Object.entries(data).forEach(([key, value], index) => {
+      if (key.startsWith('CY')) {
+        cyArray.push(value ?? '0.00');
+      }
+    });
+    return cyArray;
+  }, [data]);
+
+  const rows = [
+    // Rows definition is unchanged, but now correctly maps to the derived `viewData` array
+    [
+      { title: '(1)' },
+      { title: 'Details of foreign exchange transactions' },
+      { dataIndex: 0, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(2)' },
+      { title: 'Determination of foreign currency rates at the time of initial recognition of transaction' },
+      { dataIndex: 1, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(3)' },
+      { title: 'Determination of rate for translation of monetary items into foreign currency' },
+      { dataIndex: 2, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(4)' },
+      { title: 'Determination of rate for translation of non monetary items into foreign currency' },
+      { dataIndex: 3, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(5)' },
+      { title: 'Disclosures relating to cash and bank balances' },
+      { dataIndex: 4, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(6)' },
+      { title: 'Details of components of cash and bank balances' },
+      { dataIndex: 5, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(7)' },
+      { title: 'Disclosure of balances with foreign banks' },
+      { dataIndex: 6, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(8)' },
+      {
+        title:
+          'Reconciliation of cash and cash equivalents reported in balance sheet to cash and cash equivalents per cash flow statement',
+      },
+      { dataIndex: 7, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(9)' },
+      { title: 'Disclosure of significant cash and cash equivalents held that are not available for use' },
+      { dataIndex: 8, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(10)' },
+      { title: 'Detailed information relating to earnings per share' },
+      { dataIndex: 9, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(11)' },
+      { title: 'Net profit loss attributable to equity shareholders, basic' },
+      { dataIndex: 10, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(12)' },
+      { title: 'Details on numbers of shares used for basic earnings per share' },
+      { dataIndex: 11, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(13)' },
+      { title: 'Net profit(loss) attributable to equity shareholders, diluted' },
+      { dataIndex: 12, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(14)' },
+      { title: 'Details on numbers of potentially dilutive shares' },
+      { dataIndex: 13, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(15)' },
+      { title: 'Reconciliation of inter branch and inter bank transaction balances' },
+      { dataIndex: 14, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(16)' },
+      { title: 'Detailed note on lease transactions' },
+      { dataIndex: 15, cellProps: { readOnly: !editable } },
+    ],
+    [{ title: '(17)' }, { title: 'Details of finance lease' }, { dataIndex: 16, cellProps: { readOnly: !editable } }],
+    [
+      { title: '(18)' },
+      { title: 'Value of asset acquired on financial lease' },
+      { dataIndex: 17, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(19)' },
+      { title: 'Depreciation on asset acquired on financial lease' },
+      { dataIndex: 18, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(20)' },
+      { title: 'Asset acquired on financial lease, net' },
+      { dataIndex: 19, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(21)' },
+      { title: 'Future lease rentals on assets acquired under finance lease' },
+      { dataIndex: 20, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(22)' },
+      { title: 'Minimum lease payments payable, not Later than one year, gross, finance lease obligations' },
+      { dataIndex: 21, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(23)' },
+      {
+        title:
+          'Minimum lease payments payable, later than one year but less than five years, gross, finance lease obligations',
+      },
+      { dataIndex: 22, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(24)' },
+      { title: 'Minimum lease payments payable, over five years, gross, finance lease obligations' },
+      { dataIndex: 23, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [{ title: '(25)' }, { title: 'Details of operating lease' }, { dataIndex: 24, cellProps: { readOnly: !editable } }],
+    [
+      { title: '(26)' },
+      { title: 'Future lease rentals on assets acquired under operating lease' },
+      { dataIndex: 25, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(27)' },
+      { title: 'Minimum lease payments payable not later than one year of operating lease obligations' },
+      { dataIndex: 26, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(28)' },
+      {
+        title:
+          'Minimum lease payments payable later than one year but less than five years operating lease obligations',
+      },
+      { dataIndex: 27, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(29)' },
+      { title: 'Minimum lease payments payable over five years operating lease obligations' },
+      { dataIndex: 28, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(30)' },
+      { title: 'Disclosures relating to assets given on financial lease and operating lease' },
+      { dataIndex: 29, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(31)' },
+      { title: 'Future lease rentals on assets given under operating lease' },
+      { dataIndex: 30, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(32)' },
+      { title: 'Minimum Lease Payments recievable, not Later than one Year, Operating Lease Obligations' },
+      { dataIndex: 31, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(33)' },
+      {
+        title:
+          'Minimum Lease Payments recievable, Later than one Year but Less than Five Years, Operating Lease Obligations',
+      },
+      { dataIndex: 32, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(34)' },
+      { title: 'Minimum Lease Payments recievable, Over Five Years, Operating Lease Obligations' },
+      { dataIndex: 33, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(35)' },
+      { title: 'Net Value of the Asset Acquired on Financial Lease' },
+      { dataIndex: 34, cellProps: { readOnly: !editable } },
+    ],
+    [{ title: '(36)' }, { title: 'Assets given on lease' }, { titleRow: true }],
+    [
+      { title: '(37)' },
+      { title: 'Assets given on lease, gross, at beginning of period' },
+      { dataIndex: 36, cellProps: { inputType: 'wholeAmountDecimal', readOnly: true } },
+    ],
+    [
+      { title: '(38)' },
+      { title: 'Additions in assets given on lease during year' },
+      { dataIndex: 37, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(39)' },
+      { title: 'Deductions in assets given on lease during year' },
+      { dataIndex: 38, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(40)' },
+      { title: 'Revaluation on Assets given on Lease' },
+      { dataIndex: 39, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(41)' },
+      { title: 'Accumulated depreciation and amortisation on assets given on lease' },
+      { dataIndex: 40, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(42)' },
+      { title: 'Accumulated impairment on assets given on lease' },
+      { dataIndex: 41, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(43)' },
+      { title: 'Assets Given on lease, gross, at end of period' },
+      { dataIndex: 42, cellProps: { inputType: 'wholeAmountDecimal', readOnly: true } },
+    ],
+    [
+      { title: '(44)' },
+      { title: 'Details of employee benefits' },
+      { dataIndex: 43, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(45)' },
+      { title: 'Changes in present value defined benefit plan obligation during year' },
+      { dataIndex: 44, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(46)' },
+      { title: 'Changes in fair value plan assets' },
+      { dataIndex: 45, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(47)' },
+      { title: 'Actuarial gains (losses) defined benefit plan obligation' },
+      { dataIndex: 46, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(48)' },
+      { title: 'Other amounts recognized in balance sheet' },
+      { dataIndex: 47, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(49)' },
+      { title: 'Expenses recognised in profit (loss) statement' },
+      { dataIndex: 48, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(50)' },
+      { title: 'Movements in employee benefit liability' },
+      { dataIndex: 49, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(51)' },
+      { title: 'Investment percentage of employee benefits' },
+      { dataIndex: 50, cellProps: { placeholder: '0.00%', readOnly: !editable } },
+    ],
+    [
+      { title: '(52)' },
+      { title: 'Principal actuarial assumptions used in defined benefit plan' },
+      { dataIndex: 51, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(53)' },
+      { title: 'Investment details of plan assets' },
+      { dataIndex: 52, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(54)' },
+      { title: 'Experience adjustments' },
+      { dataIndex: 53, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(55)' },
+      { title: 'Estimated contribution next year' },
+      { dataIndex: 54, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(56)' },
+      { title: 'Expenditure voluntary retirement scheme' },
+      { dataIndex: 55, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [{ title: '(57)' }, { title: 'Disclosures on ESOPS' }, { dataIndex: 56, cellProps: { readOnly: !editable } }],
+    [
+      { title: '(58)' },
+      { title: 'Disclosures regarding subsidiaries' },
+      { dataIndex: 57, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(59)' },
+      { title: 'Details of investments in associates and joint ventures' },
+      { dataIndex: 58, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(60)' },
+      { title: 'Disclosures of investment in associates' },
+      { dataIndex: 59, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(61)' },
+      { title: 'Disclosures of investment in joint ventures' },
+      { dataIndex: 60, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(62)' },
+      { title: 'Disclosure of share of aggregate amount assets in jointly controlled operations' },
+      { dataIndex: 61, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(63)' },
+      { title: 'Disclosure of share of aggregate amount liabilities in jointly controlled operations' },
+      { dataIndex: 62, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(64)' },
+      { title: 'Disclosure of share of aggregate amount of income in jointly controlled operations' },
+      { dataIndex: 63, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(65)' },
+      { title: 'Disclosure of share of aggregate amount of expenditure in jointly controlled operations' },
+      { dataIndex: 64, cellProps: { readOnly: !editable } },
+    ],
+    [{ title: '(66)' }, { title: 'Details of investments' }, { dataIndex: 65, cellProps: { readOnly: !editable } }],
+    [
+      { title: '(67)' },
+      { title: 'Disclosure of further categorisation as per RBI norms' },
+      { dataIndex: 66, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(68)' },
+      { title: 'Disclosures non performing investments as per RBI norms' },
+      { dataIndex: 67, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(69)' },
+      { title: 'Interest fixed dividend installment due and remains unpaid for more than ninety days' },
+      { dataIndex: 68, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(70)' },
+      { title: 'Disclosure negative net worth of company' },
+      { dataIndex: 69, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(71)' },
+      { title: 'Disclosure non performing investments against non performing advances' },
+      { dataIndex: 70, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(72)' },
+      { title: 'Disclosure investments on which scripts/certificates are not received' },
+      { dataIndex: 71, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(73)' },
+      { title: 'Disclosure amount of profit on sale of investments based on category type investment' },
+      { dataIndex: 72, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(74)' },
+      { title: 'Disclosure market value of investment as per RBI prescribed norms' },
+      { dataIndex: 73, cellProps: { readOnly: !editable } },
+    ],
+    [{ title: '(75)' }, { title: 'Details of fixed assets' }, { dataIndex: 74, cellProps: { readOnly: !editable } }],
+    [
+      { title: '(76)' },
+      { title: 'Details and amount premises on which title deed is yet to be executed' },
+      { dataIndex: 75, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(77)' },
+      { title: 'Revaluation of assets disclosures' },
+      { dataIndex: 76, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(78)' },
+      { title: 'Details of intangible assets' },
+      { dataIndex: 77, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(79)' },
+      { title: 'Details of impairment of assets' },
+      { dataIndex: 78, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(80)' },
+      { title: 'Disclosures relating to advances' },
+      { dataIndex: 79, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(81)' },
+      { title: 'Prudential norms issued by RBI compliance certification' },
+      { dataIndex: 80, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(82)' },
+      { title: 'Disclosure of classification of performing and non performing advances' },
+      { dataIndex: 81, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(83)' },
+      { title: 'Disclosure of Further Classification of Advances To Standard, SubStandard, Doubtful And Loss' },
+      { dataIndex: 82, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(84)' },
+      { title: 'Disclosure provision made for each category as per RBI norms' },
+      { dataIndex: 83, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(85)' },
+      { title: 'Disclosure amount of claim received from ECGC/ DICGC' },
+      { dataIndex: 84, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(86)' },
+      { title: 'Disclosure additional provision created on NPA over prudential norms of RBI' },
+      { dataIndex: 85, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(87)' },
+      { title: 'Disclosure provision made for foreign branches as per statutory requirement of foreign country' },
+      { dataIndex: 86, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(88)' },
+      { title: 'Method of treatment of partial recoveries in non performing assets' },
+      { dataIndex: 87, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(89)' },
+      {
+        title:
+          'Disclosure method of treatment for sale of financial assets to assets reconstruction securitization company',
+      },
+      { dataIndex: 88, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(90)' },
+      { title: 'Details of disclosures on deferred tax assets and liabilities' },
+      { dataIndex: 89, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(91)' },
+      { title: 'Details deferred tax assets' },
+      { dataIndex: 90, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(92)' },
+      { title: 'Details deferred tax liabilities' },
+      { dataIndex: 91, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(93)' },
+      { title: 'Provisions at beginning of period' },
+      { dataIndex: 92, cellProps: { inputType: 'wholeAmountDecimal', readOnly: true } },
+    ],
+    [{ title: '(94)' }, { title: 'Changes in provisions' }, { titleRow: true }],
+    [
+      { title: '(95)' },
+      { title: 'Additions to provisions' },
+      { dataIndex: 94, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(96)' },
+      { title: 'Deductions from provisions' },
+      { dataIndex: 95, cellProps: { inputType: 'wholeAmountDecimal', readOnly: !editable } },
+    ],
+    [
+      { title: '(97)' },
+      { title: 'Changes in provisions' },
+      { dataIndex: 96, cellProps: { inputType: 'wholeAmountDecimal', readOnly: true } },
+    ],
+    [
+      { title: '(98)' },
+      { title: 'Provisions at end of period' },
+      { dataIndex: 97, cellProps: { inputType: 'wholeAmountDecimal', readOnly: true } },
+    ],
+    [
+      { title: '(99)' },
+      { title: 'Disclosure on provisions, contingent liabilities and contingent assets' },
+      { dataIndex: 98, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(100)' },
+      { title: 'Details of disclosures of mortgages in respect of loans' },
+      { dataIndex: 99, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(101)' },
+      { title: 'Disclosures relating to events occurring after balance sheet date' },
+      { dataIndex: 100, cellProps: { readOnly: !editable } },
+    ],
+    [
+      { title: '(102)' },
+      { title: 'Disclosures relating to amalgamations' },
+      { dataIndex: 101, cellProps: { readOnly: !editable } },
+    ],
+  ];
+
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId}
+        qed={user.quarterEndDate}
+        columns={[
+          { title: 'Sr No', cellProps: { sx: { width: '5%' } } },
+          { title: 'Particulars', cellProps: { sx: { width: '55%' } } },
+          { title: 'Current Year', cellProps: { sx: { width: '40%' } } },
+        ]}
+        rows={rows}
+        data={viewData} // Pass the derived array to the component
+        isLoading={isLoading}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        completeButtonEnabled={editable}
+      />
+    </Box>
+  );
+}
+
+
+
+
+/T71/getT71Data api reponse sample : 
+["sdsdds","Yes","sddsdsds"]
