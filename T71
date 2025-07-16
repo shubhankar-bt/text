@@ -1,160 +1,44 @@
+// src/services/apiService.js (additions)
 
-T71.jsp
+// ... existing T68ApiService and FrReturnApiService code ...
 
-<%--
-  Created by IntelliJ IDEA.
-  User: V1010938
-  Date: 02-02-2024
-  Time: 13:18
-  To change this template use File | Settings | File Templates.
---%>
-<%@ page contentType="text/html;charset=UTF-8" %>
-<html>
-<head>
-    <style>
-        .form-control {
-            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-            font-weight: 400;
-            font-size: initial;
-            line-height: 1.3em;
-            width: 300px;
-            text-align: right;
-        }
-    </style>
-    <title></title>
-    <script src="./resources/js/frValidations.js"></script>
-    <script>
-        function checkVal() {
-            console.log("into checkval");
-            if(document.getElementById('val2').value== 'No')
-             document.getElementById('val3').value ="";
-        }
+/**
+ * A collection of functions to interact with the T71 API endpoints.
+ */
+export const T71ApiService = {
+    /**
+     * Creates an initial Report Master List (RML) entry for T71.
+     * @param {object} params - { qed, userId, rMId }
+     */
+    rmlEntry: (params) => {
+        return fetchApi('/T71/insertRml', { body: JSON.stringify(params) });
+    },
 
-        const textArea = document.getElementById("val1");
-        textArea.addEventListener("input", function () {
-            this.style.height = "auto";
-            this.style.height = this.scrollHeight + "px";
-        });
-        const textArea1 = document.getElementById("val3");
-        textArea1.addEventListener("input", function () {
-            this.style.height = "auto";
-            this.style.height = this.scrollHeight + "px";
-        });
-    </script>
-</head>
-<div class="wrapper">
-    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
-        <div class="container">
-            <div class="row tim-row">
-                <div class="col-md-8 col-md-offset-2">
-                    <div class="brand">
-                        <h3 style="color: white;">FR Return</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="main main-raised">
-        <div class="section">
-            <div class="container">
-                <div class="row" ng-init="T71.insertOrUpdate();" style="vertical-align: inherit;">
-                    <div class="col-xs-1">
-                        <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
-                            <i class="material-icons">arrow_left</i>
-                        </button>
-                    </div>
-                    <div class="col-xs-11">
-                        <h3> Auditors Report</h3>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <div class="row" style="background: #b9def0; height: 40px;">
-                        <div class="col-md-4" style="text-align: center; vertical-align: middle;"><h4>Particulars</h4>
-                        </div>
-                        <div class="col-md-2"></div>
-                        <div class="col-md-6" style="text-align: center; vertical-align: middle;"><h4>Current Year</h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <div class="row">
-                        <div class="col-md-4"><h4>Disclosure In Auditors Report</h4></div>
-                        <div class="col-md-2"></div>
-                        <div class="col-md-6" style="text-align: center;">
-                            <label>
-                                <textarea placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
-                                          id="val1" maxlength="4000" class="form-control"
-                                          ng-model="T71.val1"
-                                          ng-blur="T71.updateField('val1')"></textarea>
-                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val1" maxlength="4000"
-                                       ng-blur="T71.updateField('val1')"
-                                       style="text-align: left;height: 38px; width: 400px;">--%>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <div class="row">
-                        <div class="col-md-4"><h4>Whether Auditors Report Has Been Qualified Or Has Any Reservations Or
-                            Contains Adverse Remarks</h4></div>
-                        <div class="col-md-2"></div>
-                        <div class="col-md-6" style="text-align: center;">
-                            <label>
-                                <select class="form-control" id="val2"  ng-model="T71.val2" ng-change="T71.updateField('val2');" onchange="checkVal()" >
-                                    <option value="No" >No</option>
-                                    <option value="Yes">Yes</option>
-                                </select>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <div class="row">
-                        <div class="col-md-4"><h4>Auditors Qualifications Reservations Or Adverse Remarks In Auditors
-                            Report</h4></div>
-                        <div class="col-md-2"></div>
-                        <div class="col-md-6" style="text-align: center;">
-                            <label>
-                                <textarea  placeholder="Enter Text" style="text-align: left;height: 38px; width: 400px;"
-                                           ng-model="T71.val3"
-                                           id="val3" maxlength="4000" class="form-control"
-                                          ng-disabled="T71.val2 != 'Yes'" ng-blur=" T71.updateField('val3');"></textarea>
-                                <%--<input type="text" class="form-control" placeholder="Enter Text" id="val3" maxlength="4000"
-                                       ng-disabled="val2 != 'Yes'" ng-blur=" T71.updateField('val3');">--%>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div style="text-align: center">
-                    <button class="btn btn-success" ng-click="T71.submitIndividual()">
-                        Complete
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</div>
-<div class="example-modal">
-    <div class="modal fade" id="modalSubmit">
-        <div class="modal-dialog">
-            <div class="modal-header bg-success">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span></button>
-                <div class="modal-title"><b>Success !</b></div>
-            </div>
-            <div class="modal-content">
-                <div class="modal-body" id="popup1">
-                    <b>{{T71.displayMessage}}</b>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T71.redirectToFRReturn()" >Continue</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-</html>
+    /**
+     * Gets the Report Master List (RML) ID for an existing T71 report.
+     * @param {object} params - { qed, userId, rMId }
+     */
+    getRml: (params) => {
+        return fetchApi('/T71/getRml', { body: JSON.stringify(params) });
+    },
+
+    /**
+     * Fetches saved data for the T71 report.
+     * Note: The response is expected as a flat array of strings.
+     * @param {object} params - { reportId, qed }
+     */
+    getT71Data: (params) => {
+        return fetchApi('/T71/getT71Data', { body: JSON.stringify(params) });
+    },
+
+    /**
+     * Saves the T71 report data.
+     * @param {object} params - The payload containing all question and remark data.
+     */
+    saveT71Data: (params) => {
+        return fetchApi('/T71/saveT71Data', { body: JSON.stringify(params) });
+    },
+};
 
 
 
@@ -163,144 +47,258 @@ T71.jsp
 
 
 
-t71Controller.js  :
-app.controller('T71Controller', function ($scope, $rootScope, $timeout, AES256, $state, T71Factory,frReturnFactory, $sessionStorage) {
-    let T71 = this;
-    $scope.started = false;
-    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
-    let qed = $scope.sessionUser.quarterEndDate;
-    let userId = $scope.sessionUser.userId;
-    let status = sessionStorage.getItem("frReportSts");
-    let reportId =sessionStorage.getItem("frReportId");
-    T71.reportName = sessionStorage.getItem("frSubReportName");
-    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
-    console.log("Status :"+status);
-    T71.reportId=reportId;
-    //$scope.states = ['NO', 'Yes'];
-   /* $scope.states = [{
-        name: 'NO',
-        value: 'NO'
-    }, {
-        name: 'Yes',
-        value: 'Yes'
-    }];*/
 
-    $('.modal-backdrop').remove();
-    $('body').removeClass("modal-open");
-    T71.backToIndex = function (){
-        $state.go('frt_maker.frReturn');
-    }
 
-    T71.insertOrUpdate = function (){
-        let params = {
-            'qed' : qed,
-            'userId' : userId,
-            'rMId' : "40024102"
-        };
-        if(status === null || status === ''){
-            T71Factory.insertOnLoad(params).then(function (data){
-                console.log("data"+data);
-                T71.reportId = data;
-                //console.log("reportId-"+T71.reportId);
-                // document.getElementById('val1').value = openingBal;
-            }, function (errResponse) {
-                console.error('data not inserted. '+errResponse);
-            })
-        }
-        else{
-            T71Factory.getT71Data(reportId).then(function (data){
-                let dataLen = data.length;
-                console.log("dataLen-"+dataLen);
-                for(let i = 0; i < dataLen;i++){
-                    let n = i + 1;
-                    let id = 'val' + n;
-                    document.getElementById(id).value = data[i];
-                    // checkAmount(id);
+
+
+
+
+
+// src/components/FRReturnsReport.jsx
+
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    Container,
+    Typography,
+    Button,
+    Paper,
+    Box,
+    Grid,
+    TextField,
+    RadioGroup,
+    FormControlLabel,
+    Radio,
+    FormControl,
+    FormLabel,
+    CircularProgress,
+    Backdrop,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    DialogContentText,
+} from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { T71ApiService, FrReturnApiService } from '../services/apiService'; // Adjust path as needed
+
+const initialFormData = {
+    question1: 'No', remarks1: '',
+    question2: 'No', remarks2: '',
+    question3: 'No', remarks3: '',
+    question4: 'No', remarks4: '',
+    question5: 'No', remarks5: '',
+    question6: 'No', remarks6: '',
+    question7: 'No', remarks7: '',
+    question8: 'No', remarks8: '',
+};
+
+// Static data for the questions to easily render them
+const questions = [
+    { id: 1, text: 'Whether the NBFC has been set up for the purpose of securitisation / reconstruction of financial assets?' },
+    { id: 2, text: 'Whether the NBFC is engaged in any other business?' },
+    { id: 3, text: 'If yes, whether the income from such business is more than the income from the business of securitisation / reconstruction of financial assets?' },
+    { id: 4, text: 'Whether the NBFC has sponsored any other Securitisation Company/Reconstruction Company?' },
+    { id: 5, text: 'Whether the NBFC has invested in the security receipts issued by other Securitisation Companies/Reconstruction Companies?' },
+    { id: 6, text: 'If so, whether the investment is more than 10% of its owned fund?' },
+    { id: 7, text: 'Whether the NBFC has converted any debt into equity?' },
+    { id: 8, text: 'Whether the NBFC is a corporate body?' },
+];
+
+const FRReturnsReport = ({ initialReportId, qed, userId, reportName }) => {
+    const [formData, setFormData] = useState(initialFormData);
+    const [reportId, setReportId] = useState(initialReportId);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [modal, setModal] = useState({ open: false, message: '' });
+
+    // --- Data Fetching and Initialization ---
+    useEffect(() => {
+        const initializeReport = async () => {
+            const status = sessionStorage.getItem("frReportSts");
+            const rmlParams = { qed, userId, rMId: "40024005" }; // rMId for T71
+
+            try {
+                if (!status || status.length === 0) {
+                    const newReportId = await T71ApiService.rmlEntry(rmlParams);
+                    setReportId(newReportId);
+                } else {
+                    const existingReportId = await T71ApiService.getRml(rmlParams);
+                    setReportId(existingReportId);
+
+                    if (parseInt(status, 10) > 10) {
+                        const data = await T71ApiService.getT71Data({ reportId: existingReportId, qed });
+                        
+                        // Map the flat array response to the structured formData state
+                        // This mapping is based on the logic in the legacy T71Controller.
+                        if (Array.isArray(data)) {
+                            setFormData({
+                                question1: data[0] || 'No', remarks1: data[1] || '',
+                                question2: data[2] || 'No', remarks2: data[3] || '',
+                                question3: data[4] || 'No', remarks3: data[5] || '',
+                                question4: data[6] || 'No', remarks4: data[7] || '',
+                                question5: data[8] || 'No', remarks5: data[9] || '',
+                                question6: data[10] || 'No', remarks6: data[11] || '',
+                                question7: data[12] || 'No', remarks7: data[13] || '',
+                                question8: data[14] || 'No', remarks8: data[15] || '',
+                            });
+                        }
+                    }
                 }
-                T71.val2=data[1]
-                console.log("T71.val2-"+T71.val2);
-
-
-            }, function (errResponse) {
-                console.error('data failed. '+errResponse);
-            })
-        }
-    }
-
-    T71.updateField = function (value){
-        let key = value.substring(3);
-        let fieldVal = document.getElementById(value).value;
-        console.log(fieldVal);
-        console.log("T71.reportId******-"+ T71.reportId);
-        let reportId= T71.reportId.toString();
-        let params = {
-            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
-            'key': aesUtil.encrypt(salt, iv, passphrase, key),
-            'salt': salt,
-            'iv': iv,
-            'value': aesUtil.encrypt(salt, iv, passphrase, fieldVal),
-        };
-        T71Factory.updateField(params).then(function (data){
-        }, function (errResponse){
-            console.error('update failed. '+errResponse);
-        })
-    }
-
-    T71.submitIndividual = function (){
-        let params = {
-            // 'reportId' :  T71.reportId.toString(),
-            'reportId': aesUtil.encrypt(salt, iv, passphrase,T71.reportId.toString()),
-            'salt': salt,
-            'iv': iv,
-            'qed': qed,
-
-        };
-        frReturnFactory.submitIndividual(params).then(function (data){
-            console.log("data-"+data);
-            if(data==1){
-                T71.displayMessage = T71.reportName +" report has been submitted successfully.";
-                console.log(T71.displayMessage);
-                $('#modalSubmit').modal({
-                    backdrop: 'static',
-                    keyboard: false,
-                    modal: true
-                });
-                $('#modalSubmit').on('shown.bs.modal', function () {
-                    $('#modalSubmit').trigger('focus');
-                });
+            } catch (error) {
+                console.error("Failed during report initialization:", error);
+            } finally {
+                setIsLoading(false);
             }
-            //modal
-        }, function (errResponse){
-            console.error('Submit individual failed. '+errResponse);
-        })
-    }
-
-    T71.redirectToFRReturn = function () {
-        $timeout(function () {
-            $state.go('frt_maker.frReturn');
-            // $state.reload();
-        }, 500);
-    }
-
-    /*T71.updateField = function (val1,val2,val3){
-        console.log("val1-"+val1+" val2-"+ val2+" val3-" +val3);
-        //let key = value.substring(3);
-       // let fieldVal1 = document.getElementById(value).value;
-        //console.log(fieldVal);
-        console.log("T71.reportId******-"+ T71.reportId);
-        let reportId= T71.reportId.toString();
-        let params = {
-            'reportId' : aesUtil.encrypt(salt, iv, passphrase, reportId),
-            'val1': aesUtil.encrypt(salt, iv, passphrase, val1),
-            'val2': aesUtil.encrypt(salt, iv, passphrase, val2),
-            'val3': aesUtil.encrypt(salt, iv, passphrase, val3),
-            'salt': salt,
-            'iv': iv,
         };
-        T71Factory.updateField(params).then(function (data){
-        }, function (errResponse){
-            console.error('update failed. '+errResponse);
-        })
-    }*/
-});
+
+        if (userId) initializeReport();
+        else setIsLoading(false);
+    }, [qed, userId]);
+
+    // --- Event Handlers ---
+    const handleChange = useCallback((event) => {
+        const { name, value } = event.target;
+        setFormData(prevData => ({
+            ...prevData,
+            [name]: value,
+        }));
+    }, []);
+
+    const handleSubmit = async (event) => {
+        event.preventDefault(); // Prevent default form submission
+        setIsSubmitting(true);
+
+        const params = {
+            reportId,
+            qed,
+            question1: formData.question1, remarks1: formData.remarks1,
+            question2: formData.question2, remarks2: formData.remarks2,
+            question3: formData.question3, remarks3: formData.remarks3,
+            question4: formData.question4, remarks4: formData.remarks4,
+            question5: formData.question5, remarks5: formData.remarks5,
+            question6: formData.question6, remarks6: formData.remarks6,
+            question7: formData.question7, remarks7: formData.remarks7,
+            question8: formData.question8, remarks8: formData.remarks8,
+        };
+
+        try {
+            // First, save the data
+            await T71ApiService.saveT71Data(params);
+            
+            // Then, submit the report for completion
+            await FrReturnApiService.submitIndividual({ reportId, qed });
+            
+            setModal({
+                open: true,
+                message: `${reportName || 'Report'} has been submitted successfully.`
+            });
+
+        } catch (error) {
+            console.error("Failed to submit report:", error);
+            setModal({
+                open: true,
+                message: `Error: Failed to submit report. ${error.message}`
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handleCloseModal = () => {
+        setModal({ open: false, message: '' });
+        // Redirect logic can be placed here, e.g., using react-router-dom
+        console.log("Redirecting to main FR Return page...");
+        // history.push('/frt_maker/frReturn');
+    };
+
+    return (
+        <Container maxWidth="lg" sx={{ my: 4 }}>
+            <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading || isSubmitting}>
+                <CircularProgress color="inherit" />
+            </Backdrop>
+
+            <Paper elevation={3} sx={{ p: 3, mb: 3, textAlign: 'center' }}>
+                <Typography variant="h4" component="h1">FR Returns Report</Typography>
+                <Typography variant="h6">{reportName}</Typography>
+            </Paper>
+
+            <Paper elevation={3} sx={{ p: { xs: 2, md: 4 } }}>
+                <Box sx={{ mb: 3 }}>
+                    <Button
+                        variant="contained"
+                        startIcon={<ArrowBackIcon />}
+                        onClick={() => window.history.back()}
+                    >
+                        Back
+                    </Button>
+                </Box>
+                
+                <Box component="form" onSubmit={handleSubmit}>
+                    {questions.map((q) => (
+                        <Paper key={q.id} variant="outlined" sx={{ p: 3, mb: 3 }}>
+                            <Grid container spacing={2} alignItems="center">
+                                <Grid item xs={12} md={8}>
+                                    <FormControl component="fieldset" required>
+                                        <FormLabel component="legend">{q.id}. {q.text}</FormLabel>
+                                        <RadioGroup
+                                            row
+                                            aria-label={`question ${q.id}`}
+                                            name={`question${q.id}`}
+                                            value={formData[`question${q.id}`]}
+                                            onChange={handleChange}
+                                        >
+                                            <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+                                            <FormControlLabel value="No" control={<Radio />} label="No" />
+                                        </RadioGroup>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12} md={4}>
+                                    <TextField
+                                        fullWidth
+                                        label="Remarks"
+                                        name={`remarks${q.id}`}
+                                        value={formData[`remarks${q.id}`]}
+                                        onChange={handleChange}
+                                        variant="outlined"
+                                        multiline
+                                        rows={2}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Paper>
+                    ))}
+                    <Box sx={{ mt: 4, textAlign: 'center' }}>
+                        <Button 
+                            type="submit" 
+                            variant="contained" 
+                            color="success"
+                            size="large"
+                            disabled={isSubmitting}
+                        >
+                            Complete
+                        </Button>
+                    </Box>
+                </Box>
+            </Paper>
+
+            <Dialog open={modal.open} onClose={handleCloseModal}>
+                <DialogTitle>Submission Status</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>{modal.message}</DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseModal} color="primary" autoFocus>
+                        Continue
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Container>
+    );
+};
+
+export default FRReturnsReport;
+
+
+
+
 
