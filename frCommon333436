@@ -1,0 +1,541 @@
+old jsp file : 
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1010939
+  Date: 13-02-2024
+  Time: 16:46
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+   <script type="text/javascript">
+
+    </script>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return : Details of Micro Small Medium Enterprises</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" ng-init="FRAddRow.insertOrUpdate();"></div>
+                <div class="row" style="padding-bottom: 10px">
+                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                        <i class="material-icons">arrow_back</i>
+                    </button>
+                </div>
+                <div class="row">
+                    <table class="table table-responsive table-hover table-bordered">
+                        <caption id="cap1"></caption>
+                        <thead>
+                        <tr style="background: #b9def0; height: 40px">
+                            <th style="text-align: center; vertical-align: middle">Particulars</th>
+                            <th style="text-align: center; vertical-align: middle">Current Year</th>
+                            <th style="text-align: center; vertical-align: middle">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr data-ng-repeat="row in FRAddRow.commonAddListOfRows track by $index">
+                          <td ng-hide="true">
+                              <input type="text" style="background-image:none" class="form-control"
+                                     ng-model="row.editable" name="editable"
+                                     id="val" placeholder="Enter value"/>
+                          </td>
+
+                            <td><input type="text"
+                                       class="form-control" ng-model="row.DESCE" id="par{{($index)}}"/></td>
+                            <td><input style="text-align: right"  type="text"  class="form-control decimal-2-places" ng-model="row.CY" id="val{{($index)}}" maxlength="19"
+                                       placeholder="Enter value" ng-blur="FRAddRow.checkAmountAddRow('val'+ $index);"/>
+                            </td>
+                            <td>
+                                <button style="text-align: center;padding: 10px; alignment: center"
+                                        id="save{{row.id}}"
+                                        class="btn btn-success btn-sm btn-round btn1"
+                                        ng-click = "FRAddRow.saveRow($index, row.id,row.editable);"
+                                        rel="tooltip" title="Save This Row" >
+                                    <i class="material-icons">save</i>
+                                </button>
+
+                                <button style="text-align: center;padding: 10px; alignment: center"
+                                        class="btn btn-warning btn-sm btn-round btn2"
+                                        id="edit{{row.id}}"
+                                        ng-click = "FRAddRow.editRow($index, row.id,row.editable);"
+                                        rel="tooltip" title="Edit This Row" disabled>
+                                    <i class="material-icons">edit</i>
+                                </button>
+                                <button style="text-align: center;padding: 10px; alignment: center" rel="tooltip"
+                                        id="delete{{row.id}}"
+                                        class="btn btn-danger btn-sm btn-round btn3"
+                                        ng-click = "FRAddRow.deleteRow($index, row.id);"
+                                        title="Delete this Row" disabled>
+                                    <i class="material-icons">delete</i>
+                                </button>
+
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline btn-round" style="background-color: #664162"
+                            ng-click="FRAddRow.addCommonRow();
+">
+                        Add Row
+                    </button>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="FRAddRow.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{FRAddRow.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="FRAddRow.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+old controller file : 
+app.controller('CommonFRAddRowController', function ($scope, $rootScope, $timeout, AES256, $state, commonFRAAddRowFactory, frReturnFactory, $sessionStorage, blockUI) {
+
+    let FRAddRow = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    FRAddRow.reportName = sessionStorage.getItem("frSubReportName");
+    FRAddRow.reportId = reportId;
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    console.log("reportId : " + reportId);
+    let rMId = sessionStorage.getItem("frRMId");
+    let tableName = sessionStorage.getItem("frReportDtTable");
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    // alert('rMId ' + rMId);
+    if (rMId === '40022603') {
+        $("#cap1").append("<h3>Notional Principal Amount of Exchange Traded Interest Rate Derivatives undertaken during the Year (Instrument-wise)</h3>");
+    } else if (rMId === '40022604') {
+        $("#cap1").append("<h3>Notional Principal Amount of Exchange Traded Interest Rate Derivatives Outstanding</h3>");
+    } else {
+        $("#cap1").append("<h3> Notional Principal Amount of Exchange Traded Interest Rate Derivatives Outstanding and not <q>Highly Effective</q> (Instrument-wise)</h3>");
+    }
+    FRAddRow.editable = {};
+    FRAddRow.ridRow = {};
+    FRAddRow.commonAddListOfRows = [];
+    FRAddRow.ID = {};
+    FRAddRow.DESCE = {};
+    FRAddRow.CY = {};
+
+    FRAddRow.insertOrUpdate = function () {
+        let params2 = {
+            'qed': qed,/**/
+            'userId': userId,
+            'tableName': tableName,
+            'rMId': rMId
+        };
+        /*
+            * @Author: V1014543
+            *  Checking RML Status
+           * */
+
+        if (status === null || status === '') {
+            commonFRAAddRowFactory.insertOnLoad(params2).then(function (data) {
+                sessionStorage.setItem("frReportId", data);
+                FRAddRow.reportId = data;
+                reportId = FRAddRow.reportId.toString();
+                FRAddRow.getlistOfScreenParam();
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        } else {
+            /*
+              * @Author: V1014543
+              *  Getting CY & PY Data From DB
+             * */
+            FRAddRow.getlistOfScreenParam();
+        }
+    }
+
+    FRAddRow.getlistOfScreenParam = function () {
+
+        params1 = {
+            'qed': qed,
+            'userId': userId,
+            'reportId': FRAddRow.reportId,
+            'tableName': tableName
+        };
+        console.log("Params Values :" + JSON.stringify(params1));
+        commonFRAAddRowFactory.getlistOfScreenParam(params1).then(function (data) {
+            console.log("editable--" + FRAddRow.editable);
+            FRAddRow.commonAddListOfRows = data;
+            setTimeout(function () {
+
+                $("input").prop("disabled", true);
+
+                for (let i = 0; i < data.length; i++) {
+                    let id = data[i].id;
+                    let editable = data[i].editable;
+                    console.log("editable " + editable);
+                    $('#save' + id).prop('disabled', true);
+                    $('#edit' + id).prop('disabled', false);
+                    $('#par' + i).prop('disabled', true);
+                    //  $('#val' + i).prop('disabled', true);
+                    console.log("Params Values i >>>> " + i);
+                    $("input").prop("disabled", true);
+
+                    if (editable == 'N') {
+                        $('#delete' + id).prop('disabled', true);
+                    } else {
+                        $('#delete' + id).prop('disabled', false);
+                    }
+                }
+            }, 1000);
+
+        }, function (errResponse) {
+            console.error('data failed. ' + errResponse);
+        });
+    }
+
+    FRAddRow.checkAmountAddRow = function (numVal) {
+        let amt = String($('#' + numVal).val());
+        if (amt != 0 || amt != 0.00) {
+            amt = document.getElementById(numVal).value = (document.getElementById(numVal).value).replaceAll(" ", "");
+            amt = amt.replace(/^0+/, "");
+        }
+        if (isNaN(amt)) {
+            alert("Please enter Numeric Value only");
+            $('#' + numVal).val("")
+            $('#' + numVal).focus();
+            return false;
+        }
+        let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+        if (c.test(amt) || amt === "") {
+            let idot = amt.indexOf('.');
+            if (idot === -1) {
+                if (amt === "") {
+                    $('#' + numVal).val(amt.concat("0.00"));
+                } else if (('#' + numVal == "val2") || ('#' + numVal == "val4") || ('#' + numVal == "val7")) {
+                    $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+                } else {
+                    $('#' + numVal).val(amt.concat(".00"));
+                }
+            } else if (('#' + numVal == "val2") || ('#' + numVal == "val4") || ('#' + numVal == "val7")) {
+                $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+            } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
+                $('#' + numVal).val(amt.concat("0"));
+            }
+        } else {
+            alert("Amount is not allowed more than 15 digits and two decimal digits.");
+            $('#' + numVal).val("");
+            $('#' + numVal).focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    /*
+     * @Author: V1014543
+     *  On-Change Saves Data
+     * */
+    FRAddRow.saveRow = function (rowID, id, editable) {
+        var id1 = id;
+        console.log('FRAddRow.commonAddListOfRows  --' + FRAddRow.commonAddListOfRows.size);
+        console.log('FRAddRow.commonAddListOfRows length --' + FRAddRow.commonAddListOfRows.length);
+        var desc = document.getElementById('par' + rowID).value;
+        var cy = document.getElementById('val' + rowID).value;
+        console.log('FRAddRow.commonAddListOfRows length --' + FRAddRow.commonAddListOfRows.rowID);
+        console.log('FRAddRow.commonAddListOfRows length --' + FRAddRow.commonAddListOfRows[rowID].ID);
+        params = {
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'id': aesUtil.encrypt(salt, iv, passphrase, id.toString()),
+            'tableName': aesUtil.encrypt(salt, iv, passphrase, tableName.toString()),
+            'qed': aesUtil.encrypt(salt, iv, passphrase, qed.toString()),
+            'desc': aesUtil.encrypt(salt, iv, passphrase, desc.toString()),
+            'cy': aesUtil.encrypt(salt, iv, passphrase, cy.toString()),
+            'salt': salt,
+            'iv': iv
+        };
+        if (id1 != 0 && editable == 'N') {
+            $('#save' + id).prop('disabled', true);
+            $('#val' + rowID).prop('disabled', true);
+            $('#edit' + id).prop('disabled', false);
+        }
+        if (id1 == 0) {
+            commonFRAAddRowFactory.saveRow(params).then(function (data) {
+
+                FRAddRow.ridRow = JSON.stringify(data);
+                if (data) {
+                    $('#save' + id).prop('disabled', true);
+                    $('#edit' + id).prop('disabled', false);
+                    if (editable === 'N') {
+                        $('#delete' + id).prop('disabled', true);
+                    } else {
+                        $('#delete' + id).prop('disabled', false);
+                    }
+                    $('#par' + rowID).prop('disabled', true);
+                    $('#val' + rowID).prop('disabled', true);
+                }
+                FRAddRow.commonAddListOfRows[rowID].id = data;
+            }, function (errResponse) {
+                console.error('saveRow failed ' + errResponse);
+            });
+        } else {
+
+            commonFRAAddRowFactory.editRow(params).then(function (data) {
+
+                $('#save' + id).prop('disabled', true);
+                $('#edit' + id).prop('disabled', false);
+                if (editable === 'N') {
+                    $('#delete' + id).prop('disabled', true);
+                } else {
+                    $('#delete' + id).prop('disabled', false);
+                }
+                $('#par' + rowID).prop('disabled', true);
+                $('#val' + rowID).prop('disabled', true);
+
+            }, function (errResponse) {
+                console.error('editRow failed ' + errResponse);
+            });
+
+        }
+    }
+
+    /*
+             * @Author: V1014543
+             *  On-Change deleteRow
+             * */
+    FRAddRow.deleteRow = function (rowID, id) {
+        var desc = document.getElementById('par' + rowID).value;
+        console.log('desc--' + desc);
+        console.log('id--' + id);
+        var cy = document.getElementById('val' + rowID).value;
+        console.log('cy--' + cy);
+        console.log('id--' + rowID);
+
+        params = {
+            'qed': qed,
+            'reportId': reportId,
+            'tableName': tableName,
+            'desc': desc,
+            'cy': cy,
+            'id': id
+        };
+        commonFRAAddRowFactory.deleteRow(params).then(function (data) {
+            $state.reload();
+            if (data) {
+                $scope.commonAddListOfRows.splice(rowID, 1);
+            }
+
+        }, function (errResponse) {
+            console.error('deleteRow failed ' + errResponse);
+        })
+    }
+
+    FRAddRow.editRow = function (rowID, id, editable) {
+        var desc = document.getElementById('par' + rowID).value;
+        var cy = document.getElementById('val' + rowID).value;
+        // alert('Report Id ' + rMId);
+        $('#save' + id).prop('disabled', false);
+        $('#edit' + id).prop('disabled', true);
+        if (editable === 'N') {
+            $('#par' + rowID).prop('disabled', true);
+            $('#delete' + id).prop('disabled', true);
+        } else {
+            $('#par' + rowID).prop('disabled', false);
+            $('#delete' + id).prop('disabled', false);
+        }
+        $('#val' + rowID).prop('disabled', false);
+    }
+
+    FRAddRow.addCommonRow = function () {
+        FRAddRow.commonAddListOfRows.push({
+            'id': 0,
+            'particular': FRAddRow.DESCE,
+            'value': FRAddRow.CY
+        });
+
+    }
+
+    FRAddRow.submitIndividual = function () {
+        let params = {
+            /*'reportId': reportId.toString(),*/
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data) {
+            if (data == 1) {
+                FRAddRow.displayMessage = FRAddRow.reportName +" report has been submitted successfully.";
+                console.log(FRAddRow.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+        }, function (errResponse) {
+            console.error('Submit individual failed. ' + errResponse);
+        })
+    }
+    FRAddRow.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+});
+
+
+
+
+all the paraams that has been getting from session storage is changed, i am currently passing those values in state from previous page, use state to get those like status and all, see this below objecct which i am getting from state uselocation :
+{
+    "subReportFR_RMID": "40024003",
+    "subReportName": "Table 68:- Details of Micro Small Medium Enterprises",
+    "subReportFR_REPORTFLAG": "E",
+    "subReportFR_REPORT_JSP": "",
+    "subReportFR_REPORTJRXML": "FR_TBL_68",
+    "subReportStatus": "11",
+    "subReportFR_RPT_DATATBL": "FR_T68",
+    "subReportFR_RID": "103786",
+    "subReportFR_REPORT_SHEET": "NotesToAccounts",
+    "parent": {
+        "reportMasterId": "400240",
+        "reportName": "Notes To Accounts",
+        "tables": [
+            {
+                "subReportFR_RMID": "40024001",
+                "subReportName": "Table 66:- Other Disclosures and Notes to Accounts",
+                "subReportFR_REPORTFLAG": "E",
+                "subReportFR_REPORT_JSP": "",
+                "subReportFR_REPORTJRXML": "FR_TBL_66",
+                "subReportStatus": "11",
+                "subReportFR_RPT_DATATBL": "FR_T66",
+                "subReportFR_RID": "103695",
+                "subReportFR_REPORT_SHEET": "NotesToAccounts"
+            },
+            {
+                "subReportFR_RMID": "40024002",
+                "subReportName": "Table 67:- Disclosure for MSMED",
+                "subReportFR_REPORTFLAG": "E",
+                "subReportFR_REPORT_JSP": "",
+                "subReportFR_REPORTJRXML": "FR_TBL_67",
+                "subReportStatus": "11",
+                "subReportFR_RPT_DATATBL": "FR_T67",
+                "subReportFR_RID": "103701",
+                "subReportFR_REPORT_SHEET": "NotesToAccounts"
+            },
+            {
+                "subReportFR_RMID": "40024003",
+                "subReportName": "Table 68:- Details of Micro Small Medium Enterprises",
+                "subReportFR_REPORTFLAG": "E",
+                "subReportFR_REPORT_JSP": "",
+                "subReportFR_REPORTJRXML": "FR_TBL_68",
+                "subReportStatus": "11",
+                "subReportFR_RPT_DATATBL": "FR_T68",
+                "subReportFR_RID": "103786",
+                "subReportFR_REPORT_SHEET": "NotesToAccounts"
+            },
+            {
+                "subReportFR_RMID": "40024004",
+                "subReportName": "Table 69:- Other Disclosures",
+                "subReportFR_REPORTFLAG": "E",
+                "subReportFR_REPORT_JSP": "",
+                "subReportFR_REPORTJRXML": "FR_TBL_69",
+                "subReportStatus": "20",
+                "subReportFR_RPT_DATATBL": "FR_T69",
+                "subReportFR_RID": "103649",
+                "subReportFR_REPORT_SHEET": "NotesToAccounts"
+            }
+        ],
+        "tableRepType": "40024003,Table 68:- Details of Micro Small Medium Enterprises,E,,FR_TBL_68,11,FR_T68,103786,NotesToAccounts"
+    }
+}
+
+
+
+
+/frAddRow/getScreenParam api sample response : 
+
+[
+    {
+        "CY": null,
+        "editable": "N",
+        "DESCE": "eryey",
+        "id": "322"
+    },
+    {
+        "CY": null,
+        "editable": "N",
+        "DESCE": "hello",
+        "id": "342"
+    },
+    {
+        "CY": null,
+        "editable": "N",
+        "DESCE": "lllll",
+        "id": "362"
+    }
+]
+
+
+
+
+urls from old code :
+var REST_SERVICE_URI_0 = './frAddRow/insertOnLoad';
+    var REST_SERVICE_URI_1 = './frAddRow/getScreenParam';
+    var REST_SERVICE_URI_2 = './frAddRow/saveRow';
+    var REST_SERVICE_URI_3 = './frAddRow/deleteRow';
+    var REST_SERVICE_URI_4 = './frAddRow/editRow';
+    var REST_SERVICE_URI_5 = './frAddRow/getRowId';
+    var REST_SERVICE_URI_6 = './frAddRow/frAddRow';
+
+
+
+
+fyi in my new react project i am using common callapi component for datafetchiing, in apio call you just use tthe callapi and pass url, payload, 'POST', common snackbar (snackbar('message', 'error')) for showing snackbar for different action, common forminput for data input in tables. Import those and use as per the use.
