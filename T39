@@ -1,0 +1,679 @@
+T39.jsp : 
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1012297
+  Date: 29-01-2024
+  Time: 11:38
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+</head>
+<%@ page contentType="text/html;charset=UTF-8" %>
+<html>
+<head>
+    <script>
+
+        $(".decimal-2-places").numeric({
+            decimalPlaces: 2,
+            negative: true
+        });
+
+        // calculations for Screen
+        function calculationsold() {
+            document.getElementById('Y060').value = parseFloat((document.getElementById('Y040').value)+ (document.getElementById('Y050').value)).toFixed(2);
+            if(isNaN(document.getElementById('Y060').value))
+            {
+                document.getElementById('Y060').value=parseFloat(0.00);
+            }
+            document.getElementById('Y070').value = parseFloat((document.getElementById('Y080').value) + (document.getElementById('Y090').value) + (document.getElementById('Y100').value)).toFixed(2);
+            if(isNaN(document.getElementById('Y070').value))
+            {
+                document.getElementById('Y070').value=parseFloat(0.00);
+            }
+            document.getElementById('Y110').value = parseFloat((document.getElementById('Y060').value) - (document.getElementById('Y070').value)).toFixed(2);
+            if(isNaN(document.getElementById('Y110').value))
+            {
+                document.getElementById('Y110').value=parseFloat(0.00);
+            }
+            document.getElementById('Y150').value = parseFloat((document.getElementById('Y120').value) + (document.getElementById('Y130').value) - (document.getElementById('Y140').value)).toFixed(2);
+            if(isNaN(document.getElementById('Y150').value))
+            {
+                document.getElementById('Y150').value=parseFloat(0.00);
+            }
+            document.getElementById('Y190').value = parseFloat((document.getElementById('Y160').value) + (document.getElementById('Y170').value) - (document.getElementById('Y180').value)).toFixed(2);
+            if(isNaN(document.getElementById('Y190').value))
+            {
+                document.getElementById('Y190').value=parseFloat(0.00);
+            }
+        }
+
+        function checkAmountT39(numVal,modelName){
+            let amt = document.getElementById(numVal).value;
+
+            if(amt != 0 || amt != 0.00){
+                amt=amt.replace(/^0+/, "");
+            }
+            document.getElementById(numVal).value=amt;
+            if (amt.match(/\s/g)) {
+                alert("Space is not allowed");
+                document.getElementById(numVal).value = parseFloat(0.00);
+                document.getElementById(numVal).focus();
+                return false;
+            }
+            if (isNaN(amt)) {
+                alert("Please enter Numeric Value only");
+                document.getElementById(numVal).value = parseFloat(0.00);
+                document.getElementById(numVal).focus();
+                return false;
+            }
+            let c = /^(?:\-?\d{1,16}\.\d{1,2}|\-?\d{1,16})$/;
+            if (c.test(amt) || amt === "") {
+                let idot = amt.indexOf('.');
+                if(idot === -1 ){
+                    if(amt === ""){
+                        document.getElementById(numVal).value = amt.concat("0.00");
+                    }
+                    else {
+                        document.getElementById(numVal).value = amt.concat(".00");
+                    }
+                }
+                else if(idot !== -1 && amt.charAt(idot+2) === "" ){
+                    document.getElementById(numVal).value = amt.concat("0");
+                }
+            } else {
+                alert("Amount is not allowed more than 15 digits and two decimal digits.");
+                document.getElementById(numVal).value = parseFloat(0.00);
+                document.getElementById(numVal).focus();
+                return false;
+            }
+            return true;
+        }
+
+
+    </script>
+    <style>
+        .form-control {
+            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+            font-weight: 450;
+            font-size: initial;
+            line-height: 1.5em;
+            width: 100%;
+            text-align: right;
+        }
+
+        .centered {
+            text-align: center;
+            vertical-align: center;
+        }
+
+        #table1 {
+            width: 100%;
+        }
+
+        td {
+            border: 1px solid #ccc;
+            padding: 0;
+            margin: 0;
+        }
+
+        tr {
+            height: 3em;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+    </style>
+    <!--        <script src="./resources/js/frValidations.js"></script>-->
+</head>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container" style="border-radius: 20px;"
+                 ng-init="FRDiscAsset.insertOrUpdate();
+                    ">
+                <div class="col-xs-1">
+                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()"
+                            style="margin-bottom: 30px;">
+                        <i class="material-icons">arrow_left</i>
+                    </button>
+                </div>
+                <div class="col-xs-11">
+                    <h3>Disclosure relating to Assets Quality</h3>
+                </div>
+                <table class="table table-striped" id="table1">
+                    <thead style="background-color:#34495E; font-weight:600 ; color:white;border-radius: 10px;">
+                    <tr>
+                        <td class="centered" rowspan="2"> Particulars</td>
+                       <!-- <td rowspan="2" class="centered"></td>-->
+                        <td class="centered"> Current Year</td>
+                    </tr>
+                   <!-- <tr>
+                        <td class="centered"> X010</td>
+                    </tr>-->
+                    </thead>
+
+                    <!--<tbody>-->
+                    <!--INP 1-->
+                    <tr>
+                        <td style="padding-left: 10px;"> Disclosure relating to assets quality</td>
+                       <!-- <td style="text-align: center;"> Y010</td>-->
+                        <td><textarea type="text" ng-model="FRDiscAsset.row.CY1"
+                                      style="text-align:left;resize: none;height: 130px; width:fit-content();"
+                                      maxlength="4000" id="CY1"
+                                      ng-blur="FRDiscAsset.SaveData('CY1', FRDiscAsset.row.TBCODE1)"
+                                      class="form-control"/></td>
+                    </tr>
+
+                    <!--INP2-->
+                    <tr>
+                        <td style="padding-left: 10px;">Non performing assets</td>
+                       <!-- <td style="text-align: center;"> Y020</td>-->
+                        <td><textarea type="text" ng-model="FRDiscAsset.row.CY2"
+                                      style="text-align:left;resize: none;height: 130px; width:fit-content();"
+                                      maxlength="4000" id="CY2"
+                                      ng-blur="FRDiscAsset.SaveData('CY2', FRDiscAsset.row.TBCODE2);"
+                                      class="form-control"/></td>
+                    </tr>
+
+                    <!--INP3-->
+                    <tr>
+                        <td style="padding-left: 10px;"> 1) Net NPAs to net advances (%)</td>
+                        <!--<td style="text-align: center;"> Y030</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY3"
+                                   id="Y030" placeholder="0.00%"
+                                   style="text-align:right;" maxlength="5"
+                                   onblur="checkPercentage('Y030')"
+                                   ng-blur="FRDiscAsset.SaveData('Y030', FRDiscAsset.row.TBCODE3);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP 4-->
+                    <tr>
+                        <td style="padding-left: 10px;">2) Movement of NPAs (Gross)</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+
+
+                    <!--INP5-->
+                    <tr>
+                        <td style="padding-left: 50px"> a) Opening balance</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y040</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY4"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y040" placeholder="0.00"
+                                   onblur="checkTotalAmount('Y040');"
+                                   ng-blur="FRDiscAsset.SaveData('Y040', FRDiscAsset.row.TBCODE5); FRDiscAsset.SaveData('Y060', FRDiscAsset.row.TBCODE7);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+                    <!--INP6-->
+                    <tr>
+                        <td style="padding-left: 50px"> b) Additions during the year</td>
+                       <!-- <td style="text-align: center;"> Y050</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY6"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y050" placeholder="0.00"
+                                   onblur="checkAmountT39('Y050');"
+                                   ng-blur="FRDiscAsset.SaveData('Y050', FRDiscAsset.row.TBCODE6);FRDiscAsset.SaveData('Y060', FRDiscAsset.row.TBCODE7);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP7-->
+                    <tr>
+                        <td style="padding-left: 50px"> c)Gross non-performing assets including current NPA</td>
+                       <!-- <td style="text-align: center; pointer-events: none;"> Y060</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY7"
+                                   id="Y060" placeholder="0.00"
+                                   style="text-align:right;" maxlength="20"
+                                   onblur="checkAmountT39('Y060');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y060', FRDiscAsset.row.TBCODE7);"
+                                   class="form-control" disabled></td>
+                    </tr>
+
+                    <!--INP8-->
+                    <tr>
+                        <td style="padding-left: 50px"> d)Deductions from gross NPAs</td>
+                       <!-- <td style="text-align: center; pointer-events: none;"> Y070</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY8"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y070" placeholder="0.00"
+                                   onblur="checkTotalAmount('Y070');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);FRDiscAsset.SaveData('Y110', FRDiscAsset.row.TBCODE12);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+
+                    <!--INP9-->
+                    <tr>
+                        <td style="padding-left: 100px"> i)Upgradation from gross NPAs</td>
+                        <!--<td style="text-align: center;"> Y080</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY9"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y080" placeholder="0.00"
+                                   onblur="checkAmountT39('Y080');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y080', FRDiscAsset.row.TBCODE9);FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP10-->
+                    <tr>
+                        <td style="padding-left: 100px">ii)Recoveries of NPAs</td>
+                        <!--<td style="text-align: center;"> Y090</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY10"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y090" placeholder="0.00"
+                                   onblur="checkAmountT39('Y090');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y090', FRDiscAsset.row.TBCODE10);FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);"
+                                   class="form-control"></td>
+                    </tr>
+
+
+                    <!--INP11-->
+                    <tr>
+                        <td style="padding-left: 100px"> iii)Write-off on NPAs</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y100</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY11"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y100" placeholder="0.00"
+                                   onblur="checkAmountT39('Y100');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y100', FRDiscAsset.row.TBCODE11);FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);"
+                                   class="form-control"></td>
+                    </tr>
+
+
+                    <!--INP12-->
+                    <tr>
+                        <td style="padding-left: 50px">e) Closing balance</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y110</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY12"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y110" placeholder="0.00"
+                                   ng-blur="FRDiscAsset.SaveData('Y110', FRDiscAsset.row.TBCODE12);FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);FRDiscAsset.SaveData('Y080', FRDiscAsset.row.TBCODE9);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+                    <!--INP 13-->
+                    <tr style="height: 2px">
+                        <td style="padding: 5px 0px 5px 10px;">3) Movement of Net NPAs</td>
+                       <!-- <td></td>-->
+                        <td></td>
+                    </tr>
+
+                    <!--INP14-->
+                    <tr>
+                        <td style="padding-left: 50px">a) Opening balance</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y120</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY14"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y120" placeholder="0.00"
+                                   onblur=""
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y120', FRDiscAsset.row.TBCODE14);FRDiscAsset.SaveData('Y150', FRDiscAsset.row.TBCODE17);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+                    <!--INP15-->
+                    <tr>
+                        <td style="padding-left: 50px"> b) Additions during the year</td>
+                        <!--<td style="text-align: center;"> Y130</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY15"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y130" placeholder="0.00"
+                                   onblur="checkAmountT39('Y130');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y130', FRDiscAsset.row.TBCODE15);FRDiscAsset.SaveData('Y150', FRDiscAsset.row.TBCODE17);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP16-->
+                    <tr>
+                        <td style="padding-left: 50px"> c) Reductions during the year</td>
+                        <!--<td style="text-align: center;"> Y140</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY16"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y140" placeholder="0.00"
+                                   onblur="checkAmountT39('Y140');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y140', FRDiscAsset.row.TBCODE16);FRDiscAsset.SaveData('Y150', FRDiscAsset.row.TBCODE17);"
+                                   class="form-control"></td>
+                    </tr>
+
+
+                    <!--INP17-->
+                    <tr>
+                        <td style="padding-left: 50px">d) Closing balance</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y150</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY17"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y150" placeholder="0.00"
+                                   ng-blur="FRDiscAsset.SaveData('Y150', FRDiscAsset.row.TBCODE17);FRDiscAsset.SaveData('Y120', FRDiscAsset.row.TBCODE14);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+                    <!--INP18-->
+                    <tr>
+                        <td style="padding-left: 10px;">4) Movement of provisions for NPAs (excluding provisions on
+                            standard assets)
+                        </td>
+                        <!--<td></td>-->
+                        <td></td>
+                    </tr>
+
+                    <!--INP19-->
+                    <tr>
+                        <td style="padding-left: 50px"> a) Opening balance</td>
+                        <!--<td style="text-align: center; pointer-events: none;"> Y160</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY19"
+                                   style="text-align:right;" maxlength="20"
+                                   id="Y160" placeholder="0.00"
+                                   onblur=""
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y160', FRDiscAsset.row.TBCODE19);FRDiscAsset.SaveData('Y190', FRDiscAsset.row.TBCODE22);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+
+                    <!--INP20-->
+                    <tr>
+                        <td style="padding-left: 50px">b) Provisions made during the year</td>
+                       <!-- <td style="text-align: center;"> Y170</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY20"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y170" placeholder="0.00"
+                                   onblur="checkAmountT39('Y170');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y170', FRDiscAsset.row.TBCODE20);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP21-->
+                    <tr>
+                        <td style="padding-left: 50px">c) Write-off/ write-back of excess provisions</td>
+                        <!--<td style="text-align: center;"> Y180</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY21"
+                                   style="text-align:right;" maxlength="19"
+                                   id="Y180" placeholder="0.00"
+                                   onblur="checkAmountT39('Y180');"
+                                   ng-blur="FRDiscAsset.calculations(); FRDiscAsset.SaveData('Y180', FRDiscAsset.row.TBCODE21);"
+                                   class="form-control"></td>
+                    </tr>
+
+                    <!--INP22-->
+                    <tr>
+                        <td style="padding-left: 50px">d) Closing balance</td>
+                       <!-- <td style="text-align: center;"> Y190</td>-->
+                        <td><input type="text" ng-model="FRDiscAsset.row.CY22"
+                                   style="text-align:right; pointer-events: none;" maxlength="20"
+                                   id="Y190" placeholder="0.00"
+                                   ng-blur="FRDiscAsset.SaveData('Y190', FRDiscAsset.row.TBCODE22);FRDiscAsset.SaveData('Y160', FRDiscAsset.row.TBCODE19);FRDiscAsset.SaveData('Y170', FRDiscAsset.row.TBCODE20);FRDiscAsset.SaveData('Y180', FRDiscAsset.row.TBCODE21);"
+                                   class="form-control" readonly></td>
+                    </tr>
+
+
+                    <!--</tbody>-->
+                </table>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="FRDiscAsset.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{FRDiscAsset.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="FRDiscAsset.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+T39Controller.js :
+
+
+app.controller('FRDiscAssetQualityController', function ($scope, $rootScope, $timeout, AES256, $state, FRDiscAssetFactory,frReturnFactory, $sessionStorage) {
+
+
+    let FRDiscAsset = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    FRDiscAsset.reportName = sessionStorage.getItem("frSubReportName");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    FRDiscAsset.row="";
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    FRDiscAsset.backToIndex = function () {
+        $state.go('frt_maker.frReturn');
+    }
+
+    function updateOnLoad() {
+        window.setTimeout(function () {
+            FRDiscAsset.SaveData('Y040', FRDiscAsset.row.TBCODE5);
+            FRDiscAsset.SaveData('Y060', FRDiscAsset.row.TBCODE7);
+            FRDiscAsset.SaveData('Y070', FRDiscAsset.row.TBCODE8);
+            FRDiscAsset.SaveData('Y110', FRDiscAsset.row.TBCODE12);
+            FRDiscAsset.SaveData('Y120', FRDiscAsset.row.TBCODE14);
+            FRDiscAsset.SaveData('Y150', FRDiscAsset.row.TBCODE17);
+            FRDiscAsset.SaveData('Y160', FRDiscAsset.row.TBCODE19);
+            FRDiscAsset.SaveData('Y190', FRDiscAsset.row.TBCODE22);
+        }, 1000);
+    }
+
+// On Empty Status Insert Desc Inside Table
+    FRDiscAsset.insertOrUpdate = function () {
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'rMId': "40022701"
+        };
+
+        // Checking RML Status
+        if (status === null || status === '') {
+            FRDiscAssetFactory.insertOnLoad(params).then(function (data) {
+                sessionStorage.setItem("frReportId", data);
+                window.setTimeout(function(){
+                    reportId = sessionStorage.getItem("frReportId");
+                    FRDiscAssetFactory.getDiscAssetQualityCYData(reportId).then(function (data) {
+                        FRDiscAsset.row = data;
+                        updateOnLoad();
+                    }, function (errResponse) {
+                        console.error('data failed. ' + errResponse);
+                    })
+                },1000);
+
+
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        } else {
+
+            // Getting CY & PY Data From DB
+            FRDiscAssetFactory.getDiscAssetQualityCYData(reportId).then(function (data) {
+                FRDiscAsset.row = data;
+                updateOnLoad();
+            }, function (errResponse) {
+                console.error('data failed. ' + errResponse);
+            })
+        }
+    }
+
+    // Setting 2 Decimal Digit
+    FRDiscAsset.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0.00;
+        }
+        return (value * 1.00);
+    }
+
+
+    $scope.$watchCollection('FRDiscAsset.row', function (newValue, oldValue) {
+
+        if (FRDiscAsset.row != undefined) { // Previous Year
+            FRDiscAsset.row.PY7 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.PY5) + parseFloat(FRDiscAsset.row.PY6)).toFixed(2);
+
+            FRDiscAsset.row.PY8 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.PY9) + parseFloat(FRDiscAsset.row.PY10) + parseFloat(FRDiscAsset.row.PY11)).toFixed(2);
+
+            FRDiscAsset.row.PY12 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.PY7) - FRDiscAsset.parseFloat(FRDiscAsset.row.PY8)).toFixed(2);
+
+            FRDiscAsset.row.CY4 = parseFloat(FRDiscAsset.row.PY12).toFixed(2);
+            FRDiscAsset.row.PY17 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.PY14) + FRDiscAsset.parseFloat(FRDiscAsset.row.PY15) - FRDiscAsset.parseFloat(FRDiscAsset.row.PY16)).toFixed(2);
+
+
+            FRDiscAsset.row.PY22 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.PY19) + FRDiscAsset.parseFloat(FRDiscAsset.row.PY20) - FRDiscAsset.parseFloat(FRDiscAsset.row.PY21)).toFixed(2);
+
+            FRDiscAsset.row.CY7 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.CY4) + FRDiscAsset.parseFloat(FRDiscAsset.row.CY6)).toFixed(2);
+
+            FRDiscAsset.row.CY8 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.CY9) + FRDiscAsset.parseFloat(FRDiscAsset.row.CY10) + FRDiscAsset.parseFloat(FRDiscAsset.row.CY11)).toFixed(2);
+
+            FRDiscAsset.row.CY12 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.CY7) - FRDiscAsset.parseFloat(FRDiscAsset.row.CY8)).toFixed(2);
+
+            FRDiscAsset.row.CY14 = FRDiscAsset.parseFloat(FRDiscAsset.row.PY17).toFixed(2);
+
+            FRDiscAsset.row.CY17 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.CY14) + FRDiscAsset.parseFloat(FRDiscAsset.row.CY15) - FRDiscAsset.parseFloat(FRDiscAsset.row.CY16)).toFixed(2);
+
+            FRDiscAsset.row.CY19 = FRDiscAsset.parseFloat(FRDiscAsset.row.PY22).toFixed(2);
+
+            FRDiscAsset.row.CY22 = FRDiscAsset.parseFloat(FRDiscAsset.parseFloat(FRDiscAsset.row.CY19) + FRDiscAsset.parseFloat(FRDiscAsset.row.CY20) - FRDiscAsset.parseFloat(FRDiscAsset.row.CY21)).toFixed(2);
+        }
+    });
+
+
+    // On-Change Saves Data
+    FRDiscAsset.SaveData = function (thisElement, tbCode) {
+
+            var value = document.getElementById(thisElement).value;
+            if (thisElement == 'CY1' || thisElement == 'CY2') {
+
+                console.log("Inside 111");
+
+            } else {
+                if(value == null || value== undefined || value==NaN)
+                {
+                    console.log("Inside NAN Save ")
+                    return false;
+                }
+                value = parseFloat(document.getElementById(thisElement).value).toFixed(2).toString();
+            }
+
+            var params = {
+                'value': aesUtil.encrypt(salt, iv, passphrase, value),
+                'tbCode': aesUtil.encrypt(salt, iv, passphrase, tbCode),
+                'qed': qed,
+                'salt': salt,
+                'iv': iv,
+                'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString())
+            }
+
+            FRDiscAssetFactory.SaveData(params).then(function (data) {
+                    console.log("Response Received :" + data);
+                },
+                function (errResponse) {
+                    console.error('failed ' + errResponse);
+                })
+
+
+    }
+
+    FRDiscAsset.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                FRDiscAsset.displayMessage = FRDiscAsset.reportName+" report has been submitted successfully.";
+                console.log(FRDiscAsset.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+
+    FRDiscAsset.calculations =function ()
+    {
+        // Current Year
+        FRDiscAsset.row.CY7 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.CY4) + parseFloat(FRDiscAsset.row.CY6)).toFixed(2);
+
+        FRDiscAsset.row.CY8 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.CY9) + parseFloat(FRDiscAsset.row.CY10) + parseFloat(FRDiscAsset.row.CY11)).toFixed(2);
+
+        FRDiscAsset.row.CY12 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.CY7) - (FRDiscAsset.row.CY8)).toFixed(2);
+
+        FRDiscAsset.row.CY14 = FRDiscAsset.parseFloat(FRDiscAsset.row.PY17).toFixed(2);
+
+        FRDiscAsset.row.CY17 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.CY14) + parseFloat(FRDiscAsset.row.CY15) - parseFloat(FRDiscAsset.row.CY16)).toFixed(2);
+
+        FRDiscAsset.row.CY19 = FRDiscAsset.parseFloat(FRDiscAsset.row.PY22).toFixed(2);
+
+        FRDiscAsset.row.CY22 = FRDiscAsset.parseFloat(parseFloat(FRDiscAsset.row.CY19) + parseFloat(FRDiscAsset.row.CY20) - parseFloat(FRDiscAsset.row.CY21)).toFixed(2);    }
+
+    FRDiscAsset.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+});
+
+
+
