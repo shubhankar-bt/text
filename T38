@@ -1,0 +1,657 @@
+T38,jsp
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1013226
+  Date: 19-02-2024
+  Time: 16:15
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <style>
+        .form-control {
+            font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+            font-weight: 400;
+            font-size: initial;
+            line-height: 1.3em;
+            width: 300px;
+            text-align: right;
+        }
+    </style>
+    <title></title>
+    <script src="./resources/js/frValidations.js"></script>
+    <script>
+
+        function Checkwatch(numVal) {
+            var no = (numVal.substring(4));
+            if(numVal.contains('CDCY')){
+                var ID='CDCY';
+            }else if(numVal.contains('IDCY')){
+                var ID='IDCY';
+            }
+
+            if (no == "2") {
+                document.getElementById(ID+'1').value= (parseFloat(document.getElementById(ID+'1').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)+1).toString()).value)).toFixed(2);
+            } else if (no == "3") {
+                document.getElementById(ID+'1').value= (parseFloat(document.getElementById(ID+'1').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)-1).toString()).value)).toFixed(2);
+            }else if (no == "5") {
+                document.getElementById(ID+'4').value= (parseFloat(document.getElementById(ID+'4').value) - parseFloat(document.getElementById(numVal).value) - parseFloat(document.getElementById(ID+(parseInt(no)+1).toString()).value)).toFixed(2);
+            } else if (no == "6") {
+                document.getElementById(ID+'4').value= (parseFloat(document.getElementById(ID+'4').value) + parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)-1).toString()).value)).toFixed(2);
+            } else if (no == "9") {
+                document.getElementById(ID+'8').value= (parseFloat(document.getElementById(ID+'8').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)+1).toString()).value)).toFixed(2);
+            } else if (no == "10") {
+                document.getElementById(ID+'8').value= (parseFloat(document.getElementById(ID+'8').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)-1).toString()).value)).toFixed(2);
+            } else if (no == "12" ) {
+                document.getElementById(ID+'11').value= (parseFloat(document.getElementById(ID+'11').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)+1).toString()).value)).toFixed(2);
+            } else if (no == "13") {
+                document.getElementById(ID+'11').value= (parseFloat(document.getElementById(ID+'11').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)-1).toString()).value)).toFixed(2);
+            } else if (no == "15") {
+                document.getElementById(ID+'14').value= (parseFloat(document.getElementById(ID+'14').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)+1).toString()).value)).toFixed(2);
+            }else if (no == "16") {
+                document.getElementById(ID+'14').value= (parseFloat(document.getElementById(ID+'14').value) - parseFloat(document.getElementById(numVal).value) + parseFloat(document.getElementById(ID+(parseInt(no)-1).toString()).value)).toFixed(2);
+            }
+        }
+
+        function checkAmount38(numVal){
+            let amt = String(document.getElementById(numVal).value);
+            amt=document.getElementById(numVal).value=amt.trim();
+            if(amt != 0 || amt != 0.00){
+                amt=amt.replace(/^0+/, "");
+            }
+
+            if (isNaN(amt)) {
+                alert("Please enter Numeric Value only");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+            let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+            if (c.test(amt) || amt === "") {
+                let idot = amt.indexOf('.');
+                if(idot === -1 ){
+                    if(amt === ""){
+                        document.getElementById(numVal).value = amt.concat("0.00");
+                    }
+                    else if((numVal=="val2") || (numVal=="val4") || (numVal=="val7")){
+                        document.getElementById(numVal).value = Math.trunc(document.getElementById(numVal).value);
+                    }else {
+                        document.getElementById(numVal).value = amt.concat(".00");
+                    }
+                }  else if((numVal=="val2") || (numVal=="val4") || (numVal=="val7")){
+                    document.getElementById(numVal).value = Math.trunc(document.getElementById(numVal).value);
+                }
+                else if(idot !== -1 && amt.charAt(idot+2) === "" ){
+                    document.getElementById(numVal).value = amt.concat("0");
+                }
+            }else if(amt.length != 0) {
+                alert("Amount is not allowed more than 15 digits and two decimal digits.");
+                Checkwatch(numVal);
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            return true;
+        }
+
+    </script>
+</head>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" ng-init="T38.insertOrUpdate();
+"
+                     style="vertical-align: inherit;">
+                    <div class="col-xs-1">
+                        <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                            <i class="material-icons">arrow_left</i>
+                        </button>
+                    </div>
+                    <div class="col-xs-11">
+                        <h3> Derivatives </h3>
+                    </div>
+                </div>
+                <div class="col-md-12" style="background: #b9def0;">
+                    <div class="row" >
+                        <div class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>Sr No</h4>
+                        </div>
+                        <div class="col-md-5" style="text-align: center; vertical-align: middle;"><h4>
+                            Particulars</h4>
+                        </div>
+                        <div class="col-md-3" style="text-align: center; vertical-align: middle;">
+                            <h4>Currency Derivative</h4>
+
+                        </div>
+                        <div class="col-md-3" style="text-align: center; vertical-align: middle;">
+                            <h4>Interest Rate Derivative</h4>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12"><p>&nbsp;</p></div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4 style="font-weight:bold">i)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle; font-weight:bold">
+                            <h4 style="font-weight:bold"> Derivatives (Notional Principal Amount)
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY1" placeholder="0.00" id="CDCY1"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('CDCY1');" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY1" placeholder="0.00" id="IDCY1"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('IDCY1');" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> a) For Hedging
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY2" placeholder="0.00" id="CDCY2"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY2');" ng-blur="T38.updateField('CDCY2'); T38.updateField('CDCY1');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY2" placeholder="0.00" id="IDCY2"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY2');" ng-blur="T38.updateField('IDCY2'); T38.updateField('IDCY1');">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> b) For Trading
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY3" placeholder="0.00" id="CDCY3"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY3');" ng-blur="T38.updateField('CDCY3'); T38.updateField('CDCY1');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY3" placeholder="0.00" id="IDCY3"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY3');" ng-blur="T38.updateField('IDCY3'); T38.updateField('IDCY1');">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle; "><h4 style="font-weight:bold">ii)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h4 style="font-weight:bold"> Marked to Market Positions [1]
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY4" placeholder="0.00" id="CDCY4"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('CDCY4');" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY4" placeholder="0.00" id="IDCY4"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('IDCY4');" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> a) Asset(+)
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY5" placeholder="0.00" id="CDCY5"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY5');" ng-blur="T38.updateField('CDCY5'); T38.updateField('CDCY4');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY5" placeholder="0.00" id="IDCY5"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY5');" ng-blur="T38.updateField('IDCY5'); T38.updateField('IDCY4');">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> b) Liability(-)
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY6" placeholder="0.00" id="CDCY6"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY6');" ng-blur="T38.updateField('CDCY6'); T38.updateField('CDCY4');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY6" placeholder="0.00" id="IDCY6"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY6');" ng-blur="T38.updateField('IDCY6'); T38.updateField('IDCY4');">
+                        </div>
+                    </div>
+
+                </div>
+
+
+
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle; "><h4 style="font-weight:bold">iii)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h4 style="font-weight:bold"> Credit exposure [2]
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY7" placeholder="0.00" id="CDCY7"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY7');" ng-blur="T38.updateField('CDCY7');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY7" placeholder="0.00" id="IDCY7"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY7');" ng-blur="T38.updateField('IDCY7');">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle; "><h4 style="font-weight:bold">iv)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h4 style="font-weight:bold"> Likely impact of one percentage change in interest rate (100* PV01)
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY8" placeholder="0.00" id="CDCY8"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('CDCY8');" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY8" placeholder="0.00" id="IDCY8"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('IDCY8');" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> a) For Hedging
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY9" placeholder="0.00" id="CDCY9"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY9');" ng-blur="T38.updateField('CDCY9'); T38.updateField('CDCY8');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY9" placeholder="0.00" id="IDCY9"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY9');" ng-blur="T38.updateField('IDCY9'); T38.updateField('IDCY8');">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> b) For Trading
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY10" placeholder="0.00" id="CDCY10"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY10');" ng-blur="T38.updateField('CDCY10'); T38.updateField('CDCY8');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY10" placeholder="0.00" id="IDCY10"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY10');" ng-blur="T38.updateField('IDCY10'); T38.updateField('IDCY8');">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle; "><h4 style="font-weight:bold">v)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h4 style="font-weight:bold"> Maximum number of (100* PV01) observed during the year
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY11" placeholder="0.00" id="CDCY11"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('CDCY11');" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY11" placeholder="0.00" id="IDCY11"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('IDCY11');" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> a) For Hedging
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY12" placeholder="0.00" id="CDCY12"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY12');" ng-blur="T38.updateField('CDCY12'); T38.updateField('CDCY11');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY12" placeholder="0.00" id="IDCY12"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY12');" ng-blur="T38.updateField('IDCY12'); T38.updateField('IDCY11');">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> b) For Trading
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY13" placeholder="0.00" id="CDCY13"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY13');" ng-blur="T38.updateField('CDCY13'); T38.updateField('CDCY11');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY13" placeholder="0.00" id="IDCY13"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY13');" ng-blur="T38.updateField('IDCY13'); T38.updateField('IDCY11');">
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-md-12">
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle; "><h4 style="font-weight:bold">vi)
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h4 style="font-weight:bold"> Minimum number of (100* PV01) observed during the year
+                            </h4></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY14" placeholder="0.00" id="CDCY14"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('CDCY14');" disabled>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY14" placeholder="0.00" id="IDCY14"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   ng-blur="T38.updateField('IDCY14');" disabled>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> a) For Hedging
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY15" placeholder="0.00" id="CDCY15"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY15');" ng-blur="T38.updateField('CDCY15'); T38.updateField('CDCY14');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY15" placeholder="0.00" id="IDCY15"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY15');" ng-blur="T38.updateField('IDCY15'); T38.updateField('IDCY14');">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <span class="col-md-1" style="text-align: center; vertical-align: middle;"><h4>
+                        </h4></span>
+                        <div class="col-md-5" style="text-align: left; vertical-align: middle;">
+                            <h5> b) For Trading
+                            </h5></div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.CDCY16" placeholder="0.00" id="CDCY16"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('CDCY16');" ng-blur="T38.updateField('CDCY16'); T38.updateField('CDCY14');">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control" ng-model="T38.row.IDCY16" placeholder="0.00" id="IDCY16"
+                                   maxlength="19" style="width:93%; text-align:right;"
+                                   onblur="checkAmount38('IDCY16');" ng-blur="T38.updateField('IDCY16'); T38.updateField('IDCY14');">
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="T38.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{T38.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T38.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+T38Controller.js:
+
+app.controller('T38Controller', function ($scope, $rootScope, $timeout, AES256, $state, T38Factory,frReturnFactory, $sessionStorage) {
+    let T38 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    T38.reportName = sessionStorage.getItem("frSubReportName");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    T38.reportId = reportId;
+    T38.row = {};
+
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    T38.backToIndex = function () {
+        $state.go('frt_maker.frReturn');
+    }
+
+    T38.insertOrUpdate = function () {
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'rMId': "40022608"
+        };
+        if (status === null || status === '') {
+            T38Factory.insertOnLoad(params).then(function (data) {
+                T38.reportId = data;
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        } else {
+            T38Factory.getT38Data(reportId).then(function (data) {
+                let dataLen = data.length;
+                T38.row = data;
+                T38.row.CDCY2= (T38.row.CDCY2).toFixed(2);
+                T38.row.CDCY3= (T38.row.CDCY3).toFixed(2);
+                T38.row.CDCY5= (T38.row.CDCY5).toFixed(2);
+                T38.row.CDCY6= (T38.row.CDCY6).toFixed(2);
+                T38.row.CDCY7= (T38.row.CDCY7).toFixed(2);
+                T38.row.CDCY9= (T38.row.CDCY9).toFixed(2);
+                T38.row.CDCY10= (T38.row.CDCY10).toFixed(2);
+                T38.row.CDCY12= (T38.row.CDCY12).toFixed(2);
+                T38.row.CDCY13= (T38.row.CDCY13).toFixed(2);
+                T38.row.CDCY15= (T38.row.CDCY15).toFixed(2);
+                T38.row.CDCY16= (T38.row.CDCY16).toFixed(2);
+                T38.row.IDCY2= (T38.row.IDCY2).toFixed(2);
+                T38.row.IDCY3= (T38.row.IDCY3).toFixed(2);
+                T38.row.IDCY5= (T38.row.IDCY5).toFixed(2);
+                T38.row.IDCY6= (T38.row.IDCY6).toFixed(2);
+                T38.row.IDCY7= (T38.row.IDCY7).toFixed(2);
+                T38.row.IDCY9= (T38.row.IDCY9).toFixed(2);
+                T38.row.IDCY10= (T38.row.IDCY10).toFixed(2);
+                T38.row.IDCY12= (T38.row.IDCY12).toFixed(2);
+                T38.row.IDCY13= (T38.row.IDCY13).toFixed(2);
+                T38.row.IDCY15= (T38.row.IDCY15).toFixed(2);
+                T38.row.IDCY16= (T38.row.IDCY16).toFixed(2);
+
+            }, function (errResponse) {
+                console.error('data failed. ' + errResponse);
+            })
+        }
+    }
+
+
+    // Setting 2 Decimal Digit
+    T38.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0.00;
+        }
+        return parseFloat(value * 1);
+    }
+
+    if (T38.row != undefined) {
+        $scope.$watchCollection('T38.row', function (newValue, oldValue) {
+
+            /*<><><><><><><><><>< validations and calculation for Previous year data & Current year data ><><><><><><><><><>*/
+            T38.row.CDCY1=T38.parseFloat(T38.parseFloat(T38.row.CDCY2) + T38.parseFloat(T38.row.CDCY3)).toFixed(2);
+            T38.row.CDCY4=T38.parseFloat(T38.parseFloat(T38.row.CDCY5) - T38.parseFloat(T38.row.CDCY6)).toFixed(2);
+            T38.row.CDCY8=T38.parseFloat(T38.parseFloat(T38.row.CDCY9) + T38.parseFloat(T38.row.CDCY10)).toFixed(2);
+            T38.row.CDCY11=T38.parseFloat(T38.parseFloat(T38.row.CDCY12) + T38.parseFloat(T38.row.CDCY13)).toFixed(2);
+            T38.row.CDCY14=T38.parseFloat(T38.parseFloat(T38.row.CDCY15) + T38.parseFloat(T38.row.CDCY16)).toFixed(2);
+
+            T38.row.IDCY1=T38.parseFloat(T38.parseFloat(T38.row.IDCY2) + T38.parseFloat(T38.row.IDCY3)).toFixed(2);
+            T38.row.IDCY4=T38.parseFloat(T38.parseFloat(T38.row.IDCY5) - T38.parseFloat(T38.row.IDCY6)).toFixed(2);
+            T38.row.IDCY8=T38.parseFloat(T38.parseFloat(T38.row.IDCY9) + T38.parseFloat(T38.row.IDCY10)).toFixed(2);
+            T38.row.IDCY11=T38.parseFloat(T38.parseFloat(T38.row.IDCY12) + T38.parseFloat(T38.row.IDCY13)).toFixed(2);
+            T38.row.IDCY14=T38.parseFloat(T38.parseFloat(T38.row.IDCY15) + T38.parseFloat(T38.row.IDCY16)).toFixed(2);
+
+
+            T38.row.CDPY1=T38.parseFloat(T38.parseFloat(T38.row.CDPY2) + T38.parseFloat(T38.row.CDPY3)).toFixed(2);
+            T38.row.CDPY4=T38.parseFloat(T38.parseFloat(T38.row.CDPY5) - T38.parseFloat(T38.row.CDPY6)).toFixed(2);
+            T38.row.CDPY8=T38.parseFloat(T38.parseFloat(T38.row.CDPY9) + T38.parseFloat(T38.row.CDPY10)).toFixed(2);
+            T38.row.CDPY11=T38.parseFloat(T38.parseFloat(T38.row.CDPY12) + T38.parseFloat(T38.row.CDPY13)).toFixed(2);
+            T38.row.CDPY14=T38.parseFloat(T38.parseFloat(T38.row.CDPY15) + T38.parseFloat(T38.row.CDPY16)).toFixed(2);
+
+            T38.row.IDPY1=T38.parseFloat(T38.parseFloat(T38.row.IDPY2) + T38.parseFloat(T38.row.IDPY3)).toFixed(2);
+            T38.row.IDPY4=T38.parseFloat(T38.parseFloat(T38.row.IDPY5) - T38.parseFloat(T38.row.IDPY6)).toFixed(2);
+            T38.row.IDPY8=T38.parseFloat(T38.parseFloat(T38.row.IDPY9) + T38.parseFloat(T38.row.IDPY10)).toFixed(2);
+            T38.row.IDPY11=T38.parseFloat(T38.parseFloat(T38.row.IDPY12) + T38.parseFloat(T38.row.IDPY13)).toFixed(2);
+            T38.row.IDPY14=T38.parseFloat(T38.parseFloat(T38.row.IDPY15) + T38.parseFloat(T38.row.IDPY16)).toFixed(2);
+
+
+        });
+    }
+
+
+
+    T38.updateField = function (value) {
+        let key = value;
+        let fieldVal = document.getElementById(value).value;
+        let reportId = T38.reportId.toString();
+        let params = {
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'key': aesUtil.encrypt(salt, iv, passphrase, key),
+            'salt': salt,
+            'iv': iv,
+            'value': aesUtil.encrypt(salt, iv, passphrase, fieldVal)
+        };
+
+
+        /*All params in payload are encrypted: V1010939*/
+        T38Factory.updateField(params).then(function (data) {
+        }, function (errResponse) {
+            console.error('update failed. ' + errResponse);
+        })
+    }
+
+    T38.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  T38.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase,  T38.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T38.displayMessage = T38.reportName+" report has been submitted successfully.";
+                console.log(T38.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T38.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+});
+
+
+
+
