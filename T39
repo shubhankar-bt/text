@@ -677,3 +677,292 @@ app.controller('FRDiscAssetQualityController', function ($scope, $rootScope, $ti
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+// --- Helper Functions ---
+
+const parseToNumber = (value) => {
+  if (value === null || typeof value === 'undefined') return 0;
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
+const validateAndFormatAmount = (value) => {
+  const trimmedValue = String(value).trim();
+  if (trimmedValue === '') return { isValid: true, value: '0.00', error: null };
+  if (/\s/g.test(trimmedValue)) return { isValid: false, value, error: 'Space is not allowed.' };
+
+  const regex = /^(?:\-?\d{1,16}\.\d{1,2}|\-?\d{1,16})$/;
+  if (!regex.test(trimmedValue)) {
+    return {
+      isValid: false,
+      value,
+      error: 'Amount cannot exceed 16 digits before the decimal and 2 digits after.',
+    };
+  }
+
+  let formattedValue = trimmedValue.replace(/^0+/, "") || '0';
+  if (formattedValue.startsWith('.')) formattedValue = '0' + formattedValue;
+  if (!formattedValue.includes('.')) {
+    formattedValue += '.00';
+  } else if (formattedValue.split('.')[1].length === 1) {
+    formattedValue += '0';
+  }
+  return { isValid: true, value: formattedValue, error: null };
+};
+
+const validateAndFormatPercentage = (value) => {
+    const numericValue = String(value).replace('%','').trim();
+    if(numericValue === '') return {isValid: true, value: '0.00%', error: null};
+
+    if(isNaN(numericValue)){
+        return {isValid: false, value, error: 'Percentage must be a numeric value.'}
+    }
+    const num = parseFloat(numericValue);
+    if(num < 0 || num > 100){
+        return {isValid: false, value, error: 'Percentage must be between 0 and 100.'}
+    }
+    const {value: formattedValue} = validateAndFormatAmount(numericValue);
+    return {isValid: true, value: `${formattedValue}%`, error: null};
+}
+
+
+// --- React Component ---
+
+export default function T39() {
+  const { state } = useLocation();
+  const report = state?.report;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [data, setData] = useState(null);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const api = useMemo(() => ({
+    fetchData: async (reportId) => callApi('/T39/getDiscAssetQualityCYData', { reportId }, 'POST'),
+    insertOnLoad: async (params) => callApi('/T39/insertOnLoad', params, 'POST'),
+    saveData: async (params) => callApi('/T39/SaveData', params, 'POST'),
+  }), [callApi]);
+
+  const runCalculations = useCallback((currentData) => {
+    if (!currentData) return null;
+    const newData = { ...currentData };
+    const format = (val) => val.toFixed(2);
+
+    [span_0](start_span)// --- Previous Year (PY) Calculations First ---[span_0](end_span)
+    const py = Array.from({ length: 22 }, (_, i) => parseToNumber(newData[`PY${i + 1}`] || '0'));
+    newData.PY7 = format(py[4] + py[5]);
+    newData.PY8 = format(py[8] + py[9] + py[10]);
+    newData.PY12 = format(parseToNumber(newData.PY7) - parseToNumber(newData.PY8));
+    newData.PY17 = format(py[13] + py[14] - py[15]);
+    newData.PY22 = format(py[18] + py[19] - py[20]);
+
+    // --- Current Year (CY) Calculations ---
+    [span_1](start_span)[span_2](start_span)// Carry-forward from PY to CY[span_1](end_span)[span_2](end_span)
+    newData.CY4 = format(parseToNumber(newData.PY12));
+    newData.CY14 = format(parseToNumber(newData.PY17));
+    newData.CY19 = format(parseToNumber(newData.PY22));
+    
+    [span_3](start_span)// Remaining CY calculations[span_3](end_span)
+    const cy = Array.from({ length: 22 }, (_, i) => parseToNumber(newData[`CY${i + 1}`] || '0'));
+    newData.CY7 = format(parseToNumber(newData.CY4) + cy[5]);
+    newData.CY8 = format(cy[8] + cy[9] + cy[10]);
+    newData.CY12 = format(parseToNumber(newData.CY7) - parseToNumber(newData.CY8));
+    newData.CY17 = format(parseToNumber(newData.CY14) + cy[14] - cy[15]);
+    newData.CY22 = format(parseToNumber(newData.CY19) + cy[19] - cy[20]);
+    
+    return newData;
+  }, []);
+
+  const saveField = useCallback(async (fieldName, value, tbCode) => {
+    if (!reportId || !tbCode) return;
+    try {
+      await api.saveData({ value, tbCode, reportId: reportId.toString() });
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar(`Failed to save field ${fieldName}!`, 'error');
+      }
+    }
+  }, [reportId, api, snackbar]);
+  
+  const handleCellChange = useCallback((item, newValue) => {
+    const fieldName = item.fieldName;
+    setData(prev => ({ ...prev, [fieldName]: newValue }));
+  }, []);
+
+  const handleCellBlur = useCallback((item, value) => {
+    if (!item || item.cellProps?.readOnly) return;
+
+    const fieldName = item.fieldName;
+    const tbCode = item.tbCode;
+    let validationResult;
+
+    if (fieldName === 'CY3') {
+        validationResult = validateAndFormatPercentage(value);
+    } else if (fieldName !== 'CY1' && fieldName !== 'CY2') {
+        validationResult = validateAndFormatAmount(value);
+    } else {
+        validationResult = { isValid: true, value: value, error: null };
+    }
+    
+    if (!validationResult.isValid) {
+      snackbar(validationResult.error, 'error');
+      return;
+    }
+
+    const formattedValue = validationResult.value;
+    const finalCalculatedState = runCalculations({ ...data, [fieldName]: formattedValue });
+    setData(finalCalculatedState);
+
+    // Save the blurred field and all calculated fields
+    saveField(fieldName, formattedValue, tbCode);
+    const calculatedFields = ['CY4', 'CY7', 'CY8', 'CY12', 'CY14', 'CY17', 'CY19', 'CY22'];
+    calculatedFields.forEach(field => {
+        const fieldIndex = parseInt(field.substring(2));
+        saveField(field, finalCalculatedState[field], finalCalculatedState[`TBCODE${fieldIndex}`]);
+    });
+
+  }, [data, runCalculations, saveField, snackbar]);
+
+  // Initial data load and calculations
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      let currentReportId = reportId;
+      try {
+        [span_4](start_span)if (!report?.subReportStatus) { // For new reports[span_4](end_span)
+          const newReportId = await api.insertOnLoad({
+            qed: user.quarterEndDate,
+            userId: user.userId,
+            rMId: '40022701',
+          });
+          setReportId(newReportId);
+          currentReportId = newReportId;
+        }
+
+        const initialData = await api.fetchData(currentReportId);
+        const calculatedData = runCalculations(initialData);
+        setData(calculatedData);
+        
+        [span_5](start_span)// Replicate updateOnLoad to save initial calculated values[span_5](end_span)
+        const calculatedFieldsToSave = {
+            CY4: calculatedData.TBCODE5,
+            CY7: calculatedData.TBCODE7,
+            CY8: calculatedData.TBCODE8,
+            CY12: calculatedData.TBCODE12,
+            CY14: calculatedData.TBCODE14,
+            CY17: calculatedData.TBCODE17,
+            CY19: calculatedData.TBCODE19,
+            CY22: calculatedData.TBCODE22,
+        };
+
+        for (const [field, tbCode] of Object.entries(calculatedFieldsToSave)) {
+            await saveField(field, calculatedData[field], tbCode);
+        }
+
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') snackbar('Failed to Fetch Data!', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, [api, report, user, runCalculations, saveField]); // Note: reportId is intentionally omitted to prevent re-running on setReportId
+  
+  const rows = useMemo(() => {
+    if (!data) return [];
+    // Define the structure of the report rows
+    return [
+      [{ title: 'Disclosure relating to assets quality' }, { dataIndex: 0, fieldName: 'CY1', tbCode: data.TBCODE1, cellProps: { inputType: 'textarea' } }],
+      [{ title: 'Non performing assets' }, { dataIndex: 1, fieldName: 'CY2', tbCode: data.TBCODE2, cellProps: { inputType: 'textarea' } }],
+      [{ title: '1) Net NPAs to net advances (%)' }, { dataIndex: 2, fieldName: 'CY3', tbCode: data.TBCODE3, cellProps: { placeholder: '0.00%' } }],
+      [{ title: '2) Movement of NPAs (Gross)', cellProps: { sx: { fontWeight: 'bold' } } }, {}],
+      [{ title: 'a) Opening balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 3, fieldName: 'CY4', cellProps: { readOnly: true } }],
+      [{ title: 'b) Additions during the year', cellProps: { sx: { pl: 4 } } }, { dataIndex: 4, fieldName: 'CY6', tbCode: data.TBCODE6 }],
+      [{ title: 'c) Gross non-performing assets including current NPA', cellProps: { sx: { pl: 4 } } }, { dataIndex: 5, fieldName: 'CY7', cellProps: { readOnly: true } }],
+      [{ title: 'd) Deductions from gross NPAs', cellProps: { sx: { pl: 4 } } }, { dataIndex: 6, fieldName: 'CY8', cellProps: { readOnly: true } }],
+      [{ title: 'i) Upgradation from gross NPAs', cellProps: { sx: { pl: 8 } } }, { dataIndex: 7, fieldName: 'CY9', tbCode: data.TBCODE9 }],
+      [{ title: 'ii) Recoveries of NPAs', cellProps: { sx: { pl: 8 } } }, { dataIndex: 8, fieldName: 'CY10', tbCode: data.TBCODE10 }],
+      [{ title: 'iii) Write-off on NPAs', cellProps: { sx: { pl: 8 } } }, { dataIndex: 9, fieldName: 'CY11', tbCode: data.TBCODE11 }],
+      [{ title: 'e) Closing balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 10, fieldName: 'CY12', cellProps: { readOnly: true } }],
+      [{ title: '3) Movement of Net NPAs', cellProps: { sx: { fontWeight: 'bold' } } }, {}],
+      [{ title: 'a) Opening balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 11, fieldName: 'CY14', cellProps: { readOnly: true } }],
+      [{ title: 'b) Additions during the year', cellProps: { sx: { pl: 4 } } }, { dataIndex: 12, fieldName: 'CY15', tbCode: data.TBCODE15 }],
+      [{ title: 'c) Reductions during the year', cellProps: { sx: { pl: 4 } } }, { dataIndex: 13, fieldName: 'CY16', tbCode: data.TBCODE16 }],
+      [{ title: 'd) Closing balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 14, fieldName: 'CY17', cellProps: { readOnly: true } }],
+      [{ title: '4) Movement of provisions for NPAs (excluding provisions on standard assets)', cellProps: { sx: { fontWeight: 'bold' } } }, {}],
+      [{ title: 'a) Opening balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 15, fieldName: 'CY19', cellProps: { readOnly: true } }],
+      [{ title: 'b) Provisions made during the year', cellProps: { sx: { pl: 4 } } }, { dataIndex: 16, fieldName: 'CY20', tbCode: data.TBCODE20 }],
+      [{ title: 'c) Write-off/ write-back of excess provisions', cellProps: { sx: { pl: 4 } } }, { dataIndex: 17, fieldName: 'CY21', tbCode: data.TBCODE21 }],
+      [{ title: 'd) Closing balance', cellProps: { sx: { pl: 4 } } }, { dataIndex: 18, fieldName: 'CY22', cellProps: { readOnly: true } }],
+    ];
+  }, [data]);
+
+  const viewData = useMemo(() => {
+    if (!data) return [];
+    // Maps the state object to a flat array for the FRReturnsReport component
+    return [
+      data.CY1, data.CY2, data.CY3, data.CY4, data.CY6, data.CY7, data.CY8, data.CY9,
+      data.CY10, data.CY11, data.CY12, data.CY14, data.CY15, data.CY16, data.CY17,
+      data.CY19, data.CY20, data.CY21, data.CY22
+    ];
+  }, [data]);
+  
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId}
+        qed={user.quarterEndDate}
+        columns={[
+          { title: 'Particulars', cellProps: { sx: { width: '60%' } } },
+          { title: 'Current Year', cellProps: { sx: { width: '40%', textAlign: 'center' } } },
+        ]}
+        rows={rows}
+        data={viewData}
+        isLoading={isLoading}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        completeButtonEnabled={true}
+      />
+    </Box>
+  );
+}
