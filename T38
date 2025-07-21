@@ -655,3 +655,322 @@ app.controller('T38Controller', function ($scope, $rootScope, $timeout, AES256, 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+// --- Helper Functions ---
+
+/**
+ * Parses a string value (which may contain commas) to a number.
+ * Returns 0 if the value is invalid or empty.
+ * @param {string | number} value The value to parse.
+ * @returns {number} The parsed number.
+ */
+const parseToNumber = (value) => {
+  if (value === null || typeof value === 'undefined') return 0;
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
+/**
+ * Validates and formats a number input according to the legacy rules.
+ * @param {string} value The input value.
+ * @returns {{isValid: boolean, value: string, error: string | null}}
+ */
+const validateAndFormatAmount = (value) => {
+  const trimmedValue = String(value).trim();
+  if (trimmedValue === '' || trimmedValue === '0' || trimmedValue === '0.00') {
+    return { isValid: true, value: '0.00', error: null };
+  }
+  // Regex to validate up to 15 digits before the decimal and 2 after.
+  const regex = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+  if (!regex.test(trimmedValue)) {
+    return {
+      isValid: false,
+      value,
+      error: 'Amount cannot exceed 15 digits before the decimal and 2 digits after.',
+    };
+  }
+
+  let formattedValue = trimmedValue;
+  if (!formattedValue.includes('.')) {
+    formattedValue += '.00';
+  } else if (formattedValue.split('.')[1].length === 1) {
+    formattedValue += '0';
+  }
+  return { isValid: true, value: formattedValue, error: null };
+};
+
+// --- React Component ---
+
+export default function T38() {
+  const { state } = useLocation();
+  const report = state?.report;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [data, setData] = useState({});
+  const [editable, setEditable] = useState(true);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  // API definitions for T38 report
+  const api = useMemo(() => ({
+    callT38FetchData: async (reportId) => {
+      return await callApi('/T38/getT38Data', { reportId }, 'POST');
+    },
+    callT38InsertOnLoad: async (params) => {
+      return await callApi('/T38/insertOnLoad', params, 'POST');
+    },
+    updateField: async (params) => {
+      return await callApi('/T38/updateField', params, 'POST');
+    },
+  }), [callApi]);
+
+  [span_0](start_span)// Performs all calculations based on the current data state[span_0](end_span)
+  const runCalculations = useCallback((currentData) => {
+    if (!currentData) return null;
+    const newData = { ...currentData };
+
+    // Parse all inputs to numbers first
+    const cd = Array.from({ length: 16 }, (_, i) => parseToNumber(newData[`CDCY${i + 1}`]));
+    const id = Array.from({ length: 16 }, (_, i) => parseToNumber(newData[`IDCY${i + 1}`]));
+
+    // Perform calculations and format to 2 decimal places
+    const format = (val) => val.toFixed(2);
+
+    // Currency Derivative (CD) Calculations
+    newData.CDCY1 = format(cd[1] + cd[2]);
+    newData.CDCY4 = format(cd[4] - cd[5]);
+    newData.CDCY8 = format(cd[8] + cd[9]);
+    newData.CDCY11 = format(cd[11] + cd[12]);
+    newData.CDCY14 = format(cd[14] + cd[15]);
+
+    // Interest Rate Derivative (ID) Calculations
+    newData.IDCY1 = format(id[1] + id[2]);
+    newData.IDCY4 = format(id[4] - id[5]);
+    newData.IDCY8 = format(id[8] + id[9]);
+    newData.IDCY11 = format(id[11] + id[12]);
+    newData.IDCY14 = format(id[14] + id[15]);
+
+    return newData;
+  }, []);
+
+  // Function to save one or more fields to the backend
+  const saveFields = useCallback(async (fieldsToSave) => {
+    if (!reportId) return;
+    for (const [key, value] of Object.entries(fieldsToSave)) {
+      try {
+        await api.updateField({
+          reportId: reportId.toString(),
+          key: key,
+          value: value.toString(),
+        });
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          snackbar(`Failed to save field ${key}!`, 'error');
+        }
+      }
+    }
+  }, [reportId, api, snackbar]);
+
+  // Handles cell value changes and triggers recalculations
+  const handleCellChange = useCallback((item, newValue) => {
+    const fieldName = item.fieldName;
+    setData(prev => {
+        const updatedData = { ...prev, [fieldName]: newValue };
+        return runCalculations(updatedData);
+    });
+  }, [runCalculations]);
+
+  // Handles validation, formatting, and saving on blur
+  const handleCellBlur = useCallback((item, value) => {
+    if (!item || item.cellProps?.readOnly) return;
+    
+    const fieldName = item.fieldName;
+    const { isValid, value: formattedValue, error } = validateAndFormatAmount(value);
+
+    if (!isValid) {
+      snackbar(error, 'error');
+      // Revert to the last valid state on error
+      setData(prev => ({...prev}));
+      return;
+    }
+
+    const oldData = { ...data };
+    const newData = runCalculations({ ...data, [fieldName]: formattedValue });
+    
+    // Set the new state with formatted and calculated values
+    setData(newData);
+
+    // Identify all changed fields (the blurred one + its calculated parents) and save them
+    const fieldsToSave = {};
+    if (oldData[fieldName] !== newData[fieldName]) {
+        fieldsToSave[fieldName] = newData[fieldName];
+    }
+    // Find calculated fields that were updated due to the change
+    Object.keys(newData).forEach(key => {
+        if(oldData[key] !== newData[key] && !fieldsToSave[key]){
+            fieldsToSave[key] = newData[key];
+        }
+    });
+
+    if (Object.keys(fieldsToSave).length > 0) {
+      saveFields(fieldsToSave);
+    }
+  }, [data, runCalculations, saveFields, snackbar]);
+
+  // Load initial data for the report on component mount
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        let initialData;
+        const reportStatus = report?.subReportStatus;
+
+        if (reportStatus === null || reportStatus === '') {
+          const newReportId = await api.callT38InsertOnLoad({
+            qed: user.quarterEndDate,
+            userId: user.userId,
+            rMId: '40022608',
+          });
+          setReportId(newReportId);
+          initialData = {}; // Start with an empty object for a new report
+        } else {
+          initialData = await api.callT38FetchData(reportId);
+        }
+
+        // Initialize all potential fields to '0.00' to prevent "NaN" issues
+        const baseData = {};
+        for (let i = 1; i <= 16; i++) {
+          baseData[`CDCY${i}`] = '0.00';
+          baseData[`IDCY${i}`] = '0.00';
+        }
+        
+        // Merge fetched data with the base structure
+        const mergedData = { ...baseData, ...initialData };
+
+        [cite_start]// Ensure all editable fields from fetched data are properly formatted [cite: 391-395]
+        Object.keys(mergedData).forEach(key => {
+            const {value} = validateAndFormatAmount(mergedData[key]);
+            mergedData[key] = value;
+        });
+
+        const calculatedData = runCalculations(mergedData);
+        setData(calculatedData);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          snackbar('Failed to Fetch Data!', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, [api, report, reportId, user, snackbar, runCalculations]);
+
+  // --- Component Render ---
+
+  // Defines the layout and data mapping for the report rows
+  const rows = useMemo(() => [
+    [{ title: 'i)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Derivatives (Notional Principal Amount)', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 0, fieldName: 'CDCY1', cellProps: { readOnly: true } }, { dataIndex: 1, fieldName: 'IDCY1', cellProps: { readOnly: true } }],
+    [{ title: '' }, { title: 'a) For Hedging' }, { dataIndex: 2, fieldName: 'CDCY2', cellProps: { readOnly: !editable } }, { dataIndex: 3, fieldName: 'IDCY2', cellProps: { readOnly: !editable } }],
+    [{ title: '' }, { title: 'b) For Trading' }, { dataIndex: 4, fieldName: 'CDCY3', cellProps: { readOnly: !editable } }, { dataIndex: 5, fieldName: 'IDCY3', cellProps: { readOnly: !editable } }],
+    
+    [{ title: 'ii)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Marked to Market Positions', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 6, fieldName: 'CDCY4', cellProps: { readOnly: true } }, { dataIndex: 7, fieldName: 'IDCY4', cellProps: { readOnly: true } }],
+    [{ title: '' }, { title: 'a) Asset (+)' }, { dataIndex: 8, fieldName: 'CDCY5', cellProps: { readOnly: !editable } }, { dataIndex: 9, fieldName: 'IDCY5', cellProps: { readOnly: !editable } }],
+    [{ title: '' }, { title: 'b) Liability (-)' }, { dataIndex: 10, fieldName: 'CDCY6', cellProps: { readOnly: !editable } }, { dataIndex: 11, fieldName: 'IDCY6', cellProps: { readOnly: !editable } }],
+    
+    [{ title: 'iii)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Credit exposure', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 12, fieldName: 'CDCY7', cellProps: { readOnly: !editable } }, { dataIndex: 13, fieldName: 'IDCY7', cellProps: { readOnly: !editable } }],
+    
+    [{ title: 'iv)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Likely impact of one percentage change in interest rate (100* PV01)', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 14, fieldName: 'CDCY8', cellProps: { readOnly: true } }, { dataIndex: 15, fieldName: 'IDCY8', cellProps: { readOnly: true } }],
+    [{ title: '' }, { title: 'a) For Hedging' }, { dataIndex: 16, fieldName: 'CDCY9', cellProps: { readOnly: !editable } }, { dataIndex: 17, fieldName: 'IDCY9', cellProps: { readOnly: !editable } }],
+    [{ title: '' }, { title: 'b) For Trading' }, { dataIndex: 18, fieldName: 'CDCY10', cellProps: { readOnly: !editable } }, { dataIndex: 19, fieldName: 'IDCY10', cellProps: { readOnly: !editable } }],
+    
+    [{ title: 'v)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Maximum number of (100* PV01) observed during the year', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 20, fieldName: 'CDCY11', cellProps: { readOnly: true } }, { dataIndex: 21, fieldName: 'IDCY11', cellProps: { readOnly: true } }],
+    [{ title: '' }, { title: 'a) For Hedging' }, { dataIndex: 22, fieldName: 'CDCY12', cellProps: { readOnly: !editable } }, { dataIndex: 23, fieldName: 'IDCY12', cellProps: { readOnly: !editable } }],
+    [{ title: '' }, { title: 'b) For Trading' }, { dataIndex: 24, fieldName: 'CDCY13', cellProps: { readOnly: !editable } }, { dataIndex: 25, fieldName: 'IDCY13', cellProps: { readOnly: !editable } }],
+
+    [{ title: 'vi)', cellProps: { sx: { fontWeight: 'bold' } } }, { title: 'Minimum number of (100* PV01) observed during the year', cellProps: { sx: { fontWeight: 'bold' } } }, { dataIndex: 26, fieldName: 'CDCY14', cellProps: { readOnly: true } }, { dataIndex: 27, fieldName: 'IDCY14', cellProps: { readOnly: true } }],
+    [{ title: '' }, { title: 'a) For Hedging' }, { dataIndex: 28, fieldName: 'CDCY15', cellProps: { readOnly: !editable } }, { dataIndex: 29, fieldName: 'IDCY15', cellProps: { readOnly: !editable } }],
+    [{ title: '' }, { title: 'b) For Trading' }, { dataIndex: 30, fieldName: 'CDCY16', cellProps: { readOnly: !editable } }, { dataIndex: 31, fieldName: 'IDCY16', cellProps: { readOnly: !editable } }],
+  ], [editable]);
+
+  // Transforms the state object into a flat array for the reusable component
+  const viewData = useMemo(() => {
+    if (!data) return [];
+    // The order must match the dataIndex in the `rows` definition
+    const orderedData = [];
+    for(let i=1; i<=16; i++){
+        orderedData.push(data[`CDCY${i}`]);
+        orderedData.push(data[`IDCY${i}`]);
+    }
+    // Remove the extra IDCY fields that don't exist in the data model (like IDCY7, which is at index 13)
+    // The loop creates 32 elements. CDCY7 is at index 12, IDCY7 is at 13.
+    // CDCY1-16 and IDCY1-16 except for IDCY7
+    const finalData = [];
+    let k=0;
+    for(let i=1; i<=16; i++){
+      finalData[k++] = data[`CDCY${i}`]
+      if(i != 7) // IDCY7 is not a field
+      finalData[k++] = data[`IDCY${i}`]
+    }
+    
+    // Correct mapping based on `rows` structure
+    const mappedData = [];
+    let cdIndex = 1;
+    let idIndex = 1;
+    for (let i = 0; i < 32; i++) {
+        if(i % 2 === 0){ // Even indices are CD
+            mappedData[i] = data[`CDCY${cdIndex++}`];
+        } else { // Odd indices are ID
+            mappedData[i] = data[`IDCY${idIndex++}`];
+        }
+    }
+    return mappedData;
+  }, [data]);
+  
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId}
+        qed={user.quarterEndDate}
+        columns={[
+          { title: 'Sr No', cellProps: { sx: { width: '5%' } } },
+          { title: 'Particulars', cellProps: { sx: { width: '55%' } } },
+          { title: 'Currency Derivative', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+          { title: 'Interest Rate Derivative', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+        ]}
+        rows={rows}
+        data={viewData}
+        isLoading={isLoading}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        completeButtonEnabled={editable}
+      />
+    </Box>
+  );
+}
+
+
