@@ -821,3 +821,276 @@ api urls for this table :
     var REST_SERVICE_URI_GET = '/AsstQlty/Get';
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Box, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+// --- Helper Functions ---
+
+const parseToNumber = (value) => {
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
+const validateAndFormatAmount = (value) => {
+  const trimmedValue = String(value).trim();
+  if (trimmedValue === '') return { isValid: true, value: '0.00', error: null };
+  if (/[+\-e\s]/g.test(trimmedValue)) return { isValid: false, value, error: 'Invalid characters in number.' };
+  
+  const regex = /^\d{1,16}(\.\d{1,2})?$/;
+  if (!regex.test(trimmedValue)) {
+    return {
+      isValid: false,
+      value,
+      error: 'Amount cannot exceed 16 digits and 2 decimal places.',
+    };
+  }
+
+  let formattedValue = trimmedValue;
+  if (!formattedValue.includes('.')) {
+    formattedValue += '.00';
+  } else if (formattedValue.split('.')[1].length === 1) {
+    formattedValue += '0';
+  }
+  return { isValid: true, value: formattedValue, error: null };
+};
+
+const validateAndFormatCount = (value) => {
+    const trimmedValue = String(value).trim();
+    if (trimmedValue === '') return { isValid: true, value: '0', error: null };
+    if (/[^0-9]/g.test(trimmedValue)) return { isValid: false, value, error: 'Borrower count must be a whole number.'};
+    if (trimmedValue.length > 16) return { isValid: false, value, error: 'Number cannot exceed 16 digits.'}
+    return {isValid: true, value: trimmedValue, error: null };
+}
+
+// --- React Component ---
+
+export default function T40() {
+  const { state } = useLocation();
+  const report = state?.report;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [data, setData] = useState(null);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const api = useMemo(() => ({
+    [span_0](start_span)fetchData: async (reportId) => callApi('/AsstQlty/Get', { reportId }, 'POST'), //[span_0](end_span)
+    [span_1](start_span)insertOnLoad: async (params) => callApi('/AsstQlty/Onload', params, 'POST'), //[span_1](end_span)
+    [span_2](start_span)saveData: async (params) => callApi('/AsstQlty/Save', params, 'POST'), //[span_2](end_span)
+  }), [callApi]);
+
+  const runCalculations = useCallback((currentData) => {
+    if (!currentData) return null;
+    const newData = { ...currentData };
+    const p = (key) => parseToNumber(newData[key]);
+    const format = (val) => val.toFixed(2);
+    
+    [span_3](start_span)[span_4](start_span)// Perform all total calculations [cite: 373-391]
+    newData.val28 = String(p('val1') + p('val10') + p('val19'));
+    newData.val29 = String(p('val2') + p('val11') + p('val20'));
+    newData.val30 = String(p('val3') + p('val12') + p('val21'));
+    
+    newData.val31 = format(p('val4') + p('val13') + p('val22'));
+    newData.val32 = format(p('val5') + p('val14') + p('val23'));
+    newData.val33 = format(p('val6') + p('val15') + p('val24'));
+    
+    newData.val34 = format(p('val7') + p('val16') + p('val25'));
+    newData.val35 = format(p('val8') + p('val17') + p('val26'));
+    newData.val36 = format(p('val9') + p('val18') + p('val27'));
+    
+    return newData;
+  }, []);
+
+  const saveField = useCallback(async (saveConfig, fieldValue) => {
+    if (!reportId || !saveConfig) return;
+    try {
+      await api.saveData({
+        reportId: reportId.toString(),
+        rowId: saveConfig.rowId.toString(),
+        columnName: saveConfig.columnName,
+        fieldValue: fieldValue,
+      });
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar(`Failed to save data!`, 'error');
+      }
+    }
+  }, [reportId, api, snackbar]);
+  
+  const handleCellChange = useCallback((item, newValue) => {
+    setData(prev => runCalculations({ ...prev, [item.fieldName]: newValue }));
+  }, [runCalculations]);
+
+  const handleCellBlur = useCallback((item, value) => {
+    if (!item || !item.saveConfig) return;
+
+    const validationFn = item.isCount ? validateAndFormatCount : validateAndFormatAmount;
+    const { isValid, value: formattedValue, error } = validationFn(value);
+    
+    if (!isValid) {
+      snackbar(error, 'error');
+      return;
+    }
+
+    const finalCalculatedState = runCalculations({ ...data, [item.fieldName]: formattedValue });
+    setData(finalCalculatedState);
+
+    [cite_start]// Save the blurred field and its dependent total field, as in the original code[span_3](end_span)[span_4](end_span)
+    saveField(item.saveConfig, formattedValue);
+    if (item.totalFieldSaveConfig) {
+      saveField(item.totalFieldSaveConfig, finalCalculatedState[item.totalFieldSaveConfig.fieldName]);
+    }
+  }, [data, runCalculations, saveField, snackbar]);
+
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      let currentReportId = reportId;
+      try {
+        if (!report?.subReportStatus) {
+          [span_5](start_span)const newReportId = await api.insertOnLoad({ rMId: '40022702' }); //[span_5](end_span)
+          setReportId(newReportId);
+          currentReportId = newReportId;
+        }
+
+        const fetchedData = await api.fetchData(currentReportId);
+
+        [span_6](start_span)// Map the fetched data array to a flat state object [cite: 556-562]
+        let mappedData = {
+          val1: fetchedData[1].T40_CDR_CY, val2: fetchedData[1].T40_SME_CY, val3: fetchedData[1].T40_OTH_CY,
+          val4: fetchedData[2].T40_CDR_CY, val5: fetchedData[2].T40_SME_CY, val6: fetchedData[2].T40_OTH_CY,
+          val7: fetchedData[3].T40_CDR_CY, val8: fetchedData[3].T40_SME_CY, val9: fetchedData[3].T40_OTH_CY,
+          val10: fetchedData[5].T40_CDR_CY, val11: fetchedData[5].T40_SME_CY, val12: fetchedData[5].T40_OTH_CY,
+          val13: fetchedData[6].T40_CDR_CY, val14: fetchedData[6].T40_SME_CY, val15: fetchedData[6].T40_OTH_CY,
+          val16: fetchedData[7].T40_CDR_CY, val17: fetchedData[7].T40_SME_CY, val18: fetchedData[7].T40_OTH_CY,
+          val19: fetchedData[9].T40_CDR_CY, val20: fetchedData[9].T40_SME_CY, val21: fetchedData[9].T40_OTH_CY,
+          val22: fetchedData[10].T40_CDR_CY, val23: fetchedData[10].T40_SME_CY, val24: fetchedData[10].T40_OTH_CY,
+          val25: fetchedData[11].T40_CDR_CY, val26: fetchedData[11].T40_SME_CY, val27: fetchedData[11].T40_OTH_CY,
+        };
+        
+        const finalData = runCalculations(mappedData);
+        setData(finalData);
+
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') snackbar('Failed to Fetch Data!', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []); // Intentionally empty to run only once
+
+  const rows = useMemo(() => {
+    // Defines the complex row structure of the report
+    const rowConfig = [
+        { type: 'header', label: 'Standard advances restructured' },
+        { type: 'data', label: 'No. of Borrowers', isCount: true, fields: ['val1', 'val2', 'val3'], saveInfo: { rowId: 2 } },
+        { type: 'data', label: 'Amount outstanding', fields: ['val4', 'val5', 'val6'], saveInfo: { rowId: 3 } },
+        { type: 'data', label: 'Sacrifice (diminution in the fair value)', fields: ['val7', 'val8', 'val9'], saveInfo: { rowId: 4 } },
+        
+        { type: 'header', label: 'Sub-standard advances restructured' },
+        { type: 'data', label: 'No. of Borrowers', isCount: true, fields: ['val10', 'val11', 'val12'], saveInfo: { rowId: 6 } },
+        { type: 'data', label: 'Amount outstanding', fields: ['val13', 'val14', 'val15'], saveInfo: { rowId: 7 } },
+        { type: 'data', label: 'Sacrifice (diminution in the fair value)', fields: ['val16', 'val17', 'val18'], saveInfo: { rowId: 8 } },
+        
+        { type: 'header', label: 'Doubtful/Loss advances restructured' },
+        { type: 'data', label: 'No. of Borrowers', isCount: true, fields: ['val19', 'val20', 'val21'], saveInfo: { rowId: 10 } },
+        { type: 'data', label: 'Amount outstanding', fields: ['val22', 'val23', 'val24'], saveInfo: { rowId: 11 } },
+        { type: 'data', label: 'Sacrifice (diminution in the fair value)', fields: ['val25', 'val26', 'val27'], saveInfo: { rowId: 12 } },
+        
+        { type: 'header', label: 'Total' },
+        { type: 'total', label: 'No. of Borrowers', fields: ['val28', 'val29', 'val30'] },
+        { type: 'total', label: 'Amount outstanding', fields: ['val31', 'val32', 'val33'] },
+        { type: 'total', label: 'Sacrifice (diminution in the fair value)', fields: ['val34', 'val35', 'val36'] },
+    ];
+
+    const dataColumns = ['T40_CDR_CY', 'T40_SME_CY', 'T40_OTH_CY'];
+    const totalColumns = ['T40_CDR_CY', 'T40_SME_CY', 'T40_OTH_CY']; // Same columns for totals
+    const totalSaveInfo = [{rowId: 14}, {rowId: 15}, {rowId: 16}]; // No. of Borrowers, Amt, Sacrifice
+
+    let dataIndex = 0;
+    return rowConfig.map(row => {
+        if(row.type === 'header') return [{title: row.label, cellProps:{sx: {fontWeight: 'bold'}}}, {}, {}, {}];
+        
+        const isTotalRow = row.type === 'total';
+        const labelCell = { title: row.label, cellProps: { sx: { pl: 4 } } };
+        const dataCells = row.fields.map((field, i) => ({
+            dataIndex: dataIndex++,
+            fieldName: field,
+            isCount: row.isCount,
+            cellProps: { readOnly: isTotalRow },
+            saveConfig: isTotalRow ? null : { rowId: row.saveInfo.rowId, columnName: dataColumns[i], fieldName: field },
+            totalFieldSaveConfig: isTotalRow ? null : { 
+                rowId: totalSaveInfo[row.isCount ? 0 : (row.label.includes('Amount') ? 1 : 2)].rowId,
+                columnName: totalColumns[i],
+                fieldName: `val${parseInt(field.replace('val', '')) + 27}` // e.g., val1's total is val28
+            }
+        }));
+        return [labelCell, ...dataCells];
+    });
+  }, []);
+
+  const viewData = useMemo(() => {
+    if (!data) return [];
+    // This order must match the dataIndex assignment in `rows`
+    return [
+        data.val1, data.val2, data.val3, data.val4, data.val5, data.val6, data.val7, data.val8, data.val9,
+        data.val10, data.val11, data.val12, data.val13, data.val14, data.val15, data.val16, data.val17, data.val18,
+        data.val19, data.val20, data.val21, data.val22, data.val23, data.val24, data.val25, data.val26, data.val27,
+        data.val28, data.val29, data.val30, data.val31, data.val32, data.val33, data.val34, data.val35, data.val36
+    ];
+  }, [data]);
+  
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId}
+        qed={user.quarterEndDate}
+        columns={[
+          { title: 'Particulars', cellProps: { sx: { width: '40%' } } },
+          { title: 'CDR Mechanism', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+          { title: 'SME Debt Restructuring', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+          { title: 'Other Mechanism', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+        ]}
+        rows={rows}
+        data={viewData}
+        isLoading={isLoading}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        completeButtonEnabled={true}
+        [cite_start]note="Banks must disclose the total amount outstanding in all the accounts / facilities of borrowers whose accounts have been restructured along with the restructured part or facility. This means even if only one of the facilities / accounts of a borrower has been restructured, the bank should also disclose the entire outstanding amount pertaining to all the facilities / accounts of that particular borrower.[span_6](end_span)"
+      />
+    </Box>
+  );
+}
+
