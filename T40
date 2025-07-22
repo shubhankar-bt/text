@@ -1214,3 +1214,251 @@ export default function T40() {
     }
 ]
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+// --- Helper Functions (Unchanged) ---
+const parseToNumber = (value) => {
+  const num = parseFloat(String(value).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+};
+
+const validateAndFormatAmount = (value) => {
+  const trimmedValue = String(value).trim();
+  if (trimmedValue === '') return { isValid: true, value: '0.00', error: null };
+  if (/[+\-e\s]/g.test(trimmedValue)) return { isValid: false, value, error: 'Invalid characters in number.' };
+  
+  const regex = /^\d{1,16}(\.\d{1,2})?$/;
+  if (!regex.test(trimmedValue)) {
+    return {
+      isValid: false,
+      value,
+      error: 'Amount cannot exceed 16 digits and 2 decimal places.',
+    };
+  }
+  let formattedValue = trimmedValue;
+  if (!formattedValue.includes('.')) formattedValue += '.00';
+  else if (formattedValue.split('.')[1].length === 1) formattedValue += '0';
+  return { isValid: true, value: formattedValue, error: null };
+};
+
+const validateAndFormatCount = (value) => {
+    const trimmedValue = String(value).trim();
+    if (trimmedValue === '') return { isValid: true, value: '0', error: null };
+    if (/[^0-9]/g.test(trimmedValue)) return { isValid: false, value, error: 'Borrower count must be a whole number.'};
+    if (trimmedValue.length > 16) return { isValid: false, value, error: 'Number cannot exceed 16 digits.'}
+    return {isValid: true, value: trimmedValue, error: null };
+}
+
+// --- React Component ---
+export default function T40() {
+  const { state } = useLocation();
+  const report = state?.report;
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [data, setData] = useState(null);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const api = useMemo(() => ({
+    fetchData: async (reportId) => callApi('/AsstQlty/Get', { reportId }, 'POST'),
+    insertOnLoad: async (params) => callApi('/AsstQlty/Onload', params, 'POST'),
+    saveData: async (params) => callApi('/AsstQlty/Save', params, 'POST'),
+  }), [callApi]);
+
+  const runCalculations = useCallback((currentData) => {
+    if (!currentData) return null;
+    const newData = { ...currentData };
+    const p = (key) => parseToNumber(newData[key]);
+    const format = (val) => val.toFixed(2);
+    
+    newData.val28 = String(p('val1') + p('val10') + p('val19'));
+    newData.val29 = String(p('val2') + p('val11') + p('val20'));
+    newData.val30 = String(p('val3') + p('val12') + p('val21'));
+    
+    newData.val31 = format(p('val4') + p('val13') + p('val22'));
+    newData.val32 = format(p('val5') + p('val14') + p('val23'));
+    newData.val33 = format(p('val6') + p('val15') + p('val24'));
+    
+    newData.val34 = format(p('val7') + p('val16') + p('val25'));
+    newData.val35 = format(p('val8') + p('val17') + p('val26'));
+    newData.val36 = format(p('val9') + p('val18') + p('val27'));
+    
+    return newData;
+  }, []);
+
+  const saveField = useCallback(async (saveConfig, fieldValue) => {
+    if (!reportId || !saveConfig) return;
+    try {
+      await api.saveData({
+        reportId: reportId.toString(),
+        rowId: saveConfig.rowId.toString(),
+        columnName: saveConfig.columnName,
+        fieldValue: fieldValue,
+      });
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') snackbar(`Failed to save data!`, 'error');
+    }
+  }, [reportId, api, snackbar]);
+  
+  const handleCellChange = useCallback((item, newValue) => {
+    setData(prev => runCalculations({ ...prev, [item.fieldName]: newValue }));
+  }, [runCalculations]);
+
+  // **UPDATED**: This handler now uses `item.cellProps.inputType` for validation
+  const handleCellBlur = useCallback((item, value) => {
+    if (!item || !item.saveConfig) return;
+
+    const validationFn = item.cellProps?.inputType === 'count' 
+        ? validateAndFormatCount 
+        : validateAndFormatAmount;
+    
+    const { isValid, value: formattedValue, error } = validationFn(value);
+    
+    if (!isValid) {
+      snackbar(error, 'error');
+      return;
+    }
+
+    const finalCalculatedState = runCalculations({ ...data, [item.fieldName]: formattedValue });
+    setData(finalCalculatedState);
+
+    saveField(item.saveConfig, formattedValue);
+    if (item.totalFieldSaveConfig) {
+      saveField(item.totalFieldSaveConfig, finalCalculatedState[item.totalFieldSaveConfig.fieldName]);
+    }
+  }, [data, runCalculations, saveField, snackbar]);
+
+  // useEffect for data loading remains the same
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      let currentReportId = reportId;
+      try {
+        if (!report?.subReportStatus) {
+          const newReportId = await api.insertOnLoad({ rMId: '40022702' });
+          setReportId(newReportId);
+          currentReportId = newReportId;
+        }
+        const fetchedData = await api.fetchData(currentReportId);
+        let mappedData = {
+          val1: fetchedData[1].T40_CDR_CY, val2: fetchedData[1].T40_SME_CY, val3: fetchedData[1].T40_OTH_CY,
+          val4: fetchedData[2].T40_CDR_CY, val5: fetchedData[2].T40_SME_CY, val6: fetchedData[2].T40_OTH_CY,
+          val7: fetchedData[3].T40_CDR_CY, val8: fetchedData[3].T40_SME_CY, val9: fetchedData[3].T40_OTH_CY,
+          val10: fetchedData[5].T40_CDR_CY, val11: fetchedData[5].T40_SME_CY, val12: fetchedData[5].T40_OTH_CY,
+          val13: fetchedData[6].T40_CDR_CY, val14: fetchedData[6].T40_SME_CY, val15: fetchedData[6].T40_OTH_CY,
+          val16: fetchedData[7].T40_CDR_CY, val17: fetchedData[7].T40_SME_CY, val18: fetchedData[7].T40_OTH_CY,
+          val19: fetchedData[9].T40_CDR_CY, val20: fetchedData[9].T40_SME_CY, val21: fetchedData[9].T40_OTH_CY,
+          val22: fetchedData[10].T40_CDR_CY, val23: fetchedData[10].T40_SME_CY, val24: fetchedData[10].T40_OTH_CY,
+          val25: fetchedData[11].T40_CDR_CY, val26: fetchedData[11].T40_SME_CY, val27: fetchedData[11].T40_OTH_CY,
+        };
+        const finalData = runCalculations(mappedData);
+        setData(finalData);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') snackbar('Failed to Fetch Data!', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  // **REFACTORED**: `rows` config is now simple and explicit
+  const rows = useMemo(() => {
+    // Save configurations for each data point
+    const getSaveConfig = (field, rowId, colName) => ({
+        saveConfig: { rowId, columnName: colName },
+        totalFieldSaveConfig: { 
+            rowId: {1:14, 2:14, 3:14, 4:15, 5:15, 6:15, 7:16, 8:16, 9:16}[rowId],
+            columnName: colName,
+            fieldName: `val${parseInt(field.replace('val', '')) + 27}`
+        }
+    });
+
+    const getRow = (label, fields, rowId, isCount = false) => ([
+        { title: label, cellProps: { sx: { pl: 4 } } },
+        { dataIndex: parseInt(fields[0].replace('val',''))-1, fieldName: fields[0], cellProps: {inputType: isCount ? 'count' : 'amount'}, ...getSaveConfig(fields[0], rowId, 'T40_CDR_CY')},
+        { dataIndex: parseInt(fields[1].replace('val',''))-1, fieldName: fields[1], cellProps: {inputType: isCount ? 'count' : 'amount'}, ...getSaveConfig(fields[1], rowId, 'T40_SME_CY')},
+        { dataIndex: parseInt(fields[2].replace('val',''))-1, fieldName: fields[2], cellProps: {inputType: isCount ? 'count' : 'amount'}, ...getSaveConfig(fields[2], rowId, 'T40_OTH_CY')},
+    ]);
+
+    return [
+        [{title: 'Standard advances restructured', cellProps:{sx: {fontWeight: 'bold'}}}, {}, {}, {}],
+        getRow('No. of Borrowers', ['val1', 'val2', 'val3'], 2, true),
+        getRow('Amount outstanding', ['val4', 'val5', 'val6'], 3),
+        getRow('Sacrifice (diminution in the fair value)', ['val7', 'val8', 'val9'], 4),
+
+        [{title: 'Sub-standard advances restructured', cellProps:{sx: {fontWeight: 'bold'}}}, {}, {}, {}],
+        getRow('No. of Borrowers', ['val10', 'val11', 'val12'], 6, true),
+        getRow('Amount outstanding', ['val13', 'val14', 'val15'], 7),
+        getRow('Sacrifice (diminution in the fair value)', ['val16', 'val17', 'val18'], 8),
+
+        [{title: 'Doubtful/Loss advances restructured', cellProps:{sx: {fontWeight: 'bold'}}}, {}, {}, {}],
+        getRow('No. of Borrowers', ['val19', 'val20', 'val21'], 10, true),
+        getRow('Amount outstanding', ['val22', 'val23', 'val24'], 11),
+        getRow('Sacrifice (diminution in the fair value)', ['val25', 'val26', 'val27'], 12),
+
+        [{title: 'Total', cellProps:{sx: {fontWeight: 'bold'}}}, {}, {}, {}],
+        [{ title: 'No. of Borrowers', cellProps: { sx: { pl: 4 } } }, { dataIndex: 27, fieldName: 'val28', cellProps: { readOnly: true } }, { dataIndex: 28, fieldName: 'val29', cellProps: { readOnly: true } }, { dataIndex: 29, fieldName: 'val30', cellProps: { readOnly: true } }],
+        [{ title: 'Amount outstanding', cellProps: { sx: { pl: 4 } } }, { dataIndex: 30, fieldName: 'val31', cellProps: { readOnly: true } }, { dataIndex: 31, fieldName: 'val32', cellProps: { readOnly: true } }, { dataIndex: 32, fieldName: 'val33', cellProps: { readOnly: true } }],
+        [{ title: 'Sacrifice (diminution in the fair value)', cellProps: { sx: { pl: 4 } } }, { dataIndex: 33, fieldName: 'val34', cellProps: { readOnly: true } }, { dataIndex: 34, fieldName: 'val35', cellProps: { readOnly: true } }, { dataIndex: 35, fieldName: 'val36', cellProps: { readOnly: true } }],
+    ];
+  }, []);
+
+  const viewData = useMemo(() => {
+    if (!data) return [];
+    return Array.from({ length: 36 }, (_, i) => data[`val${i + 1}`]);
+  }, [data]);
+  
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId}
+        qed={user.quarterEndDate}
+        columns={[
+          { title: 'Particulars', cellProps: { sx: { width: '40%' } } },
+          { title: 'CDR Mechanism', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+          { title: 'SME Debt Restructuring', cellProps: { sx: { width: '20%', textAlign: 'center' } } },
+          { title: 'Other Mechanism', cellProps: { sx: '20%', textAlign: 'center' } } },
+        ]}
+        rows={rows}
+        data={viewData}
+        isLoading={isLoading}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        completeButtonEnabled={true}
+        note="Banks must disclose the total amount outstanding in all the accounts / facilities of borrowers whose accounts have been restructured along with the restructured part or facility. This means even if only one of the facilities / accounts of a borrower has been restructured, the bank should also disclose the entire outstanding amount pertaining to all the facilities / accounts of that particular borrower."
+      />
+    </Box>
+  );
+}
+
+
