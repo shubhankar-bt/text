@@ -1,0 +1,823 @@
+AssetQuality.jsp :
+
+
+<%--
+  Created by IntelliJ IDEA.
+  User: V1014061
+  Date: 30-01-2024
+  Time: 12:22
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>AssetQuality</title>
+    <script>
+        /*function to check number in text boxes
+        @Author V1014061*/
+        function checkNumber(numVal) {
+            console.log("into check num fn" + numVal);
+
+            var val = document.getElementById(numVal).value;
+            console.log("val- " + val);
+
+            var len = val.length;
+            console.log("len ::" + len);
+
+            if (isNaN(val)) {
+                alert("Please enter Numeric Value only");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (len > 16) {
+                alert("the number should not exceed 16 digits");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (val.match(/\+/g)) {
+                alert("+ is not allowed");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (val.match(/\-/g)) {
+                alert("- is not allowed");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (val.match(/\s/g)) {
+                alert("Space is not allowed");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (val.match(/\e/g)) {
+                alert("e is not allowed");
+                document.getElementById(numVal).value = "";
+                document.getElementById(numVal).focus();
+                return false;
+            }
+
+            if (val.includes(".")) {
+                var decimal = val.split('.')[1];
+                var len = decimal.length;
+                if (len > 2) {
+                    alert("only 2 decimal digits are allowed");
+                    document.getElementById(numVal).value = "";
+                    document.getElementById(numVal).focus();
+                }
+            }
+
+            var c = /^(?:\-?\d{1,16}\.\d{1,2}|\-?\d{1,16})$/;
+
+            if (c.test(val) || val == "") {
+                console.log("in if of check c");
+                var idot = val.indexOf('.');
+                console.log("idot 2 zero append:-   " + idot);
+                if (idot == -1) {
+                    console.log("idot 2 zero append:-");
+                    if (val == "") {
+                        console.log("into blank amount append 0.00");
+                        document.getElementById(numVal).value = val.concat("0.00");
+                    } else {
+                        document.getElementById(numVal).value = val.concat(".00");
+                        console.log("idot 2 zero append:-   " + idot + "val value:- " + val.concat(".00"))
+                    }
+                } else if (idot != -1 && val.charAt(idot + 2) == "") {
+                    console.log("idot 1 zero append:-");
+                    document.getElementById(numVal).value = val.concat("0");
+                    console.log("idot 1 zero append:-   " + idot + "val value:- " + val.concat("0"))
+                }
+            }
+            return true;
+        }
+
+
+        /*function to check number in disabled text boxes
+        @author V1014061*/
+        function checkDisable(num) {
+            var val = document.getElementById(num).value;
+            var c = /^(?:\-?\d{1,16}\.\d{1,2}|\-?\d{1,16})$/;
+
+            if (c.test(val) || val == "") {
+                console.log("in if of check c");
+                var idot = val.indexOf('.');
+                console.log("idot 2 zero append:-   " + idot);
+                if (idot == -1) {
+                    console.log("idot 2 zero append:-");
+                    if (val == "") {
+                        console.log("into blank amount append 0.00");
+                        document.getElementById(num).value = val.concat("0.00");
+                    } else {
+                        document.getElementById(num).value = val.concat(".00");
+                        console.log("idot 2 zero append:-   " + idot + "val value:- " + val.concat(".00"))
+                    }
+                } else if (idot != -1 && val.charAt(idot + 2) == "") {
+                    console.log("idot 1 zero append:-");
+                    document.getElementById(num).value = val.concat("0");
+                    console.log("idot 1 zero append:-   " + idot + "val value:- " + val.concat("0"))
+                }
+            }
+            return true;
+        }
+
+
+
+        function parseFloat(value) {
+            if (isNaN(value)) {
+                value = 0;
+            }
+            return (value * 1);
+        }
+
+        function totalCDRBorrowers() {
+            let num1 = parseFloat(document.getElementById("val1").value);
+            let num2 = parseFloat(document.getElementById("val10").value);
+            let num3 = parseFloat(document.getElementById("val19").value);
+            document.getElementById("val28").value = num1 + num2 + num3;
+        }
+
+        function totalCDRAmtOut() {
+            let num4 = parseFloat(document.getElementById("val4").value);
+            let num5 = parseFloat(document.getElementById("val13").value);
+            let num6 = parseFloat(document.getElementById("val22").value);
+            document.getElementById("val31").value = num4 + num5 + num6;
+        }
+
+        function totalCDRSacrifice() {
+            let num7 = parseFloat(document.getElementById("val7").value);
+            let num8 = parseFloat(document.getElementById("val16").value);
+            let num9 = parseFloat(document.getElementById("val25").value);
+            document.getElementById("val34").value = num7 + num8 + num9;
+        }
+
+        function totalSMEBorrowers() {
+            let num10 = parseFloat(document.getElementById("val2").value);
+            let num11 = parseFloat(document.getElementById("val11").value);
+            let num12 = parseFloat(document.getElementById("val20").value);
+            document.getElementById("val29").value = num10 + num11 + num12;
+        }
+
+        function totalSMEAmtOut() {
+            let num13 = parseFloat(document.getElementById("val5").value);
+            let num14 = parseFloat(document.getElementById("val14").value);
+            let num15 = parseFloat(document.getElementById("val23").value);
+            document.getElementById("val32").value = num13 + num14 + num15;
+        }
+
+        function totalSMESacrifice() {
+            let num16 = parseFloat(document.getElementById("val8").value);
+            let num17 = parseFloat(document.getElementById("val17").value);
+            let num18 = parseFloat(document.getElementById("val26").value);
+            document.getElementById("val35").value = num16 + num17 + num18;
+        }
+
+        function totalOtherBorrowers() {
+            let num19 = parseFloat(document.getElementById("val3").value);
+            let num20 = parseFloat(document.getElementById("val12").value);
+            let num21 = parseFloat(document.getElementById("val21").value);
+            document.getElementById("val30").value = num19 + num20 + num21;
+        }
+
+        function totalOtherAmtOut() {
+            let num22 = parseFloat(document.getElementById("val6").value);
+            let num23 = parseFloat(document.getElementById("val15").value);
+            let num24 = parseFloat(document.getElementById("val24").value);
+            document.getElementById("val33").value = num22 + num23 + num24;
+        }
+
+        function totalOtherSacrifice() {
+            let num25 = parseFloat(document.getElementById("val9").value);
+            let num26 = parseFloat(document.getElementById("val18").value);
+            let num27 = parseFloat(document.getElementById("val27").value);
+            document.getElementById("val36").value = num25 + num26 + num27;
+        }
+
+    </script>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div>
+                    <section class="content">
+                        <div class="row" ng-init="AsstQlty.checkStatus();">
+                            <div>
+                                <div class="col-xs-1">
+                                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round"
+                                            onclick="history.back()">
+                                        <i class="material-icons">arrow_left</i>
+                                    </button>
+                                </div>
+
+                                <div class="col-xs-11" style="padding-left: 125px"><h3>Advances Restructured
+                                    Details</h3></div>
+
+                                <div class="col-lg-12">
+                                    <div class="row" style="background: #b9def0;height: 60px;">
+                                        <div class="col-lg-2" style="text-align:center;"><h4>Particulars</h4></div>
+                                        <div class="col-lg-1"></div>
+                                        <div class="col-lg-2" style="text-align:center;"><h4>CDR Mechanism</h4></div>
+                                        <div class="col-lg-1"></div>
+                                        <div class="col-lg-2" style="text-align:center;"><h4>SME Debt Restructuring</h4>
+                                        </div>
+                                        <div class="col-lg-4" style="text-align:center;"><h4>Other Mechanism</h4></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Standard
+                                            advances restructured</h4></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>No. of
+                                            Borrowers</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val1"
+                                                   style="text-align: right;width:300px" ng-model="value1"
+                                                   onblur="checkCount('val1');totalCDRBorrowers();" maxlength="19"
+                                                   ng-blur="AsstQlty.save(2,'T40_CDR_CY','val1');AsstQlty.save(14,'T40_CDR_CY','val28');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val2"
+                                                   style="text-align: right;width:300px" ng-model="value2"
+                                                   onblur="checkCount('val2');totalSMEBorrowers();" maxlength="19"
+                                                   ng-blur="AsstQlty.save(2,'T40_SME_CY','val2');AsstQlty.save(14,'T40_SME_CY','val29');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val3"
+                                                   style="text-align: right;width:300px" ng-model="value3"
+                                                   onblur="checkCount('val3');totalOtherBorrowers();" maxlength="19"
+                                                   ng-blur="AsstQlty.save(2,'T40_OTH_CY','val3');AsstQlty.save(14,'T40_OTH_CY','val30');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Amount
+                                            outstanding</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val4"
+                                                   style="text-align: right;width:300px" ng-model="value4" maxlength="19"
+                                                   onblur="checkNumber('val4');totalCDRAmtOut();checkDisable('val31');"
+                                                   ng-blur="AsstQlty.save(3,'T40_CDR_CY','val4');AsstQlty.save(15,'T40_CDR_CY','val31');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val5"
+                                                   style="text-align: right;width:300px" ng-model="value5" maxlength="19"
+                                                   onblur="checkNumber('val5');totalSMEAmtOut();checkDisable('val32');"
+                                                   ng-blur="AsstQlty.save(3,'T40_SME_CY','val5');AsstQlty.save(15,'T40_SME_CY','val32');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val6"
+                                                   style="text-align: right;width:300px" ng-model="value6" maxlength="19"
+                                                   onblur="checkNumber('val6');totalOtherAmtOut();checkDisable('val33');"
+                                                   ng-blur="AsstQlty.save(3,'T40_OTH_CY','val6');AsstQlty.save(15,'T40_OTH_CY','val33');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Sacrifice
+                                            (diminution in the fair value)</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val7"
+                                                   style="text-align: right;width:300px" ng-model="value7" maxlength="19"
+                                                   onblur="checkNumber('val7');totalCDRSacrifice();checkDisable('val34');"
+                                                   ng-blur="AsstQlty.save(4,'T40_CDR_CY','val7');AsstQlty.save(16,'T40_CDR_CY','val34');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val8"
+                                                   style="text-align: right;width:300px" ng-model="value8" maxlength="19"
+                                                   onblur="checkNumber('val8');totalSMESacrifice();checkDisable('val35');"
+                                                   ng-blur="AsstQlty.save(4,'T40_SME_CY','val8');AsstQlty.save(16,'T40_SME_CY','val35');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val9"
+                                                   style="text-align: right;width:300px" ng-model="value9" maxlength="19"
+                                                   onblur="checkNumber('val9');totalOtherSacrifice();checkDisable('val36');"
+                                                   ng-blur="AsstQlty.save(4,'T40_OTH_CY','val9');AsstQlty.save(16,'T40_OTH_CY','val36');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>
+                                            Sub-standard advances restructured</h4></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>No. of
+                                            Borrowers</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val10"
+                                                   style="text-align: right;width:300px" ng-model="value10" maxlength="19"
+                                                   onblur="checkCount('val10');totalCDRBorrowers();"
+                                                   ng-blur="AsstQlty.save(6,'T40_CDR_CY','val10');AsstQlty.save(14,'T40_CDR_CY','val28');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val11"
+                                                   style="text-align: right;width:300px" ng-model="value11" maxlength="19"
+                                                   onblur="checkCount('val11');totalSMEBorrowers();"
+                                                   ng-blur="AsstQlty.save(6,'T40_SME_CY','val11');AsstQlty.save(14,'T40_SME_CY','val29');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val12"
+                                                   style="text-align: right;width:300px" ng-model="value12" maxlength="19"
+                                                   onblur="checkCount('val12');totalOtherBorrowers();"
+                                                   ng-blur="AsstQlty.save(6,'T40_OTH_CY','val12');AsstQlty.save(14,'T40_OTH_CY','val30');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Amount
+                                            outstanding</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val13"
+                                                   style="text-align: right;width:300px" ng-model="value13" maxlength="19"
+                                                   onblur="checkNumber('val13');totalCDRAmtOut();checkDisable('val31');"
+                                                   ng-blur="AsstQlty.save(7,'T40_CDR_CY','val13');AsstQlty.save(15,'T40_CDR_CY','val31');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val14"
+                                                   style="text-align: right;width:300px" ng-model="value14" maxlength="19"
+                                                   onblur="checkNumber('val14');totalSMEAmtOut();checkDisable('val32');"
+                                                   ng-blur="AsstQlty.save(7,'T40_SME_CY','val14');AsstQlty.save(15,'T40_SME_CY','val32');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val15"
+                                                   style="text-align: right;width:300px" ng-model="value15" maxlength="19"
+                                                   onblur="checkNumber('val15');totalOtherAmtOut();checkDisable('val33');"
+                                                   ng-blur="AsstQlty.save(7,'T40_OTH_CY','val15');AsstQlty.save(15,'T40_OTH_CY','val33');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Sacrifice
+                                            (diminution in the fair value)</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val16"
+                                                   style="text-align: right;width:300px" ng-model="value16" maxlength="19"
+                                                   onblur="checkNumber('val16');totalCDRSacrifice();checkDisable('val34');"
+                                                   ng-blur="AsstQlty.save(8,'T40_CDR_CY','val16');AsstQlty.save(16,'T40_CDR_CY','val34');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val17"
+                                                   style="text-align: right;width:300px" ng-model="value17" maxlength="19"
+                                                   onblur="checkNumber('val17');totalSMESacrifice();checkDisable('val35');"
+                                                   ng-blur="AsstQlty.save(8,'T40_SME_CY','val17');AsstQlty.save(16,'T40_SME_CY','val35');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val18"
+                                                   style="text-align: right;width:300px" ng-model="value18" maxlength="19"
+                                                   onblur="checkNumber('val18');totalOtherSacrifice();checkDisable('val36');"
+                                                   ng-blur="AsstQlty.save(8,'T40_OTH_CY','val18');AsstQlty.save(16,'T40_OTH_CY','val36');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>
+                                            Doubtful/Loss advances restructured</h4></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>No. of
+                                            Borrowers</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val19"
+                                                   style="text-align: right;width:300px" ng-model="value19" maxlength="19"
+                                                   onblur="checkCount('val19');totalCDRBorrowers();"
+                                                   ng-blur="AsstQlty.save(10,'T40_CDR_CY','val19');AsstQlty.lsave(14,'T40_CDR_CY','val28');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val20"
+                                                   style="text-align: right;width:300px" ng-model="value20" maxlength="19"
+                                                   onblur="checkCount('val20');totalSMEBorrowers();"
+                                                   ng-blur="AsstQlty.save(10,'T40_SME_CY','val20');AsstQlty.save(14,'T40_SME_CY','val29');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val21"
+                                                   style="text-align: right;width:300px" ng-model="value21" maxlength="19"
+                                                   onblur="checkCount('val21');totalOtherBorrowers();"
+                                                   ng-blur="AsstQlty.save(10,'T40_OTH_CY','val21');AsstQlty.save(14,'T40_OTH_CY','val30');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Amount
+                                            outstanding</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val22"
+                                                   style="text-align: right;width:300px" ng-model="value22" maxlength="19"
+                                                   onblur="checkNumber('val22');totalCDRAmtOut();checkDisable('val31');"
+                                                   ng-blur="AsstQlty.save(11,'T40_CDR_CY','val22');AsstQlty.save(15,'T40_CDR_CY','val31');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val23"
+                                                   style="text-align: right;width:300px" ng-model="value23" maxlength="19"
+                                                   onblur="checkNumber('val23');totalSMEAmtOut();checkDisable('val32');"
+                                                   ng-blur="AsstQlty.save(11,'T40_SME_CY','val23');AsstQlty.save(15,'T40_SME_CY','val32');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val24"
+                                                   style="text-align: right;width:300px" ng-model="value24" maxlength="19"
+                                                   onblur="checkNumber('val24');totalOtherAmtOut();checkDisable('val33');"
+                                                   ng-blur="AsstQlty.save(11,'T40_OTH_CY','val24');AsstQlty.save(15,'T40_OTH_CY','val33');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Sacrifice
+                                            (diminution in the fair value)</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val25"
+                                                   style="text-align: right;width:300px" ng-model="value25" maxlength="19"
+                                                   onblur="checkNumber('val25');totalCDRSacrifice();checkDisable('val34');"
+                                                   ng-blur="AsstQlty.save(12,'T40_CDR_CY','val25');AsstQlty.save(16,'T40_CDR_CY','val34');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val26"
+                                                   style="text-align: right;width:300px" ng-model="value26" maxlength="19"
+                                                   onblur="checkNumber('val26');totalSMESacrifice();checkDisable('val35');"
+                                                   ng-blur="AsstQlty.save(12,'T40_SME_CY','val26');AsstQlty.save(16,'T40_SME_CY','val35');">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" class="form-control" id="val27"
+                                                   style="text-align: right;width:300px" ng-model="value27" maxlength="19"
+                                                   onblur="checkNumber('val27');totalOtherSacrifice();checkDisable('val36');"
+                                                   ng-blur="AsstQlty.save(12,'T40_OTH_CY','val27');AsstQlty.save(16,'T40_OTH_CY','val36');">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Total</h4>
+                                        </div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                        <div class="col-lg-3 form-group"></div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>No. of
+                                            Borrowers</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val28"
+                                                   style="text-align: right;width:300px" ng-model="value28">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val29"
+                                                   style="text-align: right;width:300px" ng-model="value29">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val30"
+                                                   style="text-align: right;width:300px" ng-model="value30">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Amount
+                                            outstanding</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val31"
+                                                   style="text-align: right;width:300px" ng-model="value31">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val32"
+                                                   style="text-align: right;width:300px" ng-model="value32">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val33"
+                                                   style="text-align: right;width:300px" ng-model="value33">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-12 ">
+                                    <div class="row">
+                                        <div class="col-lg-3" style="padding-top:25px;padding-left:60px;"><h4>Sacrifice
+                                            (diminution in the fair value)</h4></div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val34"
+                                                   style="text-align: right;width:300px" ng-model="value34">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val35"
+                                                   style="text-align: right;width:300px" ng-model="value35">
+                                        </div>
+                                        <div class="col-lg-3 form-group">
+                                            <input type="text" disabled class="form-control" id="val36"
+                                                   style="text-align: right;width:300px" ng-model="value36">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <div class="row">
+                    <p><b>Note:</b> <br>
+                        Banks must disclose the total amount outstanding in all the accounts / facilities of
+                        borrowers whose accounts have been restructured along with the restructured part or facility.
+                        This means even if only one of the<br>
+                        facilities / accounts of a borrower has been restructured, the bank should also disclose the
+                        entire outstanding amount pertaining to all the facilities / accounts of that
+                        particular borrower.</p>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="AsstQlty.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{AsstQlty.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="AsstQlty.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+controller :
+
+app.controller('AssetQualityController', function ($scope, $rootScope, $timeout, AES256, $state, AssetQualityFactory,frReturnFactory) {
+    var AsstQlty = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let reportId = sessionStorage.getItem("frReportId");
+    let status = sessionStorage.getItem("frReportSts");
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    AsstQlty.reportName = sessionStorage.getItem("frSubReportName");
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+
+    let params = {
+        'qed': qed,
+        'reportId': reportId,
+        'userId': userId,
+        'rMId': '40022702'
+    };
+    console.log('qed:' + qed);
+    console.log('reportId:' + reportId);
+    console.log('userId:' + userId);
+
+
+    /*function to check status
+     @author V1014061*/
+    AsstQlty.checkStatus = function () {
+        console.log("status:" + status);
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'reportId': reportId,
+            'rMId': '40022702'
+        };
+
+        if (status === null || status === '') {
+            AssetQualityFactory.onLoadDetails(params).then(function (data) {
+                    reportId = data;
+                    console.log("inside onload details");
+                    console.log("reportId:" + reportId);
+            },
+                function (errResponse) {
+                    console.error('data not inserted. ' + errResponse);
+                })
+        } else {
+            getValues();
+        }
+    }
+
+
+    /*function to display the values on the screen
+    @author V1014061*/
+    function getValues() {
+        AssetQualityFactory.getValues(params).then(function (data) {
+
+            console.log("get values in controller file");
+            console.log("data:" +data);
+
+            document.getElementById('val1').value = data[1].T40_CDR_CY;
+            document.getElementById('val2').value = data[1].T40_SME_CY;
+            document.getElementById('val3').value = data[1].T40_OTH_CY;
+            document.getElementById('val4').value = data[2].T40_CDR_CY;
+            document.getElementById('val5').value = data[2].T40_SME_CY;
+            document.getElementById('val6').value = data[2].T40_OTH_CY;
+            document.getElementById('val7').value = data[3].T40_CDR_CY;
+            document.getElementById('val8').value = data[3].T40_SME_CY;
+            document.getElementById('val9').value = data[3].T40_OTH_CY;
+            document.getElementById('val10').value = data[5].T40_CDR_CY;
+            document.getElementById('val11').value = data[5].T40_SME_CY;
+            document.getElementById('val12').value = data[5].T40_OTH_CY;
+            document.getElementById('val13').value = data[6].T40_CDR_CY;
+            document.getElementById('val14').value = data[6].T40_SME_CY;
+            document.getElementById('val15').value = data[6].T40_OTH_CY;
+            document.getElementById('val16').value = data[7].T40_CDR_CY;
+            document.getElementById('val17').value = data[7].T40_SME_CY;
+            document.getElementById('val18').value = data[7].T40_OTH_CY;
+            document.getElementById('val19').value = data[9].T40_CDR_CY;
+            document.getElementById('val20').value = data[9].T40_SME_CY;
+            document.getElementById('val21').value = data[9].T40_OTH_CY;
+            document.getElementById('val22').value = data[10].T40_CDR_CY;
+            document.getElementById('val23').value = data[10].T40_SME_CY;
+            document.getElementById('val24').value = data[10].T40_OTH_CY;
+            document.getElementById('val25').value = data[11].T40_CDR_CY;
+            document.getElementById('val26').value = data[11].T40_SME_CY;
+            document.getElementById('val27').value = data[11].T40_OTH_CY;
+            document.getElementById('val28').value = data[13].T40_CDR_CY;
+            document.getElementById('val29').value = data[13].T40_SME_CY;
+            document.getElementById('val30').value = data[13].T40_OTH_CY;
+            document.getElementById('val31').value = data[14].T40_CDR_CY;
+            document.getElementById('val32').value = data[14].T40_SME_CY;
+            document.getElementById('val33').value = data[14].T40_OTH_CY;
+            document.getElementById('val34').value = data[15].T40_CDR_CY;
+            document.getElementById('val35').value = data[15].T40_SME_CY;
+            document.getElementById('val36').value = data[15].T40_OTH_CY;
+
+        }, function (errResponse) {
+            console.error('data failed to display' + errResponse);
+        })
+    }
+
+
+    /*function to save the user input values to database
+     @Author V1014061*/
+    AsstQlty.save = function (rowId, columnName, value) {
+        console.log("in save function");
+        let fieldValue = document.getElementById(value).value;
+        let params = {
+            'salt': salt,
+            'iv': iv,
+            'rowId':  aesUtil.encrypt(salt, iv, passphrase, rowId.toString()),
+            'qed':  aesUtil.encrypt(salt, iv, passphrase, qed),
+            'reportId':  aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'fieldValue': aesUtil.encrypt(salt, iv, passphrase, fieldValue),
+            'columnName': aesUtil.encrypt(salt, iv, passphrase, columnName)
+        }
+        console.log("row id:" + rowId);
+        console.log("columnName" + columnName);
+        console.log("field value:" +fieldValue);
+        AssetQualityFactory.save(params).then(function (data) {
+                console.log("save in js file");
+            },
+            function (errResponse) {
+                console.error('data not updated.' + errResponse);
+            })
+    }
+
+    AsstQlty.submitIndividual = function (){
+        let params = {
+            /*'reportId' :  reportId.toString(),*/
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                AsstQlty.displayMessage = AsstQlty.reportName+" report has been submitted successfully.";
+                console.log(AsstQlty.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    AsstQlty.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+api urls for this table :
+
+    var REST_SERVICE_URI_ONLOAD = '/AsstQlty/Onload';
+    var REST_SERVICE_URI_SAVE = '/AsstQlty/Save';
+    var REST_SERVICE_URI_GET = '/AsstQlty/Get';
+
+
