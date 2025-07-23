@@ -1,0 +1,513 @@
+<%--
+  Created by IntelliJ IDEA.
+  User: V1013226
+  Date: 06-03-2024
+  Time: 12:31
+  To change this template use File | Settings | File Templates.
+--%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+    <style>
+
+        .head-style {
+            text-align: center;
+            vertical-align: middle;
+            width: 280px;
+        }
+
+        .head1 {
+            top: 35px;
+            position: sticky;
+            z-index: 20;
+        }
+
+        .fixed-header {
+            z-index: 50;
+        }
+
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+
+</head>
+<body>
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">FR Return</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row" style="padding-bottom: 10px">
+                    <button class="btn btn-primary btn-fab btn-fab-mini btn-round" onclick="history.back()">
+                        <i class="material-icons">arrow_back</i>
+                    </button>
+                </div>
+                <div class="row table-responsive">
+                    <table class="table my-table table-hover table-bordered no-padding dataTable table-freeze-multi"
+                           data-scroll-height="650" data-cols-number="1">
+                        <caption><h3>Details of Expenses</h3></caption>
+                        <thead>
+                        <tr style="background-color: #b9def0; height: 40px;">
+                            <th class="head-style fixed-header head1" ng-hide="true">Row Id</th>
+                            <th style="text-align: center;vertical-align: middle;" class="head-style">Details of
+                                Expenses
+                            </th>
+                            <th style="text-align: center;vertical-align: middle;" class="head-style">Details of expense
+                                in excess of 1% of total income
+                            </th>
+                            <th style="text-align: center;vertical-align: middle;" class="head-style">Amount of expense
+                                in excess of 1% of total income
+                            </th>
+                            <th style="text-align: center;vertical-align: middle; width:150px">Action</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr data-ng-repeat="row in T62ListOfRows track by $index">
+                            <script type="text/javascript">
+                                $(".decimal-2-places").numeric({decimalPlaces: 2});
+
+                            </script>
+                            <td ng-hide="true">
+                                <input type="text" style="background-image:none" class="form-control"
+                                       ng-model="row.srno" name="srno"
+                                       id="value0" placeholder="Enter value"/>
+                                <input type="text" style="background-image:none" class="form-control"
+                                       ng-model="row.editable" name="editable"
+                                       id="value1" placeholder="Enter value"/>
+                            </td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none" class="form-control inpt1"
+                                       ng-model="row.insertedVal1" name="insertedVal1" ng-change="T62.inputChange();"
+                                       id="value1{{row.srno}}" maxlength="4000"
+                                       placeholder="Enter value"/>
+                            </td>
+
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none;" class="form-control inpt2"
+                                       ng-model="row.insertedVal2" name="insertedVal2" ng-change="T62.inputChange();"
+                                       id="value2{{row.srno}}" maxlength="4000"
+                                       placeholder="Enter value"/></td>
+                            <td style="width: auto">
+                                <input type="text" style="background-image:none; text-align: right"
+                                       class="form-control validate62 inpt3"
+                                       ng-model="row.insertedVal3" name="insertedVal3" ng-change="T62.inputChange();"
+                                       id="value3{{row.srno}}" maxlength="19"
+                                       placeholder="Enter value" ng-blur="T62.checkAmount62('value3'+row.srno);"/>
+                                <input type="hidden" ng-model="row.flag" id="dataFlag{{row.srno}}" value="I"/>
+
+                            </td>
+
+                            <td style="width: auto; display: flex; justify-content: space-evenly;">
+                                <button style="text-align: center;padding: 7px"
+                                        id="save{{row.srno}}" class="btn btn-success btn-sm btn-round btn1"
+                                        rel="tooltip" title="Save this Row" ng-click="T62.saveVal(row.insertedVal1,
+                                        row.insertedVal2,row.insertedVal3,row.srno, row.flag, $index,row.editable);">
+                                    <i class="material-icons">save</i>
+                                </button>
+                                <button style="text-align: center;padding: 7px"
+                                        class="btn btn-warning btn-sm btn-round btn2" id="edit{{row.srno}}"
+                                        rel="tooltip" title="Edit this Row"
+                                        ng-click="T62.editRow(row.srno, row.editable);" disabled>
+                                    <i class="material-icons">edit</i>
+                                </button>
+                                <button style="text-align: center;padding: 7px" rel="tooltip"
+                                        title="Delete this Row"
+                                        class="btn btn-danger btn-sm btn-round btn3" id="delete{{row.srno}}"
+                                        ng-click="T62.deleteRow(row.srno, $index);" disabled>
+                                    <i class="material-icons">delete</i>
+                                </button>
+
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row">
+                    <button class="btn btn-outline btn-round" style="background-color: #664162"
+                            ng-disabled="T62.addFlag"
+                            ng-click="addT62Row();">
+                        Add Row
+                    </button>
+                </div>
+                <div style="text-align: center">
+                    <button class="btn btn-success" ng-click="T62.submitIndividual()">
+                        Complete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="example-modal">
+    <div class="modal fade" id="modalSubmit">
+        <div class="modal-dialog">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <div class="modal-title"><b>Success !</b></div>
+            </div>
+            <div class="modal-content">
+                <div class="modal-body" id="popup1">
+                    <b>{{T62.displayMessage}}</b>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-round btn-success" data-dismiss="modal" ng-click="T62.redirectToFRReturn()" >Continue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+t62Controller.js:
+
+
+
+
+app.controller('T62Controller', function ($scope, $rootScope, $timeout, AES256, $state, T62Factory, $sessionStorage,frReturnFactory, blockUI) {
+
+    let T62 = this;
+    $scope.started = false;
+    $scope.change = 0;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    T62.reportName = sessionStorage.getItem("frSubReportName");
+    T62.srno = {};
+    T62.editable = {};
+    $scope.T62ListOfRows = [];
+    let idList = [];
+
+    T62.inputChange = function () {
+        $scope.change = 1;
+    }
+
+    T62.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0;
+        }
+        return parseInt(value * 1);
+    }
+
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+
+    var rmlParams = {
+        'qed': qed,
+        'userId': userId,
+        'rMId': "40023602"
+    }
+
+
+    T62.checkAmount62 = function (numVal) {
+
+        let amt = String($('#' + numVal).val());
+        if (amt != 0 || amt != 0.00) {
+            amt = document.getElementById(numVal).value = (document.getElementById(numVal).value).replaceAll(" ", "");
+            amt = amt.replace(/^0+/, "");
+        }
+        if (isNaN(amt)) {
+            alert("Please enter Numeric Value only");
+            $('#' + numVal).val("")
+            $('#' + numVal).focus();
+            return false;
+        }
+        let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+        if (c.test(amt) || amt === "") {
+            let idot = amt.indexOf('.');
+            if (idot === -1) {
+                if (amt === "") {
+                    $('#' + numVal).val(amt.concat("0.00"));
+                } else if (('#' + numVal == "val2") || ('#' + numVal == "val4") || ('#' + numVal == "val7")) {
+                    $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+                } else {
+                    $('#' + numVal).val(amt.concat(".00"));
+                }
+            } else if (('#' + numVal == "val2") || ('#' + numVal == "val4") || ('#' + numVal == "val7")) {
+                $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+            } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
+                $('#' + numVal).val(amt.concat("0"));
+            }
+        } else {
+            alert("Amount is not allowed more than 15 digits and two decimal digits.");
+            $('#' + numVal).val("");
+            $('#' + numVal).focus();
+            return false;
+        }
+
+        return true;
+    }
+
+
+    if (status == '' || status.length == 0 || status == null) {
+        T62Factory.rmlEntry(rmlParams).then(function (data) {
+            T62.reportId = reportId = data.split(":")[0];
+            status = data.split(":")[1];
+            if (status > 10) {
+                var param = {
+                    'reportId': reportId,
+                    'qed': qed
+                }
+                T62Factory.getSavedData(param).then(function (data) {
+
+                    data.forEach(function (s) {
+                        $scope.T62ListOfRows.push(s);
+                        T62.srno = T62.srno + ":" + s.srno;
+                        T62.editable = T62.editable + ":" + s.editable;
+                    });
+                    setTimeout(function () {
+                        for (let i = 1; i <= data.length; i++) {
+                            document.getElementById('value1' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('value2' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('value3' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('save' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('edit' + T62.srno.split(':')[i]).disabled = false;
+                            if (T62.editable.split(':')[i] == 'N') {
+                                document.getElementById('delete' + T62.srno.split(':')[i]).disabled = true;
+                            } else {
+                                document.getElementById('delete' + T62.srno.split(':')[i]).disabled = false;
+                            }
+                        }
+                    }, 1);
+                }, function (errorResponse) {
+                    console.log('Error while getting saved data.' );
+                });
+            }
+
+
+        }, function (errorResponse) {
+            console.log('Error while rml Insert.' );
+        });
+    } else {
+        T62Factory.getRml(rmlParams).then(function (data) {
+            T62.reportId = data;
+            if (status > 10) {
+                var param = {
+                    'reportId': reportId,
+                    'qed': qed
+                }
+                T62Factory.getSavedData(param).then(function (data) {
+                    data.forEach(function (s) {
+                        $scope.T62ListOfRows.push(s);
+                        T62.srno = T62.srno + ":" + s.srno;
+                        T62.editable = T62.editable + ":" + s.editable;
+                    });
+                    setTimeout(function () {
+                        for (let i = 1; i <= data.length; i++) {
+
+                            document.getElementById('value1' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('value2' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('value3' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('save' + T62.srno.split(':')[i]).disabled = true;
+                            document.getElementById('edit' + T62.srno.split(':')[i]).disabled = false;
+                            if (T62.editable.split(':')[i] == 'N') {
+                                document.getElementById('delete' + T62.srno.split(':')[i]).disabled = true;
+                            } else {
+                                document.getElementById('delete' + T62.srno.split(':')[i]).disabled = false;
+                            }
+                        }
+                    }, 1);
+                }, function (errorResponse) {
+                    console.log('Error while getting saved data.' );
+                });
+            }
+        }, function (errorResponse) {
+            console.log('Error while rml fetching.' );
+        });
+    }
+
+
+    $scope.addT62Row = function () {
+        var rowID;
+        T62Factory.getReportId().then(function (data) {
+            rowID = data;
+
+            if (rowID != null || rowID != undefined) {
+                blockUI.start();
+                $scope.T62ListOfRows.push({
+                    'srno': rowID,
+                    'insertedVal1': $scope.insertedVal1,
+                    'insertedVal2': $scope.insertedVal2,
+                    'insertedVal3': $scope.insertedVal3,
+                });
+                blockUI.stop();
+            }
+
+        }, function (errResponse) {
+            console.error('Error while getting rowId +' + errResponse);
+        });
+    }
+
+
+    T62.saveVal = function (amt1, amt2, amt3, rowId, dataFlag, index, editable) {
+
+        if ((amt1 == "" || amt1 == null) && (amt2 == "" || amt2 == null) && (amt3 == null || amt3 == "")) {
+            alert('Please enter some data to save row.');
+        } else if ($scope.change == 0) {
+            alert('No modifications to save!');
+        } else if ((amt1 == "" || amt1 == null) || (amt2 == "" || amt2 == null) || (amt3 == null || amt3 == "")) {
+            alert('All fields are mandatory.');
+        } else {
+            let dataFlag1 = $('#dataFlag' + rowId).val();
+            let key = (parseInt(rowId)).toString();
+            let T62_DESC = amt1;
+            let T62_DEE_CY = amt2;
+            let T62_AEE_CY = parseFloat(amt3);
+            let reportId = T62.reportId.toString();
+            let params = {
+                'reportId1': aesUtil.encrypt(salt, iv, passphrase, reportId),
+                'key': aesUtil.encrypt(salt, iv, passphrase, key),
+                'salt': salt,
+                'iv': iv,
+
+                'value1': aesUtil.encrypt(salt, iv, passphrase, T62_DESC.toString()),
+                'value2': aesUtil.encrypt(salt, iv, passphrase, T62_DEE_CY.toString()),
+                'value3': aesUtil.encrypt(salt, iv, passphrase, T62_AEE_CY.toString()),
+                'value4': aesUtil.encrypt(salt, iv, passphrase, qed.toString()),
+                'value5': aesUtil.encrypt(salt, iv, passphrase, dataFlag1.toString()),
+            }
+
+            T62Factory.saveRow(params).then(function (data) {
+                if (data) {
+                    $('#dataFlag' + index).val('U');
+                    $('#save' + rowId).prop('disabled', true);
+                    $('#edit' + rowId).prop('disabled', false);
+                    if (editable == 'N') {
+                        $('#delete' + rowId).prop('disabled', true);
+                    } else {
+                        $('#delete' + rowId).prop('disabled', false);
+                    }
+                    $('#value1' + rowId).prop('disabled', true);
+                    $('#value2' + rowId).prop('disabled', true);
+                    $('#value3' + rowId).prop('disabled', true);
+                }
+            }, function (errResponse) {
+                console.log('Error response for saveRow' );
+            })
+        }
+
+    }
+
+    T62.editRow = function (rowId, editable) {
+        $('#dataFlag' + rowId).val('U');
+        $('#save' + rowId).prop('disabled', false);
+        $('#edit' + rowId).prop('disabled', true);
+
+        if (editable == 'N') {
+            $('#value1' + rowId).prop('disabled', true);
+            $('#delete' + rowId).prop('disabled', true);
+        } else {
+            $('#value1' + rowId).prop('disabled', false);
+            $('#delete' + rowId).prop('disabled', false);
+        }
+        $('#value2' + rowId).prop('disabled', false);
+        $('#value3' + rowId).prop('disabled', false);
+    }
+
+    T62.deleteRow = function (rowId, index) {
+        var params = {
+            'rowId': rowId,
+            'reportId': reportId,
+            'qed': qed
+        }
+
+        T62Factory.deleteRow(params).then(function (data) {
+            if (data) {
+                $scope.T62ListOfRows.splice(index, 1);
+            }
+        }, function (errResponse) {
+            console.log('Error response for deleteRow' );
+        });
+
+    }
+    T62.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  T62.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, T62.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T62.displayMessage = T62.reportName +" report has been submitted successfully.";
+                console.log(T62.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T62.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+
+});
+
+
+
+
+Api urls :
+
+ const T62_GET_ROW_ID = './T62/rowId';
+    const T62_SAVE_ROW = './T62/saveRow';
+    const T62_DELETE_ROW = './T62/deleteRow';
+    const T62_INSERT_RML = './T62/insertRml';
+    const T62_GET_RML = './T62/getRml';
+    const T62_SAVED_DATA = './T62/getSavedData';
+
+
+
+
+
+
+
+
