@@ -538,3 +538,107 @@ getSavedData Api response :
 
 
 
+
+
+
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/table-configs/t62Config.js
+
+export const t62Config = {
+    // 1. Define the table columns
+    columns: [
+        {
+            id: 'insertedVal1',
+            label: 'Details of Expenses',
+            minWidth: 300,
+            align: 'left',
+            disableOnEditLock: true // This field will be read-only if row.editable is 'N'
+        },
+        {
+            id: 'insertedVal2',
+            label: 'Details of expense in excess of 1% of total income',
+            minWidth: 300,
+            align: 'left',
+        },
+        {
+            id: 'insertedVal3',
+            label: 'Amount of expense in excess of 1% of total income',
+            minWidth: 250,
+            align: 'right',
+            inputType: 'amountInput' // Assumes this handles numeric input
+        }
+    ],
+
+    // 2. Define default values for a new row
+    getNewRowDefaults: () => ({
+        insertedVal1: '',
+        insertedVal2: '',
+        insertedVal3: '',
+    }),
+
+    [span_0](start_span)// 3. Implement the pre-save validation logic from the old controller[span_0](end_span)
+    validateRowBeforeSave: (row) => {
+        const { insertedVal1, insertedVal2, insertedVal3 } = row;
+
+        if (!insertedVal1 && !insertedVal2 && !insertedVal3) {
+            return { isValid: false, errorMessage: 'Please enter some data to save row.' };
+        }
+        if (!insertedVal1 || !insertedVal2 || !insertedVal3) {
+            return { isValid: false, errorMessage: 'All fields are mandatory.' };
+        }
+        
+        return { isValid: true, errorMessage: '' };
+    },
+
+    [span_1](start_span)// 4. Define the save payload structure to match the old API[span_1](end_span)
+    createSavePayload: (row, reportId, qed) => ({
+        // Assuming your callApi function handles the AES encryption
+        reportId1: reportId,
+        key: row.srno.toString(),
+        value1: row.insertedVal1,
+        value2: row.insertedVal2,
+        value3: row.insertedVal3,
+        value4: qed,
+        value5: row.flag,
+    })
+};
+
+
+
+
+
+
+
+// src/features/notes-to-accounts/Table62.js
+import React from 'react';
+import GenericTable from '../../common/components/ui/GenericTable';
+import { t62Config } from './table-configs/t62Config';
+import { T62ApiService } from './Table62Api';
+import { FrReturnApiService } from './Table68Api'; // Re-use the common submission service
+
+const Table62 = () => {
+    return (
+        <GenericTable
+            tableConfig={t62Config}
+            apiService={T62ApiService}
+            [span_2](start_span)reportManagementId="40023602" // rMId for T62[span_2](end_span)
+            frReturnApiService={FrReturnApiService}
+        />
+    );
+};
+
+export default Table62;
+
+
+
+
+
+
+
+
