@@ -509,5 +509,32 @@ Api urls :
 
 
 
+getSavedData Api response :
+
+[
+    {
+        "insertedVal3": "111",
+        "insertedVal2": "1111",
+        "insertedVal1": "A paragraph is a series o",
+        "srno": "141",
+        "editable": "Y"
+    },
+    {
+        "insertedVal3": "111",
+        "insertedVal2": "1111",
+        "insertedVal1": "wdwdw",
+        "srno": "261",
+        "editable": "Y"
+    },
+    {
+        "insertedVal3": "500",
+        "insertedVal2": "@shcvsh`",
+        "insertedVal1": "wdwdwd",
+        "srno": "262",
+        "editable": "Y"
+    }
+]
+
+
 
 
