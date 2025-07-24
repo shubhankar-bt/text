@@ -1,0 +1,88 @@
+code :
+
+
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      try {
+        let responseData;
+        const reportStatus = report?.subReportStatus;
+
+        if (reportStatus === null || reportStatus === '') {
+          const payload = {
+            qed: user.quarterEndDate,
+            userId: user.userId,
+            rMId: '40024001',
+          };
+          const newReportId = await api.callT66InsertOnLoad(payload);
+          if (typeof newReportId === 'string' && newReportId.includes('Report ID not generated')) {
+            console.log('Report ID generation failed');
+            snackbar('Error Loading the Data! Reopen this report from worklist again.', 'error');
+            navigate(-1);
+          }
+
+          if (newReportId) {
+            setReportId(newReportId);
+            newReportId.pop();
+          }
+        } else {
+          responseData = await api.callT66FetchData(reportId);
+        }
+
+        if (responseData) {
+          const calculatedData = runCalculations(responseData);
+          setData(calculatedData);
+          console.log('calculatedData : ', calculatedData);
+
+          await Promise.all([
+            saveField(36, calculatedData[36]), // CY37
+            saveField(42, calculatedData[42]), // CY43
+            saveField(92, calculatedData[92]), // CY93
+            saveField(96, calculatedData[96]), // CY97
+            saveField(97, calculatedData[97]), // CY98
+          ]);
+        } else {
+          setData({});
+        }
+        setEditable(true);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error(error);
+          snackbar('Failed to Fetch Data!', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, []);
+
+
+
+logs for this section :
+
+ const saveField = useCallback(
+    async (fieldName, value) => {
+      if (!reportId) return;
+      try {
+        const payload = {
+          reportId: reportId.toString(),
+          key: String(fieldName).substring(2).toString(),
+          value: value,
+        };
+        await api.updateField(payload);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error(error);
+          snackbar('Failed to save data!', 'error');
+        }
+      }
+    },
+    [reportId, callApi, snackbar]
+  );
+
+
+
+
+I have provided the data initialization use effect hook code and logs for that specific section, see what is happening, as per my code i am first getting the data, then call run calculation and after that i am calling save field function but in save field the data for those specific fields are going null initially may be data is going before initialization and delay is causing problem with save fields. Fix this problem very carefully and correctly so that fields save correctly with proper data
