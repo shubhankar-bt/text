@@ -526,3 +526,378 @@ app.controller('SecWiseNPAController', function ($scope, $rootScope, $timeout, A
         }, 500);
     }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+export default function SectorWiseNPAReport() {
+  const [reportId, setReportId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState(Array(39).fill(0.0));
+  const navigate = useNavigate();
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+  const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const report = location.state?.report;
+
+  const api = {
+    getSectorWiseNPAData: async (reportId) => {
+      console.log(`Fetching data for reportId: ${reportId}...`);
+      const REST_SERVICE_URI = '/SecWiseNPA/getSecWiseNPAData';
+      const response = await callApi(REST_SERVICE_URI, { reportId }, 'POST');
+      return response;
+    },
+    createNewReport: async (params) => {
+      console.log('Creating new report with params:', params);
+      const INSERT_URI = '/SecWiseNPA/insertOnLoad';
+      const newReportId = await callApi(INSERT_URI, params, 'POST');
+      return newReportId;
+    },
+    updateField: async (params) => {
+      console.log('Updating field:', params);
+      const UPDATE_URI = '/SecWiseNPA/updateField';
+      const response = await callApi(UPDATE_URI, params, 'POST');
+      return { success: response };
+    },
+  };
+
+  const saveField = useCallback(
+    async (rowId, column, value) => {
+      // If the value is a string and contains '%', strip it before saving.
+      const valueString = String(value ?? '0.00');
+      const valueToSave = valueString.includes('%') ? valueString.replace('%', '') : valueString;
+
+      try {
+        const payload = {
+          frReportId: reportId ?? report?.subReportFR_RID,
+          rowId: String(rowId),
+          column,
+          value: valueToSave,
+          qed: user.quarterEndDate,
+        };
+        await api.updateField(payload);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error('Failed to save field:', error);
+        }
+      }
+    },
+    [user, reportId, report] // Removed callApi from dependencies as it comes from a hook
+  );
+
+  const calculateAll = useCallback((currentData) => {
+    const newData = [...currentData];
+
+    const getPercentage = (npa, advances) => {
+      const npaNum = parseFloat(npa) || 0;
+      const advancesNum = parseFloat(advances) || 0;
+      return advancesNum > 0 ? ((npaNum / advancesNum) * 100).toFixed(4) + '%' : '0.0000%';
+    };
+
+    // This function now validates a pair and modifies the `newData` array directly.
+    const validateNPA = (npaIndex, advancesIndex, sectorName) => {
+      const npa = parseFloat(newData[npaIndex]) || 0;
+      const advances = parseFloat(newData[advancesIndex]) || 0;
+
+      if (npa > advances) {
+        // By clearing the values in the array first, all subsequent logic will use the correct cleared values.
+        newData[advancesIndex] = '';
+        newData[npaIndex] = '';
+
+        setTimeout(() => {
+          snackbar(`Gross NPA cannot exceed Gross Advances for ${sectorName}.`, 'error');
+        }, 0);
+      }
+    };
+
+    // --- 1. Validation Pass ---
+    // Run validation for all pairs before doing any calculations.
+    validateNPA(4, 3, 'PS Agriculture');
+    validateNPA(7, 6, 'PS Industry');
+    validateNPA(10, 9, 'PS Services');
+    validateNPA(13, 12, 'PS Personal Loans');
+    validateNPA(16, 15, 'PS Others');
+    validateNPA(22, 21, 'NPS Agriculture');
+    validateNPA(25, 24, 'NPS Industry');
+    validateNPA(28, 27, 'NPS Services');
+    validateNPA(31, 30, 'NPS Personal Loans');
+    validateNPA(34, 33, 'NPS Others');
+
+    // --- 2. Read Validated Data ---
+    // Now read the values from the array, which may have been cleared by the validation pass.
+    // Priority Sector (PS)
+    const psAgriGrossAd = parseFloat(newData[3]) || 0;
+    const psAgriGrossNPA = parseFloat(newData[4]) || 0;
+    const psIndGrossAd = parseFloat(newData[6]) || 0;
+    const psIndGrossNPA = parseFloat(newData[7]) || 0;
+    const psServGrossAd = parseFloat(newData[9]) || 0;
+    const psServGrossNPA = parseFloat(newData[10]) || 0;
+    const psPersGrossAd = parseFloat(newData[12]) || 0;
+    const psPersGrossNPA = parseFloat(newData[13]) || 0;
+    const psOthGrossAd = parseFloat(newData[15]) || 0;
+    const psOthGrossNPA = parseFloat(newData[16]) || 0;
+
+    // Non-Priority Sector (NPS)
+    const npsAgriGrossAd = parseFloat(newData[21]) || 0;
+    const npsAgriGrossNPA = parseFloat(newData[22]) || 0;
+    const npsIndGrossAd = parseFloat(newData[24]) || 0;
+    const npsIndGrossNPA = parseFloat(newData[25]) || 0;
+    const npsServGrossAd = parseFloat(newData[27]) || 0;
+    const npsServGrossNPA = parseFloat(newData[28]) || 0;
+    const npsPersGrossAd = parseFloat(newData[30]) || 0;
+    const npsPersGrossNPA = parseFloat(newData[31]) || 0;
+    const npsOthGrossAd = parseFloat(newData[33]) || 0;
+    const npsOthGrossNPA = parseFloat(newData[34]) || 0;
+
+    // --- 3. Recalculate Totals & Percentages ---
+    const psGrossAdTotal = psAgriGrossAd + psIndGrossAd + psServGrossAd + psPersGrossAd + psOthGrossAd;
+    const psGrossNPATotal = psAgriGrossNPA + psIndGrossNPA + psServGrossNPA + psPersGrossNPA + psOthGrossNPA;
+    newData[0] = psGrossAdTotal.toFixed(2);
+    newData[1] = psGrossNPATotal.toFixed(2);
+    newData[2] = getPercentage(psGrossNPATotal, psGrossAdTotal);
+    newData[5] = getPercentage(psAgriGrossNPA, psAgriGrossAd);
+    newData[8] = getPercentage(psIndGrossNPA, psIndGrossAd);
+    newData[11] = getPercentage(psServGrossNPA, psServGrossAd);
+    newData[14] = getPercentage(psPersGrossNPA, psPersGrossAd);
+    newData[17] = getPercentage(psOthGrossNPA, psOthGrossAd);
+
+    const npsGrossAdTotal = npsAgriGrossAd + npsIndGrossAd + npsServGrossAd + npsPersGrossAd + npsOthGrossAd;
+    const npsGrossNPATotal = npsAgriGrossNPA + npsIndGrossNPA + npsServGrossNPA + npsPersGrossNPA + npsOthGrossNPA;
+    newData[18] = npsGrossAdTotal.toFixed(2);
+    newData[19] = npsGrossNPATotal.toFixed(2);
+    newData[20] = getPercentage(npsGrossNPATotal, npsGrossAdTotal);
+    newData[23] = getPercentage(npsAgriGrossNPA, npsAgriGrossAd);
+    newData[26] = getPercentage(npsIndGrossNPA, npsIndGrossAd);
+    newData[29] = getPercentage(npsServGrossNPA, npsServGrossAd);
+    newData[32] = getPercentage(npsPersGrossNPA, npsPersGrossAd);
+    newData[35] = getPercentage(npsOthGrossNPA, npsOthGrossAd);
+
+    const grandTotalGrossAd = psGrossAdTotal + npsGrossAdTotal;
+    const grandTotalGrossNPA = psGrossNPATotal + npsGrossNPATotal;
+    newData[36] = grandTotalGrossAd.toFixed(2);
+    newData[37] = grandTotalGrossNPA.toFixed(2);
+    newData[38] = getPercentage(grandTotalGrossNPA, grandTotalGrossAd);
+
+    return newData;
+  }, [snackbar]);
+
+  const handleCellChange = useCallback(
+    (item, value) => {
+      const newRawData = [...data];
+      newRawData[item.dataIndex] = value;
+      const calculatedData = calculateAll(newRawData);
+      setData(calculatedData);
+    },
+    [data, calculateAll]
+  );
+
+  const handleCellBlur = useCallback(
+    (item, value) => {
+      if (!item) return;
+
+      if (item.saveConfig) {
+        saveField(item.saveConfig.rowId, item.saveConfig.column, value);
+      }
+
+      // Instead of saving all calculated fields every time, we check which ones have changed.
+      const calculatedFields = [
+        { rowId: '1', column: 'SW_GRSAD_CY', value: data[0] }, { rowId: '1', column: 'SW_GRSNPA_CY', value: data[1] }, { rowId: '1', column: 'SW_GRSPERT_CY', value: data[2] },
+        { rowId: '2', column: 'SW_GRSPERT_CY', value: data[5] }, { rowId: '3', column: 'SW_GRSPERT_CY', value: data[8] }, { rowId: '4', column: 'SW_GRSPERT_CY', value: data[11] },
+        { rowId: '5', column: 'SW_GRSPERT_CY', value: data[14] }, { rowId: '6', column: 'SW_GRSPERT_CY', value: data[17] }, { rowId: '7', column: 'SW_GRSAD_CY', value: data[18] },
+        { rowId: '7', column: 'SW_GRSNPA_CY', value: data[19] }, { rowId: '7', column: 'SW_GRSPERT_CY', value: data[20] }, { rowId: '8', column: 'SW_GRSPERT_CY', value: data[23] },
+        { rowId: '9', column: 'SW_GRSPERT_CY', value: data[26] }, { rowId: '10', column: 'SW_GRSPERT_CY', value: data[29] }, { rowId: '11', column: 'SW_GRSPERT_CY', value: data[32] },
+        { rowId: '12', column: 'SW_GRSPERT_CY', value: data[35] }, { rowId: '13', column: 'SW_GRSAD_CY', value: data[36] }, { rowId: '13', column: 'SW_GRSNPA_CY', value: data[37] },
+        { rowId: '13', column: 'SW_GRSPERT_CY', value: data[38] },
+      ];
+
+      // This logic remains the same as your original code. While inefficient, it ensures all derived data is saved.
+      calculatedFields.forEach((field) => {
+        saveField(field.rowId, field.column, field.value);
+      });
+    },
+    [data, saveField]
+  );
+
+  // ... (useEffect and the rest of the component remain the same) ...
+  useEffect(() => {
+    const initializeForm = async () => {
+      try {
+        setIsLoading(true);
+        const existingReportId = report?.subReportFR_RID;
+        if (existingReportId) {
+          setReportId(existingReportId);
+          const existingData = await api.getSectorWiseNPAData(existingReportId);
+          // Always run calculateAll on load to populate percentages and totals
+          const calculatedData = calculateAll(existingData);
+          setData(calculatedData);
+        } else {
+          const payload = { qed: user.quarterEndDate, userId: user.userId, rMId: '40023801' };
+          const newReportId = await api.createNewReport(payload);
+
+          if (typeof newReportId === 'string' && newReportId.includes('Report ID not generated')) {
+            snackbar('Error Loading the Data! Reopen this report from worklist again.', 'error');
+            navigate(-1);
+            return;
+          }
+          setReportId(newReportId);
+          setData(Array(39).fill('0.00'));
+        }
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error('Initialization failed:', error);
+          snackbar('Failed to load report data.', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initializeForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Keep dependencies minimal for initialization
+
+  // --- JSX Definition (columns, rows, return statement) ---
+  // This part of your code does not need changes.
+  const columns = [
+    { title: 'Details', cellProps: { sx: { width: '40%', fontWeight: 'bold' } } },
+    { title: 'Gross Advances', cellProps: { sx: { width: '20%' } } },
+    { title: 'Gross NPAs', cellProps: { sx: { width: '20%' } } },
+    { title: 'Gross NPAs as % to Gross Advances', cellProps: { sx: { width: '20%' } } },
+  ];
+  const rows = [
+    // --- Priority Sector Rows ---
+    [
+      { title: 'I. Priority Sector', cellProps: { colSpan: 4 } },
+      { dataIndex: 0, cellProps: { readOnly: true } },
+      { dataIndex: 1, cellProps: { readOnly: true } },
+      { dataIndex: 2, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'a) Agriculture and Allied Activities', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 3, defaultValue: '0.00', saveConfig: { rowId: '2', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 4, defaultValue: '0.00', saveConfig: { rowId: '2', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 5, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'b) Industry', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 6, defaultValue: '0.00', saveConfig: { rowId: '3', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 7, defaultValue: '0.00', saveConfig: { rowId: '3', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 8, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'c) Services', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 9, defaultValue: '0.00', saveConfig: { rowId: '4', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 10, defaultValue: '0.00', saveConfig: { rowId: '4', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 11, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'd) Personal Loans', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 12, defaultValue: '0.00', saveConfig: { rowId: '5', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 13, defaultValue: '0.00', saveConfig: { rowId: '5', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 14, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'e) Others', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 15, defaultValue: '0.00', saveConfig: { rowId: '6', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 16, defaultValue: '0.00', saveConfig: { rowId: '6', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 17, cellProps: { readOnly: true } },
+    ],
+    // --- Non-Priority Sector Rows ---
+    [
+      { title: 'II. Non-Priority Sector', isHeader: true, cellProps: { colSpan: 4 } },
+      { dataIndex: 18, cellProps: { readOnly: true } },
+      { dataIndex: 19, cellProps: { readOnly: true } },
+      { dataIndex: 20, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'a) Agriculture and Allied Activities', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 21, defaultValue: '0.00', saveConfig: { rowId: '8', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 22, defaultValue: '0.00', saveConfig: { rowId: '8', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 23, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'b) Industry', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 24, defaultValue: '0.00', saveConfig: { rowId: '9', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 25, defaultValue: '0.00', saveConfig: { rowId: '9', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 26, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'c) Services', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 27, defaultValue: '0.00', saveConfig: { rowId: '10', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 28, defaultValue: '0.00', saveConfig: { rowId: '10', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 29, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'd) Personal Loans', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 30, defaultValue: '0.00', saveConfig: { rowId: '11', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 31, defaultValue: '0.00', saveConfig: { rowId: '11', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 32, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'e) Others', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 33, defaultValue: '0.00', saveConfig: { rowId: '12', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 34, defaultValue: '0.00', saveConfig: { rowId: '12', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 35, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    // --- Grand Total Row ---
+    [
+      { title: 'Grand Total (I + II)', isTotal: true, isGrandTotal: true },
+      { dataIndex: 36, cellProps: { readOnly: true } },
+      { dataIndex: 37, cellProps: { readOnly: true } },
+      { dataIndex: 38, cellProps: { readOnly: true } },
+    ],
+  ];
+
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId ?? report?.subReportFR_RID}
+        qed={user.quarterEndDate}
+        columns={columns}
+        rows={rows}
+        data={data}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        isLoading={isLoading}
+        completeButtonEnabled={true}
+      />
+    </Box>
+  );
+}
+
