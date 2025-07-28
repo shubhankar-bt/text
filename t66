@@ -1083,3 +1083,94 @@ export default function Table66() {
 
 
 
+
+
+
+
+
+
+
+
+// Add this to the `api` object in your component
+callT66SaveRow: async (params) => {
+  console.log('Saving row data:', params);
+  const SAVE_ROW_URI = '/T66/saveRow';
+  const response = await callApi(SAVE_ROW_URI, params, 'POST');
+  return response;
+},
+
+
+
+
+
+
+
+
+
+
+const saveRow = useCallback(
+  async (rowData) => {
+    if (!reportId || !rowData) return;
+    try {
+      const payload = {
+        reportId: reportId.toString(),
+        value1: rowData.CY37?.toString() || '0.00',
+        value2: rowData.CY43?.toString() || '0.00',
+        value3: rowData.CY93?.toString() || '0.00',
+        value4: rowData.CY97?.toString() || '0.00',
+        value5: rowData.CY98?.toString() || '0.00',
+      };
+      await api.callT66SaveRow(payload);
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        console.error(error);
+        snackbar('Failed to save initial data!', 'error');
+      }
+    }
+  },
+  [reportId, api.callT66SaveRow, snackbar]
+);
+
+
+
+
+
+
+
+
+
+
+// Inside the `useEffect` hook
+
+if (newReportId) {
+  setReportId(newReportId);
+  // Fetch data immediately after getting the new report ID
+  const initialData = await api.callT66FetchData(newReportId);
+  if (initialData) {
+    const calculatedData = runCalculations(initialData);
+    setData(calculatedData);
+    // *** This is the critical new step ***
+    await saveRow(calculatedData);
+  } else {
+    setData({});
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
