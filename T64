@@ -1,0 +1,528 @@
+T66 new react code :
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, CircularProgress, Typography } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+export default function SectorWiseNPAReport() {
+  const [reportId, setReportId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState(Array(39).fill(0.0));
+  const navigate = useNavigate();
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+  const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const report = location.state?.report;
+
+  const api = {
+    getSectorWiseNPAData: async (reportId) => {
+      console.log(`Fetching data for reportId: ${reportId}...`);
+      const REST_SERVICE_URI = '/SecWiseNPA/getSecWiseNPAData';
+      const response = await callApi(REST_SERVICE_URI, { reportId }, 'POST');
+      return response;
+    },
+    createNewReport: async (params) => {
+      console.log('Creating new report with params:', params);
+      const INSERT_URI = '/SecWiseNPA/insertOnLoad';
+      const newReportId = await callApi(INSERT_URI, params, 'POST');
+      return newReportId;
+    },
+    updateField: async (params) => {
+      console.log('Updating field:', params);
+      const UPDATE_URI = '/SecWiseNPA/updateField';
+      const response = await callApi(UPDATE_URI, params, 'POST');
+      return { success: response };
+    },
+  };
+
+  const saveField = useCallback(
+    async (rowId, column, value) => {
+      const valueToSave = value ?? '0.00';
+      try {
+        const payload = {
+          frReportId: reportId ?? report?.subReportFR_RID,
+          rowId: String(rowId),
+          column,
+          value: String(valueToSave),
+          qed: user.quarterEndDate,
+        };
+        await api.updateField(payload);
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error('Failed to save field:', error);
+        }
+      }
+    },
+    [user, reportId, report, callApi]
+  );
+
+  const calculateAll = useCallback((currentData) => {
+    const newData = [...currentData];
+
+    const getPercentage = (npa, advances) => {
+      const npaNum = parseFloat(npa) || 0;
+      const advancesNum = parseFloat(advances) || 0;
+      return advancesNum > 0 ? ((npaNum / advancesNum) * 100).toFixed(4) + '%' : '0.0000%';
+    };
+
+    const validateNPA = (npaIndex, advancesIndex, sectorName) => {
+      let npa = parseFloat(newData[npaIndex]) || 0;
+      let advances = parseFloat(newData[advancesIndex]) || 0;
+
+      if (npa > advances) {
+        // Reset both fields
+        newData[advancesIndex] = '';
+        newData[npaIndex] = '';
+
+        // Show snackbar after state update
+        setTimeout(() => {
+          snackbar(`Gross NPA cannot exceed Gross Advances for ${sectorName}.`, 'error');
+        }, 0);
+
+        return 0.0; // Return 0 to ensure recalculations use valid data
+      }
+      return npa;
+    };
+
+    // --- Priority Sector (PS) ---
+    const psAgriGrossAd = parseFloat(newData[3]) || 0;
+    const psAgriGrossNPA = validateNPA(4, 3, 'PS Agriculture');
+    const psIndGrossAd = parseFloat(newData[6]) || 0;
+    const psIndGrossNPA = validateNPA(7, 6, 'PS Industry');
+    const psServGrossAd = parseFloat(newData[9]) || 0;
+    const psServGrossNPA = validateNPA(10, 9, 'PS Services');
+    const psPersGrossAd = parseFloat(newData[12]) || 0;
+    const psPersGrossNPA = validateNPA(13, 12, 'PS Personal Loans');
+    const psOthGrossAd = parseFloat(newData[15]) || 0;
+    const psOthGrossNPA = validateNPA(16, 15, 'PS Others');
+
+    // --- Non-Priority Sector (NPS) ---
+    const npsAgriGrossAd = parseFloat(newData[21]) || 0;
+    const npsAgriGrossNPA = validateNPA(22, 21, 'NPS Agriculture');
+    const npsIndGrossAd = parseFloat(newData[24]) || 0;
+    const npsIndGrossNPA = validateNPA(25, 24, 'NPS Industry');
+    const npsServGrossAd = parseFloat(newData[27]) || 0;
+    const npsServGrossNPA = validateNPA(28, 27, 'NPS Services');
+    const npsPersGrossAd = parseFloat(newData[30]) || 0;
+    const npsPersGrossNPA = validateNPA(31, 30, 'NPS Personal Loans');
+    const npsOthGrossAd = parseFloat(newData[33]) || 0;
+    const npsOthGrossNPA = validateNPA(34, 33, 'NPS Others');
+
+    // Recalculate Totals & Percentages with validated/reset data
+    const psGrossAdTotal = psAgriGrossAd + psIndGrossAd + psServGrossAd + psPersGrossAd + psOthGrossAd;
+    const psGrossNPATotal = psAgriGrossNPA + psIndGrossNPA + psServGrossNPA + psPersGrossNPA + psOthGrossNPA;
+    newData[0] = psGrossAdTotal.toFixed(2);
+    newData[1] = psGrossNPATotal.toFixed(2);
+    newData[2] = getPercentage(psGrossNPATotal, psGrossAdTotal);
+    newData[5] = getPercentage(psAgriGrossNPA, psAgriGrossAd);
+    newData[8] = getPercentage(psIndGrossNPA, psIndGrossAd);
+    newData[11] = getPercentage(psServGrossNPA, psServGrossAd);
+    newData[14] = getPercentage(psPersGrossNPA, psPersGrossAd);
+    newData[17] = getPercentage(psOthGrossNPA, psOthGrossAd);
+
+    const npsGrossAdTotal = npsAgriGrossAd + npsIndGrossAd + npsServGrossAd + npsPersGrossAd + npsOthGrossAd;
+    const npsGrossNPATotal = npsAgriGrossNPA + npsIndGrossNPA + npsServGrossNPA + npsPersGrossNPA + npsOthGrossNPA;
+    newData[18] = npsGrossAdTotal.toFixed(2);
+    newData[19] = npsGrossNPATotal.toFixed(2);
+    newData[20] = getPercentage(npsGrossNPATotal, npsGrossAdTotal);
+    newData[23] = getPercentage(npsAgriGrossNPA, npsAgriGrossAd);
+    newData[26] = getPercentage(npsIndGrossNPA, npsIndGrossAd);
+    newData[29] = getPercentage(npsServGrossNPA, npsServGrossAd);
+    newData[32] = getPercentage(npsPersGrossNPA, npsPersGrossAd);
+    newData[35] = getPercentage(npsOthGrossNPA, npsOthGrossAd);
+
+    const grandTotalGrossAd = psGrossAdTotal + npsGrossAdTotal;
+    const grandTotalGrossNPA = psGrossNPATotal + npsGrossNPATotal;
+    newData[36] = grandTotalGrossAd.toFixed(2);
+    newData[37] = grandTotalGrossNPA.toFixed(2);
+    newData[38] = getPercentage(grandTotalGrossNPA, grandTotalGrossAd);
+
+    return newData;
+  }, []);
+
+  const handleCellChange = useCallback(
+    (item, value) => {
+      const newRawData = [...data];
+      newRawData[item.dataIndex] = value;
+      const calculatedData = calculateAll(newRawData);
+      setData(calculatedData);
+    },
+    [data, calculateAll]
+  );
+
+  const handleCellBlur = useCallback(
+    (item, value) => {
+      if (!item) return;
+
+      // Save the field that was directly edited
+      if (item.saveConfig) {
+        saveField(item.saveConfig.rowId, item.saveConfig.column, value);
+      }
+
+      const calculatedFieldsToSave = [
+        { rowId: '1', column: 'SW_GRSAD_CY', value: data[0] },
+        { rowId: '1', column: 'SW_GRSNPA_CY', value: data[1] },
+        { rowId: '1', column: 'SW_GRSPERT_CY', value: data[2] },
+        { rowId: '2', column: 'SW_GRSPERT_CY', value: data[5] },
+        { rowId: '3', column: 'SW_GRSPERT_CY', value: data[8] },
+        { rowId: '4', column: 'SW_GRSPERT_CY', value: data[11] },
+        { rowId: '5', column: 'SW_GRSPERT_CY', value: data[14] },
+        { rowId: '6', column: 'SW_GRSPERT_CY', value: data[17] },
+        { rowId: '7', column: 'SW_GRSAD_CY', value: data[18] },
+        { rowId: '7', column: 'SW_GRSNPA_CY', value: data[19] },
+        { rowId: '7', column: 'SW_GRSPERT_CY', value: data[20] },
+        { rowId: '8', column: 'SW_GRSPERT_CY', value: data[23] },
+        { rowId: '9', column: 'SW_GRSPERT_CY', value: data[26] },
+        { rowId: '10', column: 'SW_GRSPERT_CY', value: data[29] },
+        { rowId: '11', column: 'SW_GRSPERT_CY', value: data[32] },
+        { rowId: '12', column: 'SW_GRSPERT_CY', value: data[35] },
+        { rowId: '13', column: 'SW_GRSAD_CY', value: data[36] },
+        { rowId: '13', column: 'SW_GRSNPA_CY', value: data[37] },
+        { rowId: '13', column: 'SW_GRSPERT_CY', value: data[38] },
+      ];
+
+      calculatedFieldsToSave.forEach((field) => {
+        saveField(field.rowId, field.column, field.value);
+      });
+    },
+    [data, saveField]
+  );
+
+  useEffect(() => {
+    const initializeForm = async () => {
+      try {
+        const existingReportId = report?.subReportFR_RID;
+        if (existingReportId) {
+          setReportId(existingReportId);
+          const existingData = await api.getSectorWiseNPAData(existingReportId);
+          const calculatedData = calculateAll(existingData);
+          setData(calculatedData);
+        } else {
+          const payload = { qed: user.quarterEndDate, userId: user.userId, rMId: '40023801' };
+          const newReportId = await api.createNewReport(payload);
+
+          if (typeof newReportId === 'string' && newReportId.includes('Report ID not generated')) {
+            console.log('Report ID generation failed');
+            snackbar('Error Loading the Data! Reopen this report from worklist again.', 'error');
+            navigate(-1);
+          }
+
+          setReportId(newReportId);
+          setData(Array(39).fill(0.0));
+        }
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          console.error('Initialization failed:', error);
+          snackbar('Failed to load report data.', 'error');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initializeForm();
+  }, []);
+
+  const columns = [
+    { title: 'Details', cellProps: { sx: { width: '40%', fontWeight: 'bold' } } },
+    { title: 'Gross Advances', cellProps: { sx: { width: '20%' } } },
+    { title: 'Gross NPAs', cellProps: { sx: { width: '20%' } } },
+    { title: 'Gross NPAs as % to Gross Advances', cellProps: { sx: { width: '20%' } } },
+  ];
+
+  const rows = [
+    // --- Priority Sector Rows ---
+    [
+      { title: 'I. Priority Sector', cellProps: { colSpan: 4 } },
+      { dataIndex: 0, cellProps: { readOnly: true } },
+      { dataIndex: 1, cellProps: { readOnly: true } },
+      { dataIndex: 2, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'a) Agriculture and Allied Activities', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 3, defaultValue: '0.00', saveConfig: { rowId: '2', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 4, defaultValue: '0.00', saveConfig: { rowId: '2', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 5, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'b) Industry', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 6, defaultValue: '0.00', saveConfig: { rowId: '3', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 7, defaultValue: '0.00', saveConfig: { rowId: '3', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 8, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'c) Services', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 9, defaultValue: '0.00', saveConfig: { rowId: '4', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 10, defaultValue: '0.00', saveConfig: { rowId: '4', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 11, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'd) Personal Loans', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 12, defaultValue: '0.00', saveConfig: { rowId: '5', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 13, defaultValue: '0.00', saveConfig: { rowId: '5', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 14, cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'e) Others', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 15, defaultValue: '0.00', saveConfig: { rowId: '6', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 16, defaultValue: '0.00', saveConfig: { rowId: '6', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 17, cellProps: { readOnly: true } },
+    ],
+    // [
+    //   { title: 'Total Priority Sector', isTotal: true },
+    //   { dataIndex: 0, cellProps: { readOnly: true } },
+    //   { dataIndex: 1, cellProps: { readOnly: true } },
+    //   { dataIndex: 2, cellProps: { readOnly: true  } },
+    // ],
+
+    // --- Non-Priority Sector Rows ---
+    [
+      { title: 'II. Non-Priority Sector', isHeader: true, cellProps: { colSpan: 4 } },
+      { dataIndex: 18, cellProps: { readOnly: true } },
+      { dataIndex: 19, cellProps: { readOnly: true } },
+      { dataIndex: 20, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'a) Agriculture and Allied Activities', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 21, defaultValue: '0.00', saveConfig: { rowId: '8', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 22, defaultValue: '0.00', saveConfig: { rowId: '8', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 23, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'b) Industry', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 24, defaultValue: '0.00', saveConfig: { rowId: '9', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 25, defaultValue: '0.00', saveConfig: { rowId: '9', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 26, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'c) Services', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 27, defaultValue: '0.00', saveConfig: { rowId: '10', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 28, defaultValue: '0.00', saveConfig: { rowId: '10', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 29, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'd) Personal Loans', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 30, defaultValue: '0.00', saveConfig: { rowId: '11', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 31, defaultValue: '0.00', saveConfig: { rowId: '11', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 32, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    [
+      { title: 'e) Others', cellProps: { sx: { pl: 4 } } },
+      { dataIndex: 33, defaultValue: '0.00', saveConfig: { rowId: '12', column: 'SW_GRSAD_CY' } },
+      { dataIndex: 34, defaultValue: '0.00', saveConfig: { rowId: '12', column: 'SW_GRSNPA_CY' } },
+      { dataIndex: 35, defaultValue: '0.00', cellProps: { readOnly: true } },
+    ],
+    // [
+    //   { title: 'Total Non-Priority Sector', isTotal: true },
+    //   { dataIndex: 18, cellProps: { readOnly: true } },
+    //   { dataIndex: 19, cellProps: { readOnly: true } },
+    //   { dataIndex: 20, defaultValue: '0.00', cellProps: { readOnly: true  } },
+    // ],
+
+    // --- Grand Total Row ---
+    [
+      { title: 'Grand Total (I + II)', isTotal: true, isGrandTotal: true },
+      { dataIndex: 36, cellProps: { readOnly: true } },
+      { dataIndex: 37, cellProps: { readOnly: true } },
+      { dataIndex: 38, cellProps: { readOnly: true } },
+    ],
+  ];
+
+  return (
+    <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+      <FRReturnsReport
+        reportId={reportId ?? report?.subReportFR_RID}
+        qed={user.quarterEndDate}
+        columns={columns}
+        rows={rows}
+        data={data}
+        onCellChange={handleCellChange}
+        onCellBlur={handleCellBlur}
+        isLoading={isLoading}
+        completeButtonEnabled={true}
+      />
+    </Box>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+OLd Controller :
+
+app.controller('SecWiseNPAController', function ($scope, $rootScope, $timeout, AES256, $state, SecWiseNPAFactory,frReturnFactory, $sessionStorage) {
+    let SecWiseNPA = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId =sessionStorage.getItem("frReportId");
+    let qed = $scope.sessionUser.quarterEndDate;
+    SecWiseNPA.reportName = sessionStorage.getItem("frSubReportName");
+    console.log("Status :"+status);
+
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    SecWiseNPA.backToIndex = function (){
+        $state.go('frt_maker.frReturn');
+    }
+
+    SecWiseNPA.insertOrUpdateRT = function (){
+        let params = {
+            'qed' : qed,
+            'userId' : userId,
+            'rMId' : "40023801"
+        };
+        if(status === null || status === ''){
+            SecWiseNPAFactory.insertOnLoad(params).then(function (data){
+                /*sessionStorage.setItem("frReportId",data);*/
+                reportId = data;
+                /*console.log("reportId: "+sessionStorage.getItem("frReportId"));*/
+                console.log("reportId: "+reportId);
+            }, function (errResponse) {
+                console.error('data not inserted. '+errResponse);
+            })
+        }
+        else{
+            SecWiseNPAFactory.getSecWiseNPAData(reportId).then(function (data){
+                let dataSize = data.size;
+                for(let i=0; i < dataSize; i++) {
+                    console.log("data"+i+" : " + data[i]);
+                }
+                document.getElementById('PSGrossAd').value = data[0];
+                document.getElementById('PSGrossNPA').value = data[1];
+                document.getElementById('PSGrossPert').value = data[2];
+
+                document.getElementById('PSAgriGrossAd').value = data[3];
+                document.getElementById('PSAgriGrossNPA').value = data[4];
+                document.getElementById('PSAgriGrossPert').value = data[5];
+
+                document.getElementById('PSIndGrossAd').value = data[6];
+                document.getElementById('PSIndGrossNPA').value = data[7];
+                document.getElementById('PSIndGrossPert').value = data[8];
+
+                document.getElementById('PSServGrossAd').value = data[9];
+                document.getElementById('PSServGrossNPA').value = data[10];
+                document.getElementById('PSServGrossPert').value = data[11];
+
+                document.getElementById('PSPersGrossAd').value = data[12];
+                document.getElementById('PSPersGrossNPA').value = data[13];
+                document.getElementById('PSPersGrossPert').value = data[14];
+
+                document.getElementById('PSOthGrossAd').value = data[15];
+                document.getElementById('PSOthGrossNPA').value = data[16];
+                document.getElementById('PSOthGrossPert').value = data[17];
+
+                document.getElementById('NPSGrossAd').value = data[18];
+                document.getElementById('NPSGrossNPA').value = data[19];
+                document.getElementById('NPSGrossPert').value = data[20];
+
+                document.getElementById('NPSAgriGrossAd').value = data[21];
+                document.getElementById('NPSAgriGrossNPA').value = data[22];
+                document.getElementById('NPSAgriGrossPert').value = data[23];
+
+                document.getElementById('NPSIndGrossAd').value = data[24];
+                document.getElementById('NPSIndGrossNPA').value = data[25];
+                document.getElementById('NPSIndGrossPert').value = data[26];
+
+                document.getElementById('NPSServGrossAd').value = data[27];
+                document.getElementById('NPSServGrossNPA').value = data[28];
+                document.getElementById('NPSServGrossPert').value = data[29];
+
+                document.getElementById('NPSPersGrossAd').value = data[30];
+                document.getElementById('NPSPersGrossNPA').value = data[31];
+                document.getElementById('NPSPersGrossPert').value = data[32];
+
+                document.getElementById('NPSOthGrossAd').value = data[33];
+                document.getElementById('NPSOthGrossNPA').value = data[34];
+                document.getElementById('NPSOthGrossPert').value = data[35];
+
+                document.getElementById('GTotalGrossAd').value = data[36];
+                document.getElementById('GTotalGrossNPA').value = data[37];
+                document.getElementById('GTotalGrossPert').value = data[38];
+            }, function (errResponse) {
+                console.error('data failed. '+errResponse);
+            })
+        }
+    }
+
+
+    SecWiseNPA.updateField = function(usrInpId,rowId,column){
+        console.log("in update field function");
+        let fieldVal;
+        if ((document.getElementById(usrInpId).value).contains('%')){
+            fieldVal = (document.getElementById(usrInpId).value).split('%')[0];
+        }
+        else{
+            fieldVal = document.getElementById(usrInpId).value;
+        }
+        console.log("fieldVal-"+fieldVal+ " rowId-"+rowId+ " column-"+column);
+        let params = {
+            'rowId': rowId.toString(),
+            'column': column.toString(),
+            'value': fieldVal,
+            'frReportId':reportId.toString(),
+            'qed': qed
+        }
+
+        /*calling the updateField method from the user services*/
+        SecWiseNPAFactory.updateField(params).then(function(data){
+            console.log('response save data'+data);
+        },function(error){
+            console.log('error save data :: '+error);
+        })
+    }
+
+    SecWiseNPA.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                SecWiseNPA.displayMessage = SecWiseNPA.reportName +" report has been submitted successfully.";
+                console.log(SecWiseNPA.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    SecWiseNPA.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+});
