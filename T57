@@ -800,3 +800,270 @@ app.controller('T57Controller', function ($scope, $rootScope, $timeout, AES256, 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom'; [span_0](start_span)//[span_0](end_span)
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport'; [span_1](start_span)[span_2](start_span)//[span_1](end_span)[span_2](end_span)
+
+export default function Table57() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const { state } = useLocation(); [span_3](start_span)//[span_3](end_span)
+    const navigate = useNavigate();
+    const snackbar = useCustomSnackbar(); [span_4](start_span)//[span_4](end_span)
+    const { callApi } = useApi();
+
+    const [reportId, setReportId] = useState(null);
+    const [data, setData] = useState(null);
+    const [PYData, setPYData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true); [span_5](start_span)//[span_5](end_span)
+    const [editable] = useState(true);
+
+    const updateTotals = useCallback(
+        (currentData, previousYearData) => {
+            if (!currentData || !previousYearData) return currentData;
+
+            const newData = [...currentData];
+
+            // Ensure previous year data is available for dependent calculations
+            if (previousYearData.length === 0) return newData;
+
+            // Calculation for CY13 (Index 12)
+            newData[12] = (
+                Number(newData[6] || 0) +
+                Number(newData[7] || 0) +
+                Number(newData[8] || 0) +
+                Number(newData[9] || 0) +
+                Number(newData[10] || 0) +
+                Number(newData[11] || 0)
+            [span_6](start_span)[span_7](start_span)).toFixed(2); //[span_6](end_span)[span_7](end_span)
+
+            // Calculation for CY16 (Index 15)
+            newData[15] = (
+                Number(newData[2] || 0) +
+                Number(newData[3] || 0) +
+                Number(newData[4] || 0) +
+                Number(newData[12] || 0) + // Uses calculated CY13
+                Number(newData[13] || 0) +
+                Number(newData[14] || 0)
+            ).toFixed(2); [span_8](start_span)[span_9](start_span)//[span_8](end_span)[span_9](end_span)
+
+            // Floating Provisions Calculations
+            const PY22 = (Number(previousYearData[18] || 0) + Number(previousYearData[19] || 0) - Number(previousYearData[20] || 0)).toFixed(2);
+            newData[18] = Number(PY22).toFixed(2); [span_10](start_span)[span_11](start_span)// CY19 = PY22[span_10](end_span)[span_11](end_span)
+
+            newData[21] = (Number(newData[18] || 0) + Number(newData[19] || 0) - Number(newData[20] || 0)).toFixed(2); [span_12](start_span)[span_13](start_span)// CY22[span_12](end_span)[span_13](end_span)
+
+            // Customer Complaints Calculations
+            const PY29 = (Number(previousYearData[25] || 0) + Number(previousYearData[26] || 0) - Number(previousYearData[27] || 0)).toFixed(2);
+            newData[25] = Math.trunc(Number(PY29)); [span_14](start_span)[span_15](start_span)// CY26 = trunc(PY29)[span_14](end_span)[span_15](end_span)
+
+            newData[28] = Math.trunc(Number(newData[25] || 0) + Number(newData[26] || 0) - Number(newData[27] || 0)); [span_16](start_span)[span_17](start_span)// CY29[span_16](end_span)[span_17](end_span)
+
+            // Banking Ombudsman Awards Calculations
+            const PY34 = (Number(previousYearData[30] || 0) + Number(previousYearData[31] || 0) - Number(previousYearData[32] || 0)).toFixed(2);
+            newData[30] = Math.trunc(Number(PY34)); [span_18](start_span)// CY31 = trunc(PY34)[span_18](end_span)
+
+            newData[33] = Math.trunc(Number(newData[30] || 0) + Number(newData[31] || 0) - Number(newData[32] || 0)); [span_19](start_span)[span_20](start_span)// CY34[span_19](end_span)[span_20](end_span)
+            
+            return newData;
+        },
+        [] // No dependencies as it's a pure function with inputs
+    );
+
+    const saveField = useCallback(
+        async (key, value) => {
+            try {
+                const payload = {
+                    reportId: reportId.toString(),
+                    key,
+                    value: value ?? '',
+                };
+                await callApi('/T57/updateField', payload);
+            } catch (error) {
+                if (error.code !== 'ERR_CANCELED') {
+                    console.log(error);
+                }
+            }
+        },
+        [reportId, callApi]
+    );
+
+    const saveAllTotals = useCallback(
+        async (updatedData) => {
+            if (!updatedData) return;
+            // This function mimics the old `saveRow` by saving all calculated fields.
+            await saveField('13', updatedData[12]);
+            await saveField('16', updatedData[15]);
+            await saveField('19', updatedData[18]);
+            await saveField('22', updatedData[21]);
+            await saveField('26', updatedData[25]);
+            await saveField('29', updatedData[28]);
+            await saveField('31', updatedData[30]);
+            [span_21](start_span)await saveField('34', updatedData[33]); //[span_21](end_span)
+        },
+        [saveField]
+    );
+
+    useEffect(() => {
+        const fetchData = async (idToFetch) => {
+            try {
+                const response = await callApi('/T57/getT57Data', { reportId: idToFetch.toString() });
+                if (response) {
+                    const maxIndex = 65;
+                    const cyValues = new Array(maxIndex).fill('');
+                    const pyValues = new Array(maxIndex).fill('');
+                    
+                    // Directly map response keys like "CY3", "PY3" to array indices
+                    for (const key in response) {
+                        const prefix = key.substring(0, 2);
+                        const index = parseInt(key.substring(2), 10);
+                        if (!isNaN(index) && index > 0 && index < maxIndex) {
+                            if (prefix === 'CY') {
+                                cyValues[index - 1] = response[key];
+                            } else if (prefix === 'PY') {
+                                pyValues[index - 1] = response[key];
+                            }
+                        }
+                    }
+                    setPYData(pyValues); [span_22](start_span)//[span_22](end_span)
+                    const finalData = updateTotals(cyValues, pyValues);
+                    setData(finalData);
+                    return { data: finalData, status: true };
+                }
+            } catch (error) {
+                if (error.code !== 'ERR_CANCELED') {
+                    snackbar('Failed to Fetch Data!', 'error'); [span_23](start_span)//[span_23](end_span)
+                    console.log(error);
+                    setData(null);
+                }
+            }
+            return { data: null, status: false };
+        };
+
+        const init = async () => {
+            setIsLoading(true);
+            const reportFromState = state?.report;
+
+            if (!reportFromState) {
+                snackbar('Report context is missing. Please go back to the previous page.', 'error');
+                navigate(-1); // Go back
+                return;
+            }
+            
+            const reportStatus = reportFromState.subReportStatus;
+            let currentReportId = reportFromState.subReportFR_RID;
+            let shouldSaveTotals = false;
+
+            try {
+                if (reportStatus === null || reportStatus === '') {
+                    // First time opening: create the report via insertOnLoad
+                    try {
+                        const payload = {
+                            qed: user.quarterEndDate,
+                            userId: user.userId,
+                            rMId: reportFromState.subReportFR_RMID,
+                        };
+                        const response = await callApi('/T57/insertOnLoad', payload);
+                        if (response) {
+                            currentReportId = response;
+                            setReportId(currentReportId);
+                            shouldSaveTotals = true; // Save totals only after initial creation and fetch
+                        }
+                    } catch (insertError) {
+                         // This can happen on refresh if the report was just created.
+                        console.log('Insert failed, likely already exists:', insertError);
+                        snackbar('Could not create a new report. It may already exist.', 'warning');
+                    }
+                }
+                
+                if (currentReportId) {
+                    setReportId(currentReportId);
+                    const { data: fetchedData, status } = await fetchData(currentReportId);
+                    if (status && shouldSaveTotals) {
+                        // Mimics old controller saving totals right after the first get call
+                        await saveAllTotals(fetchedData);
+                    }
+                } else {
+                    throw new Error("No valid report ID found to fetch data.");
+                }
+            } catch (error) {
+                console.log(error);
+                snackbar('Something went wrong during initialization!', 'error'); [span_24](start_span)//[span_24](end_span)
+                navigate(-1); // Navigate back on critical failure
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        init();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleCellChange = (item, value) => {
+        setData((currentData) => {
+            const newData = [...currentData];
+            newData.splice(item?.dataIndex, 1, value);
+            return updateTotals(newData, PYData);
+        });
+    };
+
+    const handleCellBlur = (item, value) => {
+        if (!item) return;
+        saveField(String(item.dataIndex + 1), value);
+        saveAllTotals(data);
+    };
+
+    return (
+        <>
+            <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+                <FRReturnsReport
+                    reportId={reportId}
+                    qed={user.quarterEndDate}
+                    columns={[
+                        { title: 'Particulars', cellProps: {} },
+                        { title: 'Current Year', cellProps: {} },
+                    [span_25](start_span)]} //[span_25](end_span)
+                    rows={[
+                        // All row definitions remain the same as in your provided code
+                        // Example:
+                        [
+                          { title: 'Additional Disclosures', cellProps: { sx: { fontWeight: 800 } } },
+                          [span_26](start_span){ dataIndex: 0, cellProps: { readOnly: !editable, inputType: 'splAlphaNumeric', multiline: true, rows: 3, maxLength: '4000' } }, //[span_26](end_span)
+                        ],
+                        [cite_start]// ... (rest of your rows configuration) [cite: 39-102]
+                    ]}
+                    data={data}
+                    onCellChange={handleCellChange}
+                    onCellBlur={handleCellBlur}
+                    isLoading={isLoading}
+                    completeButtonEnabled={editable}
+                />
+            </Box>
+        </>
+    );
+}
+
+
+
+
