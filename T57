@@ -1,0 +1,802 @@
+New react jsx code :
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+export default function Table57() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [PYData, setPYData] = useState(null);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [editable] = useState(true);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const saveField = useCallback(
+    async (key, value) => {
+      try {
+        const payload = {
+          reportId: reportId.toString() ?? report?.subReportFR_RID,
+          key,
+          value,
+        };
+        const reponse = await callApi('/T57/updateField', payload);
+        console.log('Response of updatefield:: ', reponse);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        console.log(error);
+      }
+    },
+    [reportId, report, callApi]
+  );
+
+  const updateTotals = useCallback(
+    (data) => {
+      if (!data) return;
+
+      let CY13 = (
+        Number(data[6]) +
+        Number(data[7]) +
+        Number(data[8]) +
+        Number(data[9]) +
+        Number(data[10]) +
+        Number(data[11])
+      ).toFixed(2);
+      let CY16 = (
+        Number(data[2]) +
+        Number(data[3]) +
+        Number(data[4]) +
+        Number(data[12]) +
+        Number(data[13]) +
+        Number(data[14])
+      ).toFixed(2);
+
+      let PY22 = (Number(PYData[18]) + Number(PYData[19]) - Number(PYData[20])).toFixed(2);
+
+      let CY19 = Number(PY22).toFixed(2);
+
+      let CY22 = (Number(data[18]) + Number(data[19]) - Number(data[20])).toFixed(2);
+
+      let PY29 = (Number(PYData[25]) + Number(PYData[26]) - Number(PYData[27])).toFixed(2);
+      let CY26 = Math.trunc(Number(PY29).toFixed(2));
+      let CY29 = Math.trunc((Number(data[25]) + Number(data[26]) - Number(data[27])).toFixed(2));
+
+      let PY34 = (Number(PYData[30]) + Number(PYData[31]) - Number(PYData[32])).toFixed(2);
+      let CY31 = Math.trunc(Number(PY34));
+      let CY34 = Math.trunc((Number(data[30]) + Number(data[31]) - Number(data[32])).toFixed(2));
+
+      const newData = [...data];
+
+      newData[12] = CY13;
+      newData[15] = CY16;
+      newData[18] = CY19;
+      newData[21] = CY22;
+      newData[25] = CY26;
+      newData[28] = CY29;
+      newData[30] = CY31;
+      newData[33] = CY34;
+
+      // newData.splice(12, 1, CY13);
+      // newData.splice(15, 1, CY16);
+
+      // newData.splice(18, 1, CY19);
+      // newData.splice(21, 1, CY22);
+      // newData.splice(25, 1, CY26);
+      // newData.splice(28, 1, CY29);
+      // newData.splice(30, 1, CY31);
+      // newData.splice(33, 1, CY34);
+
+      // setData(newData);
+      return newData;
+    },
+    [PYData]
+  );
+
+  const handleCellChange = (item, value) => {
+    // const newData = [...data];
+    // newData.splice(item?.dataIndex, 1, value);
+    // updateTotals(newData);
+    setData(() => {
+      const newData = [...data];
+      newData.splice(item?.dataIndex, 1, value);
+      return updateTotals(newData);
+    });
+  };
+
+  const handleCellBlur = (item, value) => {
+    if (!item) return;
+    saveField(String(item.dataIndex + 1), value);
+    saveField('13', data[12]);
+    saveField('16', data[15]);
+    saveField('19', data[18]);
+    saveField('22', data[21]);
+    saveField('26', data[25]);
+    saveField('29', data[28]);
+    saveField('31', data[30]);
+    saveField('34', data[33]);
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    if (!report) return;
+
+    const insertOnLoad = async () => {
+      try {
+        const payload = {
+          qed: user.quarterEndDate,
+          userId: user.userId,
+          rMId: report.subReportFR_RMID,
+        };
+        const response = await callApi('/T57/insertOnLoad', payload);
+        if (response) {
+          setReportId(response);
+          await fetchData(response);
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setData(null);
+        console.log(error);
+        snackbar('Failed to Fetch Data!', 'error');
+      }
+      setIsLoading(false);
+    };
+
+    const fetchData = async (passedReportId) => {
+      try {
+        const reportId = passedReportId.toString();
+
+        const response = await callApi('/T57/getT57Data', { reportId });
+        if (response) {
+          // const valuesList = Object.values(response);
+          const valuesList = {};
+          const pyValuesList = {};
+          for (let i = 0; i <= 63; i++) {
+            const key = `CY${i}`;
+            if (key in response) {
+              valuesList[key] = response[key];
+            }
+            const pyKey = `PY${i}`;
+            if (pyKey in response) {
+              pyValuesList[key] = response[pyKey];
+            }
+          }
+          const cyValues = Object.values(valuesList);
+
+          setPYData(Object.values(pyValuesList));
+
+          console.log(cyValues);
+          setData(cyValues);
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          console.log('Error in dataaaaaaaa');
+          return;
+        }
+        setData(null);
+        console.log(error);
+        snackbar('Failed to Fetch Data!', 'error');
+      }
+      setIsLoading(false);
+    };
+
+    const init = async () => {
+      try {
+        const reportStatus = report.subReportStatus;
+        console.log('ReportStatus::: ', reportStatus);
+        if (reportStatus === null || reportStatus === '') {
+          await insertOnLoad();
+        } else {
+          await fetchData(report?.subReportFR_RID);
+        }
+      } catch (error) {
+        console.log(error);
+        snackbar('Something went wrong!', 'error');
+      }
+    };
+    init();
+  }, []);
+
+  return (
+    <>
+      <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+        <FRReturnsReport
+          reportId={reportId || report?.subReportFR_RID}
+          qed={user.quarterEndDate}
+          columns={[
+            { title: 'Particulars', cellProps: {} },
+            { title: 'Current Year', cellProps: {} },
+          ]}
+          rows={[
+            [
+              { title: 'Additional Disclosures', cellProps: { sx: { fontWeight: 800 } } },
+              {
+                dataIndex: 0,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+            [
+              { title: '1) Disclosure of provisions and contingencies', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'i) Provisions for depreciation on investment', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 2, cellProps: {} },
+            ],
+            [
+              { title: 'ii) Provision towards NPA', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 3, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title: 'iii) Provision towards Standard Asset',
+                cellProps: { sx: { ml: 2 } },
+              },
+              { dataIndex: 4, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '2) Provision for taxation', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'i) Provision for current tax', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 6, cellProps: {} },
+            ],
+            [
+              { title: 'ii) Provision for deferred tax', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 7, cellProps: {} },
+            ],
+            [
+              {
+                title: 'iii) Provision for wealth tax',
+                cellProps: { sx: { ml: 2 } },
+              },
+              { dataIndex: 8, cellProps: {} },
+            ],
+            [
+              {
+                title: 'iv) Mat credit entitlement',
+                cellProps: { sx: { ml: 2 } },
+              },
+              { dataIndex: 9, cellProps: {} },
+            ],
+            [
+              { title: 'v) Provision for tax of earlier years', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 10, cellProps: {} },
+            ],
+            [
+              { title: ' vi) Other adjustments to tax', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 11, cellProps: {} },
+            ],
+            [
+              { title: 'vii) Provision for taxation', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 12, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: '3) Provision on loan losses', cellProps: {} },
+              { dataIndex: 13, cellProps: {} },
+            ],
+            [
+              { title: '4) Other provision and contingencies', cellProps: {} },
+              { dataIndex: 14, cellProps: {} },
+            ],
+            [
+              { title: '5) Provisions', cellProps: {} },
+              { dataIndex: 15, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: '6) Details relating to provisions and contingencies', cellProps: {} },
+              {
+                dataIndex: 16,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+            [
+              { title: '7) Disclosure on floating provision ', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' (a) Opening balance in the floating provisions account ', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 18, cellProps: { readOnly: editable } },
+            ],
+            [
+              {
+                title: '  (b) The quantum of floating provisions made in the accounting year ',
+                cellProps: { sx: { ml: 2 } },
+              },
+              { dataIndex: 19, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '  (c) Amount of draw down made during the accounting year', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 20, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' (d) Closing balance in the floating provisions account', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 21, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: ' 8) Disclosure on draw down of reserves', cellProps: { sx: { ml: 2 } } },
+              {
+                dataIndex: 22,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+            [
+              {
+                title: 'Note: The purpose of draw down made during the accounting year may be mentioned. ',
+                cellProps: {},
+              },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' 9) Disclosure of complaints', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' i) Customer Complaints ', cellProps: { sx: { ml: 2 } } },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' a) Number of Complaints Pending at the Beginning of the Year', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 25, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: ' b) No. of complaints received during the year.', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 26, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '   c) No. of complaints redressed during the year.', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 27, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'd) Number of Complaints Pending at the End of the Year ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 28, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: 'ii) Awards passed by the Banking Ombudsman ', cellProps: { sx: { ml: 2 } } },
+              { dataIndex: 29, titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title: ' a) Number of Unimplemented Awards at the Beginning of the Year',
+                cellProps: { sx: { ml: 3 } },
+              },
+              { dataIndex: 30, cellProps: { readOnly: editable } },
+            ],
+            [
+              {
+                title: ' b) Number of awards passed by the banking ombudsman during the year',
+                cellProps: { sx: { ml: 3 } },
+              },
+              { dataIndex: 31, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'c) Number of awards implemented during the year. ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 32, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' d) Number of Unimplemented Awards at the end of the Year', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 33, cellProps: { readOnly: editable } },
+            ],
+            [
+              { title: '10) Disclosure of Letters of Comfort (LoCs) issued by banks ', cellProps: {} },
+              {
+                dataIndex: 34,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+            [
+              { title: '11) Provisioning Coverage Ratio (PCR). ', cellProps: {} },
+              { dataIndex: 35, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' 12) Bancassurance Business.', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' i) Fees / remuneration received on bancassurance business ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 37, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title: 'ii) Details of fees / remuneration received on bancassurance business ',
+                cellProps: { sx: { ml: 3 } },
+              },
+              {
+                dataIndex: 38,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+            [
+              { title: '13) Concentration of Deposits, Advances, Exposures and NPAs ', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'i) Concentration of deposits ', cellProps: { sx: { ml: 2 } } },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' a) Total Deposits of twenty largest depositors', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 41, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title: '  b) Percentage of Deposits of twenty largest depositors to Total Deposits of the Bank’',
+                cellProps: { sx: { ml: 3 } },
+              },
+              { dataIndex: 42, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' ii) Concentration of Advances*', cellProps: { sx: { ml: 2 } } },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '  a) Total Advances to twenty largest borrowers ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 44, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title: 'b)Percentage of Advances to twenty largest borrowers to Total Advances of the Bank’ ',
+                cellProps: { sx: { ml: 3 } },
+              },
+              { dataIndex: 45, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' iii) Concentration of Exposures**', cellProps: { sx: { ml: 2 } } },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'a) Total Exposure to twenty largest borrowers/customers ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 47, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title:
+                  ' b) Percentage of Exposures to twenty largest borrowers/customers to Total Exposure of the bank on borrowers/customers',
+                cellProps: { sx: { ml: 3 } },
+              },
+              { dataIndex: 48, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'iv) Concentration of non-performing assets ', cellProps: { sx: { ml: 2 } } },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '  a) Total Exposure to top four NPA accounts ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 50, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '14) Sector-wise NPAs ', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'i) Agriculture & allied activities ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 52, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '   ii) Industry (Micro & small, Medium and Large) ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 53, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'iii) Services ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 54, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'iv) Personal Loans ', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 55, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' 15) Overseas Assets, NPAs and Revenue', cellProps: {} },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '   i) Total Assets', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 57, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: ' ii) Total NPAs', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 58, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: '  iii) Total Revenue', cellProps: { sx: { ml: 3 } } },
+              { dataIndex: 59, cellProps: { readOnly: !editable } },
+            ],
+            [
+              {
+                title:
+                  '16) Off-balance Sheet SPVs sponsored (which are required to be consolidated as per accounting norms) ',
+                cellProps: {},
+              },
+              { titleRow: true, cellProps: { readOnly: !editable } },
+            ],
+            [
+              { title: 'i) Name of domestic special purpose vehicle sponsored ', cellProps: { sx: { ml: 3 } } },
+              {
+                dataIndex: 61,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '1000',
+                },
+              },
+            ],
+            [
+              { title: 'ii) Name of overseas special purpose vehicle sponsored. ', cellProps: { sx: { ml: 3 } } },
+              {
+                dataIndex: 62,
+                cellProps: {
+                  readOnly: !editable,
+                  inputType: 'splAlphaNumeric',
+                  multiline: true,
+                  rows: 3,
+                  maxLength: '4000',
+                },
+              },
+            ],
+          ]}
+          data={data}
+          onCellChange={handleCellChange}
+          onCellBlur={handleCellBlur}
+          isLoading={isLoading}
+          completeButtonEnabled={editable}
+        />
+      </Box>
+    </>
+  );
+}
+
+
+
+
+
+Old Controller :
+
+app.controller('T57Controller', function ($scope, $rootScope, $timeout, AES256, $state, T57Factory,frReturnFactory, $sessionStorage) {
+    let T57 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    T57.reportName = sessionStorage.getItem("frSubReportName");
+    T57.reportId=reportId;
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    T57.row="";
+
+    console.log("Status :" + status);
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+    T57.backToIndex = function () {
+        $state.go('frt_maker.frReturn');
+    }
+    T57.insertOrUpdate = function () {
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'rMId': "40023301"
+        };
+        if (status === null || status === '') {
+            T57Factory.insertOnLoad(params).then(function (data) {
+                sessionStorage.setItem("frReportId", data);
+                T57.reportId = data;
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        }
+
+        window.setTimeout(function() {
+            T57Factory.getT57Data(T57.reportId).then(function (data) {
+                T57.row = data;
+                window.setTimeout(function () {
+                    T57.saveRow(T57.row.CY19);
+                }, 2000);
+            }, function (errResponse) {
+                console.error('data failed. ' + errResponse);
+            })
+        },1000);
+
+    }
+
+
+
+// Setting 2 Decimal Digit
+    T57.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0.00;
+        }
+        return parseFloat(value * 1);
+    }
+
+    if (T57.row != undefined ) {
+        $scope.$watchCollection('T57.row', function (newValue, oldValue) {
+
+            T57.row.CY13 = T57.parseFloat((T57.parseFloat(T57.row.CY7)) + (T57.parseFloat(T57.row.CY8)) + (T57.parseFloat(T57.row.CY9)) + (T57.parseFloat(T57.row.CY10)) + (T57.parseFloat(T57.row.CY11)) + (T57.parseFloat(T57.row.CY12))).toFixed(2);
+            T57.row.CY16 = T57.parseFloat((T57.parseFloat(T57.row.CY3)) + (T57.parseFloat(T57.row.CY4)) + (T57.parseFloat(T57.row.CY5)) + (T57.parseFloat(T57.row.CY13)) + (T57.parseFloat(T57.row.CY14)) + (T57.parseFloat(T57.row.CY15))).toFixed(2);
+
+            T57.row.PY13 = T57.parseFloat((T57.parseFloat(T57.row.PY7)) + (T57.parseFloat(T57.row.PY8)) + (T57.parseFloat(T57.row.PY9)) + (T57.parseFloat(T57.row.PY10)) + (T57.parseFloat(T57.row.PY11)) + (T57.parseFloat(T57.row.PY12))).toFixed(2);
+            T57.row.PY16 = T57.parseFloat((T57.parseFloat(T57.row.PY3)) + (T57.parseFloat(T57.row.PY4)) + (T57.parseFloat(T57.row.PY5)) + (T57.parseFloat(T57.row.PY13)) + (T57.parseFloat(T57.row.PY14)) + (T57.parseFloat(T57.row.PY15))).toFixed(2);
+
+            T57.row.PY22 = T57.parseFloat((T57.parseFloat(T57.row.PY19)) + (T57.parseFloat(T57.row.PY20)) - (T57.parseFloat(T57.row.PY21))).toFixed(2);
+            T57.row.CY19 = T57.parseFloat(T57.parseFloat(T57.row.PY22)).toFixed(2);
+            T57.row.CY22 = T57.parseFloat(T57.parseFloat((T57.row.CY19)) + (T57.parseFloat(T57.row.CY20)) - (T57.parseFloat(T57.row.CY21))).toFixed(2);
+
+            T57.row.PY29 = T57.parseFloat((T57.parseFloat(T57.row.PY26)) + (T57.parseFloat(T57.row.PY27)) - (T57.parseFloat(T57.row.PY28))).toFixed(2);
+            T57.row.CY26 = Math.trunc(T57.parseFloat(T57.parseFloat(T57.row.PY29)).toFixed(2));
+            T57.row.CY29 = Math.trunc(T57.parseFloat(T57.parseFloat((T57.row.CY26)) + (T57.parseFloat(T57.row.CY27)) - (T57.parseFloat(T57.row.CY28))).toFixed(2));
+
+            T57.row.PY34 = T57.parseFloat(T57.parseFloat(T57.parseFloat(T57.row.PY31)) + (T57.parseFloat(T57.row.PY32)) - (T57.parseFloat(T57.row.PY33))).toFixed(2);
+            T57.row.CY31 = Math.trunc(T57.row.PY34);
+            T57.row.CY34 = Math.trunc(T57.parseFloat((T57.parseFloat(T57.row.CY31)) + (T57.parseFloat(T57.row.CY32)) - (T57.parseFloat(T57.row.CY33))).toFixed(2));
+
+        });
+
+    }
+
+    // Updating Data (on-Change Saves Data)
+    T57.updateField = function (value, rowID) {
+
+            var value1=document.getElementById(value).value;
+            let reportId= T57.reportId.toString();
+            let params = {
+                'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
+                'key': aesUtil.encrypt(salt, iv, passphrase, rowID),
+                'salt': salt,
+                'iv': iv,
+                'value': aesUtil.encrypt(salt, iv, passphrase, value1)
+            };
+
+            T57Factory.updateField(params).then(function (data) {
+            }, function (errResponse) {
+                console.error('update failed. ' + errResponse);
+            });
+    }
+
+    T57.saveRow = function (value1) {
+        let reportId= T57.reportId.toString();
+        let params = {
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'salt': salt,
+            'iv': iv,
+            'value1': aesUtil.encrypt(salt, iv, passphrase, (value1).toString()),
+            'value2': aesUtil.encrypt(salt, iv, passphrase, (T57.row.CY22).toString()),
+            'value3': aesUtil.encrypt(salt, iv, passphrase, (T57.row.CY26).toString()),
+            'value4': aesUtil.encrypt(salt, iv, passphrase, (T57.row.CY29).toString()),
+            'value5': aesUtil.encrypt(salt, iv, passphrase, (T57.row.CY31).toString()),
+            'value6': aesUtil.encrypt(salt, iv, passphrase, (T57.row.CY34).toString())
+        };
+        T57Factory.saveRow(params).then(function (data) {
+        }, function (errResponse) {
+            console.error('update failed. ' + errResponse);
+        });
+
+    }
+
+
+
+
+    T57.checkAmount57 = function (numVal) {
+
+        let amt = String($('#' + numVal).val());
+        if (amt != 0 || amt != 0.00) {
+            amt = document.getElementById(numVal).value = (document.getElementById(numVal).value).replaceAll(" ", "");
+            amt = amt.replace(/^0+/, "");
+
+        }
+        if (isNaN(amt)) {
+            alert("Please enter Numeric Value only");
+            $('#' + numVal).val("");
+            $('#' + numVal).focus();
+            return false;
+        }
+        let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+        if (c.test(amt) || amt === "") {
+            let idot = amt.indexOf('.');
+            if (idot === -1) {
+                if (amt === "") {
+                    $('#' + numVal).val(amt.concat("0.00"));
+                } else if ((numVal == "val27") || (numVal == "val28") || (numVal == "val32") || (numVal == "val33")) {
+                    $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+                } else {
+                    $('#' + numVal).val(amt.concat(".00"));
+                }
+            } else if ((numVal == "val27") || (numVal == "val28") || (numVal == "val32") || (numVal == "val33")) {
+                $('#' + numVal).val(Math.trunc($('#' + numVal).val()));
+            } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
+                $('#' + numVal).val(amt.concat("0"));
+            }
+        } else {
+            alert("Amount is not allowed more than 15 digits and two decimal digits.");
+            $('#' + numVal).val("");
+            $('#' + numVal).focus();
+            return false;
+        }
+
+        return true;
+    }
+
+
+    T57.submitIndividual = function (){
+        let params = {
+            // 'reportId' :  T57.reportId.toString(),
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, T57.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+            console.log("data-"+data);
+            if(data==1){
+                T57.displayMessage = T57.reportName +" report has been submitted successfully.";
+                console.log(T57.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    T57.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+});
+
+
+
+
+
