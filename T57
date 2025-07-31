@@ -1067,3 +1067,393 @@ export default function Table57() {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------
+
+
+
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import FRReturnsReport from '../components/FRReturnsReport';
+
+export default function Table57() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const { state } = useLocation();
+    const navigate = useNavigate();
+    const snackbar = useCustomSnackbar();
+    const { callApi } = useApi();
+
+    const [reportId, setReportId] = useState(null);
+    const [data, setData] = useState(null);
+    const [PYData, setPYData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [editable] = useState(true);
+
+    const updateTotals = useCallback(
+        (currentData, previousYearData) => {
+            if (!currentData || !previousYearData) return currentData;
+
+            const newData = [...currentData];
+
+            if (previousYearData.length === 0) return newData;
+
+            // Calculation for CY13 (Index 12)
+            newData[12] = (
+                Number(newData[6] || 0) + Number(newData[7] || 0) +
+                Number(newData[8] || 0) + Number(newData[9] || 0) +
+                Number(newData[10] || 0) + Number(newData[11] || 0)
+            ).toFixed(2);
+
+            // Calculation for CY16 (Index 15)
+            newData[15] = (
+                Number(newData[2] || 0) + Number(newData[3] || 0) +
+                Number(newData[4] || 0) + Number(newData[12] || 0) +
+                Number(newData[13] || 0) + Number(newData[14] || 0)
+            ).toFixed(2);
+
+            // Floating Provisions Calculations
+            const PY22 = (Number(previousYearData[18] || 0) + Number(previousYearData[19] || 0) - Number(previousYearData[20] || 0)).toFixed(2);
+            newData[18] = Number(PY22).toFixed(2); // CY19 = PY22
+
+            newData[21] = (Number(newData[18] || 0) + Number(newData[19] || 0) - Number(newData[20] || 0)).toFixed(2); // CY22
+
+            // Customer Complaints Calculations
+            const PY29 = (Number(previousYearData[25] || 0) + Number(previousYearData[26] || 0) - Number(previousYearData[27] || 0)).toFixed(2);
+            newData[25] = Math.trunc(Number(PY29)); // CY26 = trunc(PY29)
+
+            newData[28] = Math.trunc(Number(newData[25] || 0) + Number(newData[26] || 0) - Number(newData[27] || 0)); // CY29
+
+            // Banking Ombudsman Awards Calculations
+            const PY34 = (Number(previousYearData[30] || 0) + Number(previousYearData[31] || 0) - Number(previousYearData[32] || 0)).toFixed(2);
+            newData[30] = Math.trunc(Number(PY34)); // CY31 = trunc(PY34)
+
+            newData[33] = Math.trunc(Number(newData[30] || 0) + Number(newData[31] || 0) - Number(newData[32] || 0)); // CY34
+            
+            return newData;
+        },
+        []
+    );
+
+    // Corresponds to the old T57Factory.updateField call
+    const saveField = useCallback(
+        async (key, value) => {
+            if (!reportId) return;
+            try {
+                const payload = {
+                    reportId: reportId.toString(),
+                    key,
+                    value: value ?? '',
+                };
+                await callApi('/T57/updateField', payload);
+            } catch (error) {
+                if (error.code !== 'ERR_CANCELED') {
+                    console.log('Failed to update field:', error);
+                }
+            }
+        },
+        [reportId, callApi]
+    );
+
+    // Corresponds to the old T57Factory.saveRow call, executed only on initial load
+    const saveInitialRow = useCallback(
+        async (updatedData) => {
+            if (!updatedData || !reportId) return;
+            try {
+                const payload = {
+                    reportId: reportId.toString(),
+                    value1: (updatedData[18] ?? '').toString(), // CY19
+                    value2: (updatedData[21] ?? '').toString(), // CY22
+                    value3: (updatedData[25] ?? '').toString(), // CY26
+                    value4: (updatedData[28] ?? '').toString(), // CY29
+                    value5: (updatedData[30] ?? '').toString(), // CY31
+                    value6: (updatedData[33] ?? '').toString(), // CY34
+                };
+                await callApi('/T57/saveRow', payload); // Assumes a new endpoint for this bulk save
+            } catch (error) {
+                console.log('Failed to save initial row:', error);
+                snackbar('Could not save initial totals.', 'error');
+            }
+        },
+        [reportId, callApi, snackbar]
+    );
+
+    useEffect(() => {
+        const fetchData = async (idToFetch) => {
+            try {
+                const response = await callApi('/T57/getT57Data', { reportId: idToFetch.toString() });
+                if (response) {
+                    const maxIndex = 65;
+                    const cyValues = new Array(maxIndex).fill('');
+                    const pyValues = new Array(maxIndex).fill('');
+                    
+                    for (const key in response) {
+                        const prefix = key.substring(0, 2);
+                        const index = parseInt(key.substring(2), 10);
+                        if (!isNaN(index) && index > 0 && index < maxIndex) {
+                            if (prefix === 'CY') {
+                                cyValues[index - 1] = response[key];
+                            } else if (prefix === 'PY') {
+                                pyValues[index - 1] = response[key];
+                            }
+                        }
+                    }
+                    setPYData(pyValues);
+                    const finalData = updateTotals(cyValues, pyValues);
+                    setData(finalData);
+                    return { data: finalData, status: true };
+                }
+            } catch (error) {
+                if (error.code !== 'ERR_CANCELED') {
+                    snackbar('Failed to Fetch Data!', 'error');
+                    console.log(error);
+                    setData(null);
+                }
+            }
+            return { data: null, status: false };
+        };
+
+        const init = async () => {
+            setIsLoading(true);
+            const reportFromState = state?.report;
+
+            if (!reportFromState) {
+                snackbar('Report context is missing. Please go back to the previous page.', 'error');
+                navigate(-1);
+                return;
+            }
+            
+            const reportStatus = reportFromState.subReportStatus;
+            let currentReportId = reportFromState.subReportFR_RID;
+            let shouldSaveRow = false;
+
+            try {
+                if (reportStatus === null || reportStatus === '') {
+                    try {
+                        const payload = {
+                            qed: user.quarterEndDate,
+                            userId: user.userId,
+                            rMId: reportFromState.subReportFR_RMID,
+                        };
+                        const response = await callApi('/T57/insertOnLoad', payload);
+                        if (response) {
+                            currentReportId = response;
+                            setReportId(currentReportId);
+                            shouldSaveRow = true; // Flag to trigger the one-time saveRow call
+                        }
+                    } catch (insertError) {
+                        console.log('Insert failed, likely already exists:', insertError);
+                        snackbar('Could not create a new report. It may already exist.', 'warning');
+                    }
+                }
+                
+                if (currentReportId) {
+                    if (!reportId) setReportId(currentReportId);
+                    const { data: fetchedData, status } = await fetchData(currentReportId);
+                    
+                    // If this was the initial creation, call saveInitialRow after a 2-second delay
+                    if (status && shouldSaveRow) {
+                        setTimeout(() => {
+                            saveInitialRow(fetchedData);
+                        }, 2000); [span_0](start_span)// 2-second delay[span_0](end_span)
+                    }
+                } else {
+                    throw new Error("No valid report ID found to fetch data.");
+                }
+            } catch (error) {
+                console.log(error);
+                snackbar('Something went wrong during initialization!', 'error');
+                navigate(-1);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        init();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleCellChange = (item, value) => {
+        setData((currentData) => {
+            const newData = [...currentData];
+            newData.splice(item?.dataIndex, 1, value);
+            return updateTotals(newData, PYData);
+        });
+    };
+
+    // Correctly saves only the field that was blurred
+    const handleCellBlur = (item, value) => {
+        if (!item) return;
+        saveField(String(item.dataIndex + 1), value);
+    };
+
+    return (
+        <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+            <FRReturnsReport
+                reportId={reportId}
+                qed={user.quarterEndDate}
+                columns={[
+                    { title: 'Particulars', cellProps: {} },
+                    { title: 'Current Year', cellProps: {} },
+                ]}
+                rows={[
+                    // All row definitions remain the same as in your provided code
+                    [cite_start]// ... [cite: 36-102]
+                ]}
+                data={data}
+                onCellChange={handleCellChange}
+                onCellBlur={handleCellBlur}
+                isLoading={isLoading}
+                completeButtonEnabled={editable}
+            />
+        </Box>
+    );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+
+
+
+  useEffect(() => {
+    const fetchData = async (idToFetch) => {
+      try {
+        const response = await callApi('/T57/getT57Data', { reportId: idToFetch.toString() });
+        if (response) {
+          const maxIndex = 65;
+          const cyValues = new Array(maxIndex).fill('');
+          const pyValues = new Array(maxIndex).fill('');
+          
+          for (const key in response) {
+            const prefix = key.substring(0, 2);
+            const index = parseInt(key.substring(2), 10);
+            if (!isNaN(index) && index > 0 && index < maxIndex) {
+              if (prefix === 'CY') {
+                cyValues[index - 1] = response[key];
+              } else if (prefix === 'PY') {
+                pyValues[index - 1] = response[key];
+              }
+            }
+          }
+          setPYData(pyValues);
+          const finalData = updateTotals(cyValues, pyValues);
+          setData(finalData);
+          // Return data and success status to the caller
+          return { data: finalData, status: true };
+        }
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          snackbar('Failed to Fetch Data!', 'error');
+          console.log(error);
+          setData(null);
+        }
+      }
+      return { data: null, status: false };
+    };
+
+    const init = async () => {
+      setIsLoading(true);
+      const reportFromState = state?.report;
+
+      if (!reportFromState) {
+        snackbar('Report context is missing. Please go back to the previous page.', 'error');
+        navigate(-1);
+        return;
+      }
+      
+      const reportStatus = reportFromState.subReportStatus;
+      let currentReportId = reportFromState.subReportFR_RID;
+      
+      try {
+        // This logic runs only on the first load to create the report entry if it doesn't exist.
+        if (reportStatus === null || reportStatus === '') {
+          try {
+            const payload = {
+              qed: user.quarterEndDate,
+              userId: user.userId,
+              rMId: reportFromState.subReportFR_RMID,
+            };
+            const response = await callApi('/T57/insertOnLoad', payload);
+            if (response) {
+              currentReportId = response;
+              setReportId(currentReportId);
+            }
+          } catch (insertError) {
+            console.log('Insert failed, likely already exists:', insertError);
+            snackbar('Could not create a new report. It may already exist.', 'warning');
+          }
+        }
+        
+        if (currentReportId) {
+          if (!reportId) setReportId(currentReportId);
+          // Fetch data for the report.
+          const { data: fetchedData, status } = await fetchData(currentReportId);
+          
+          [span_0](start_span)// **Correction**: This now runs on EVERY successful data fetch, not just the first time.[span_0](end_span)
+          if (status) {
+            setTimeout(() => {
+              saveInitialRow(fetchedData);
+            }, 2000); [span_1](start_span)// 2-second delay[span_1](end_span)
+          }
+        } else {
+          throw new Error("No valid report ID found to fetch data.");
+        }
+      } catch (error) {
+        console.log(error);
+        snackbar('Something went wrong during initialization!', 'error');
+        navigate(-1);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+
