@@ -509,3 +509,328 @@ export default function InvestmentsReport() {
   );
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------
+
+
+
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../../common/hooks/useApi';
+import { callInsertOnLoad, callFetchData, callUpdateField } from './InvestmentsAPI';
+import FRReturnsReport from '../../components/FRReturnsReport';
+
+const disabledFields = [0, 2, 9, 11, 15]; // Adjusted disabled fields to reflect totals
+
+export default function InvestmentsReport() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [rows, setRows] = useState(null);
+  const [data, setData] = useState(null);
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Renamed and reusable function to update any field's value on the backend
+  const updateFieldValue = useCallback(
+    async (rowIndex, value) => {
+      // The API expects a 1-based index, so we add 1
+      const key = rowIndex + 1;
+      try {
+        await callUpdateField(reportId.toString(), String(key), String(value), callApi);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') return;
+        console.log(error);
+        // Optionally show a snackbar for failed saves
+      }
+    },
+    [reportId, callApi]
+  );
+
+  // *** NEW AND CORRECTED CALCULATION AND SAVE LOGIC ***
+  const calculateAndSaveTotals = useCallback(
+    (currentData) => {
+      const newData = [...currentData];
+
+      // Dependency mapping (0-based index):
+      // val4 to val9 are at indices 3 to 8
+      // val13 to val15 are at indices 12 to 14
+
+      // Calculate val3Total (Index 2) = val4 + ... + val9
+      const val3Total = (
+        Number(newData[3]) + Number(newData[4]) + Number(newData[5]) +
+        Number(newData[6]) + Number(newData[7]) + Number(newData[8])
+      ).toFixed(2);
+
+      // Calculate val12Total (Index 11) = val13 + val14 + val15
+      const val12Total = (
+        Number(newData[12]) + Number(newData[13]) + Number(newData[14])
+      ).toFixed(2);
+
+      // Calculate val1Total (Index 0) = val2 + val3Total
+      const val1Total = (Number(newData[1]) + Number(val3Total)).toFixed(2);
+
+      // Calculate val10Total (Index 9) = val11 + val12Total
+      const val10Total = (Number(newData[10]) + Number(val12Total)).toFixed(2);
+
+      // Calculate val16Total (Index 15) = val3Total + val12Total
+      const val16Total = (Number(val3Total) + Number(val12Total)).toFixed(2);
+
+      // Update local state for immediate UI feedback
+      newData[0] = val1Total;
+      newData[2] = val3Total;
+      newData[9] = val10Total;
+      newData[11] = val12Total;
+      newData[15] = val16Total;
+      setData(newData);
+
+      // Save all calculated totals to the backend, mimicking the old controller
+      updateFieldValue(0, val1Total);
+      updateFieldValue(2, val3Total);
+      updateFieldValue(9, val10Total);
+      updateFieldValue(11, val12Total);
+      updateFieldValue(15, val16Total);
+    },
+    [updateFieldValue] // Depends on the memoized updateFieldValue function
+  );
+
+  const handleCellChange = useCallback(
+    (item, value) => {
+      // This function now only provides an optimistic UI update on each keystroke
+      const newData = [...data];
+      newData.splice(item.dataIndex, 1, value);
+      setData(newData);
+    },
+    [data]
+  );
+
+  const handleCellBlur = useCallback(
+    (item, value) => {
+      if (!item || disabledFields.includes(item.dataIndex)) return;
+
+      const rowIndex = item.dataIndex;
+      // First, save the field the user just finished editing
+      updateFieldValue(rowIndex, value);
+
+      // Then, create an updated data array to pass to the calculation function
+      const updatedDataForCalc = [...data];
+      updatedDataForCalc[rowIndex] = value;
+      
+      // Recalculate and save all totals based on the new value
+      calculateAndSaveTotals(updatedDataForCalc);
+    },
+    [data, updateFieldValue, calculateAndSaveTotals]
+  );
+
+  const processResponse = useCallback(
+    (response) => {
+      const rows = [];
+      const data = [];
+      const isSubTitlePattern = /^[A-Z]+\. ?M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\. /;
+      const isSubSubTitlePattern = /^\d+ /;
+
+      Object.entries(response).forEach(([, value]) => {
+        const desc = value.SC08_DESC;
+        const index = value.SC08_ID - 1;
+        const isSubTitle = isSubTitlePattern.test(desc);
+        const isSubSubTitle = isSubSubTitlePattern.test(desc);
+        const indent = isSubTitle ? 3 : isSubSubTitle ? 6 : 0;
+        rows.push([
+          { title: desc, cellProps: { sx: { ml: indent } } },
+          { dataIndex: index, cellProps: { readOnly: disabledFields.includes(index) } },
+        ]);
+        data.push(String(value.SC08_VAL_CY));
+      });
+      setRows(rows);
+      setData(data);
+
+      // *** ADDED: Perform initial calculation on load, if it's not a fresh report ***
+      const reportStatus = report.subReportStatus;
+      if (reportStatus !== null && reportStatus !== '') {
+        calculateAndSaveTotals(data);
+      }
+    },
+    [calculateAndSaveTotals, report] // Added dependency
+  );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // This useEffect hook remains the same. The logic has been moved into processResponse.
+  useEffect(() => {
+    setIsLoading(true);
+    if (!report) return;
+
+    const insertOnLoad = async () => {
+      try {
+        let response = await callInsertOnLoad(user.quarterEndDate, user.userId, report.subReportFR_RMID, callApi);
+        if (response && Array.isArray(response) && response.length > 0) {
+          const reportId = response[0].SC08_RPTID_FK;
+          if (reportId) {
+            setReportId(reportId);
+            processResponse(response);
+          }
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') return;
+        setData(null);
+        snackbar('Failed to Fetch Data!', 'error');
+        console.log('Report id generation error : ', error);
+      }
+      setIsLoading(false);
+    };
+
+    const fetchData = async () => {
+      try {
+        let response = await callFetchData(reportId ?? report.subReportFR_RID, callApi);
+        if (response) {
+          processResponse(response);
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') return;
+        setData(null);
+        snackbar('Failed to Fetch Data!', 'error');
+      }
+      setIsLoading(false);
+    };
+
+    const init = async () => {
+      try {
+        const reportStatus = report.subReportStatus;
+        if (reportStatus === null || reportStatus === '') {
+          await insertOnLoad();
+        } else {
+          await fetchData();
+        }
+      } catch (error) {
+        console.log(error);
+        snackbar('Something went wrong!', 'error');
+      }
+    };
+    init();
+  }, [report, user, callApi, reportId, processResponse, snackbar]); // Added missing dependencies to the hook
+
+  return (
+    <>
+      <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+        <FRReturnsReport
+          reportId={reportId ?? report?.subReportFR_RID}
+          qed={user.quarterEndDate}
+          columns={[{ title: 'Particulars', cellProps: {} }, { title: 'Current Year', cellProps: {} }]}
+          rows={rows}
+          data={data}
+          onCellChange={handleCellChange}
+          onCellBlur={handleCellBlur}
+          isLoading={isLoading}
+          completeButtonEnabled={true}
+        />
+      </Box>
+    </>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
