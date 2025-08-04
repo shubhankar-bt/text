@@ -1,0 +1,224 @@
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../../common/hooks/useApi';
+import { callInsertOnLoad, callFetchData, callUpdateField } from './AdvancesAPI';
+import FRReturnsReport from '../../components/FRReturnsReport';
+
+const disabledFields = [1, 2, 3, 4, 8, 14, 17, 21, 22];
+
+export default function AdvancesReport() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [rows, setRows] = useState(null);
+  const [data, setData] = useState(null);
+  const [, startTransition] = useTransition();
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const saveField = useCallback(
+    async (key, value) => {
+      try {
+        await callUpdateField(reportId.toString() ?? report?.subReportFR_RID, String(key), String(value), callApi);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        console.log(error);
+      }
+    },
+    [reportId, report, callApi]
+  );
+
+  const calculateTotals = useCallback(
+    (data) => {
+      if (!data) return;
+
+      const newData = [...data];
+
+      const total1 = Number(data[0]) + Number(data[1]) + Number(data[2]);
+      newData[3] = total1.toFixed(2);
+      saveField('4', total1);
+
+      const total2 = Number(data[4]) + Number(data[5]) + Number(data[6]);
+      newData[7] = total2.toFixed(2);
+      saveField('8', total2);
+
+      const total3 = Number(data[8]) + Number(data[9]) + Number(data[10]) + Number(data[11]);
+      newData[12] = total3.toFixed(2);
+      saveField('14', total3);
+
+      const total4 = Number(data[15]) + Number(data[16]) + Number(data[17]);
+      newData[14] = total4.toFixed(2);
+      saveField('17', total4);
+
+      const total5 = Number(data[13]) + total4;
+      newData[18] = total5.toFixed(2);
+      saveField('21', total5);
+
+      const total6 = total3 + total5;
+      newData[19] = total6.toFixed(2);
+      saveField('22', total6);
+
+      setData(newData);
+
+      setIsLoading(false);
+    },
+    [saveField]
+  );
+
+  const handleCellChange = useCallback(
+    (item, value) => {
+      const newData = [...data];
+      newData.splice(item?.dataIndex, 1, value);
+      setData(newData);
+      startTransition(() => {
+        calculateTotals(newData);
+      });
+    },
+    [data]
+  );
+
+  const handleCellBlur = useCallback(
+    (item, value) => {
+      if (!item || disabledFields.includes(item.rowId)) return;
+      const rowId = item.rowId;
+      console.log('rowId', rowId);
+      saveField(rowId, value);
+    },
+    [saveField]
+  );
+
+  const processResponse = useCallback(
+    async (response) => {
+      const rows = [];
+      const data = [];
+      const isSubTitlePattern = /^\(?(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})\)/;
+      const isSubSubTitlePattern = /^\([a-z]\)/;
+      let dataIndex = -1;
+
+      Object.entries(response).forEach(([, value]) => {
+        const desc = value.SC09_DESC;
+        const id = value.SC09_ID;
+        const isSubTitle = isSubTitlePattern.test(desc);
+        const isSubSubTitle = isSubSubTitlePattern.test(desc);
+        const indent = isSubTitle ? 3 : isSubSubTitle ? 6 : 0;
+        let props = { rowId: id };
+        if (id !== 9 && id !== 15) {
+          props = { ...props, dataIndex: ++dataIndex };
+          data.push(String(value.SC09_VAL_CY));
+        }
+        rows.push([
+          {
+            title: desc,
+            cellProps: {
+              sx: {
+                ml: indent,
+              },
+            },
+          },
+          {
+            ...props,
+            cellProps: {
+              readOnly: disabledFields.includes(id),
+            },
+          },
+        ]);
+      });
+      setRows(rows);
+      startTransition(() => {
+        calculateTotals(data);
+      });
+    },
+    [calculateTotals]
+  );
+
+  useEffect(() => {
+    setIsLoading(true);
+    if (!report) return;
+
+    const insertOnLoad = async () => {
+      try {
+        let response = await callInsertOnLoad(user.quarterEndDate, user.userId, report.subReportFR_RMID, callApi);
+        if (response) {
+          setReportId(response[0].SC09_RPTID_FK);
+          await processResponse(response);
+          return;
+        } else {
+          setReportId(null);
+        }
+        setIsLoading(false);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setData(null);
+        setReportId(null);
+        snackbar('Failed to Fetch Data!', 'error');
+        setIsLoading(false);
+      }
+    };
+
+    const fetchData = async () => {
+      try {
+        let response = await callFetchData(reportId ?? report.subReportFR_RID, callApi);
+        if (response) {
+          await processResponse(response);
+          return;
+        }
+        setIsLoading(false);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setData(null);
+        snackbar('Failed to Fetch Data!', 'error');
+        setIsLoading(false);
+      }
+    };
+
+    const init = async () => {
+      try {
+        const reportStatus = report.subReportStatus;
+        if (reportStatus === null || reportStatus === '') {
+          await insertOnLoad();
+        } else {
+          await fetchData();
+        }
+      } catch (error) {
+        console.log(error);
+        snackbar('Something went wrong!', 'error');
+        setIsLoading(false);
+      }
+    };
+
+    init();
+  }, []);
+
+  return (
+    <>
+      <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+        <FRReturnsReport
+          reportId={reportId ?? reportId ?? report?.subReportFR_RID}
+          qed={user.quarterEndDate}
+          columns={[
+            { title: 'Particulars', cellProps: {} },
+            { title: 'Current Year', cellProps: {} },
+          ]}
+          rows={rows}
+          data={data}
+          onCellChange={handleCellChange}
+          onCellBlur={handleCellBlur}
+          isLoading={isLoading}
+          completeButtonEnabled={true}
+        />
+      </Box>
+    </>
+  );
+}
