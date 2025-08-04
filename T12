@@ -1,0 +1,511 @@
+Old Controller :-
+
+app.controller('FR_SC08Controller', function ($scope, $rootScope, $timeout, AES256, $state, FR_SC08Factory,frReturnFactory, $sessionStorage) {
+    let FR_SC08 = this;
+    $scope.started = false;
+    $scope.sessionUser = JSON.parse(AES256.decrypt($rootScope.globals.currentUser));
+    let qed = $scope.sessionUser.quarterEndDate;
+    let userId = $scope.sessionUser.userId;
+    let status = sessionStorage.getItem("frReportSts");
+    let reportId = sessionStorage.getItem("frReportId");
+    FR_SC08.reportName = sessionStorage.getItem("frSubReportName");
+    FR_SC08.sc08DataList = [];
+    var {passphrase, iv, salt, aesUtil} = encryptValues($scope, AES256, $rootScope);
+    FR_SC08.reportId = reportId;
+    FR_SC08.row = {};
+    $scope.rowlimit = 15;
+
+    $('.modal-backdrop').remove();
+    $('body').removeClass("modal-open");
+
+    FR_SC08.insertOrUpdate = function () {
+        let params = {
+            'qed': qed,
+            'userId': userId,
+            'rMId': "40021001"
+
+        };
+        if (status === null || status === '') {
+            FR_SC08Factory.insertOnLoad(params).then(function (data) {
+                FR_SC08.sc08DataList = data;
+                FR_SC08.reportId = data[0].SC08_RPTID_FK;
+                FR_SC08.totalAmount1('val3Total'); FR_SC08.totalAmount1('val1Total');
+                FR_SC08.totalAmount1('val12Total'); FR_SC08.totalAmount1('val10Total');  FR_SC08.totalAmount1('val16Total');
+            }, function (errResponse) {
+                console.error('data not inserted. ' + errResponse);
+            })
+        } else {
+            FR_SC08Factory.getFR_SC08Data(reportId).then(function (data) {
+                FR_SC08.sc08DataList = data;
+                FR_SC08.totalAmount1('val3Total'); FR_SC08.totalAmount1('val1Total');
+                FR_SC08.totalAmount1('val12Total'); FR_SC08.totalAmount1('val10Total');  FR_SC08.totalAmount1('val16Total');
+            }, function (errResponse) {
+                console.error('data failed. ' + errResponse);
+            })
+
+        }
+    }
+
+    FR_SC08.parseFloat = function (value) {
+        if (isNaN(value)) {
+            value = 0.00;
+        }
+        return parseFloat(value);
+    }
+
+
+    FR_SC08.updatetotal = function () {
+        let total = 0;
+        $('.amount').each(function () {
+            total = parseFloat(total) + parseFloat($(this).val()) || parseFloat(0);
+        });
+    }
+
+    FR_SC08.totalAmount1 = function (inputfield) {
+        window.setTimeout(function () {
+            if (inputfield == "val2Total") {
+                inputfield = "val1Total";
+            } else if (inputfield == "val11Total") {
+                inputfield = "val10Total";
+            }
+
+            if (inputfield == "val1Total" || inputfield == "val3Total" || inputfield == "val10Total" || inputfield == "val12Total"
+                || inputfield == "val16Total") {
+                var val1 = 0.0;
+                var val2 = $('#val2').val();
+                var val3 = $('#val3').val();
+                var val4 = $('#val4').val();
+                var val5 = $('#val5').val();
+                var val6 = $('#val6').val();
+                var val7 = $('#val7').val();
+                var val8 = $('#val8').val();
+                var val9 = $('#val9').val();
+                var val10 = 0.0;
+                var val11 = $('#val11').val();
+                var val12 = $('#val12').val();
+                var val13 = $('#val13').val();
+                var val14 = $('#val14').val();
+                var val15 = $('#val15').val();
+                var val16 = 0.0;
+
+                if (isNaN(val1) || val1 == null) {
+                    val1 = 0.00;
+                    $('#val1').val(0.00);
+                }
+                if (isNaN(val2) || val2 == null) {
+                    val2 = 0.00;
+                    $('#val2').val(0.00);
+                }
+                if (isNaN(val3) || val3 == null) {
+                    val3 = 0.00;
+                    $('#val3').val(0.00);
+                }
+                if (isNaN(val4) || val4 == null) {
+                    val4 = 0.00;
+                    $('#val4').val(0.00);
+                }
+                if (isNaN(val5) || val5 == null) {
+                    val5 = 0.00;
+                    $('#val5').val(0.00);
+                }
+                if (isNaN(val6) || val6 == null) {
+                    val6 = 0.00;
+                    $('#val6').val(0.00);
+                }
+                if (isNaN(val7) || val7 == null) {
+                    val7 = 0.00;
+                    $('#val7').val(0.00);
+                }
+                if (isNaN(val8) || val8 == null) {
+                    val8 = 0.00;
+                    $('#val8').val(0.00);
+                }
+                if (isNaN(val9) || val9 == null) {
+                    val9 = 0.00;
+                    $('#val9').val(0.00);
+                }
+                if (isNaN(val10) || val10 == null) {
+                    val10 = 0.00;
+                    $('#val10').val(0.00);
+                }
+                if (isNaN(val11) || val11 == null) {
+                    val11 = 0.00;
+                    $('#val11').val(0.00);
+                }
+                if (isNaN(val12) || val12 == null) {
+                    val12 = 0.00;
+                    $('#val12').val(0.00);
+                }
+                if (isNaN(val13) || val13 == null) {
+                    val13 = 0.00;
+                    $('#val13').val(0.00);
+                }
+                if (isNaN(val14) || val14 == null) {
+                    val14 = 0.00;
+                    $('#val14').val(0.00);
+                }
+                if (isNaN(val15) || val15 == null) {
+                    val15 = 0.00;
+                    $('#val15').val(0.00);
+                }
+                if (isNaN(val16) || val16 == null) {
+                    val16 = 0.00;
+                    $('#val16').val(0.00);
+                }
+
+                if (inputfield == 'val1Total') {
+                    var valTotal = (parseFloat(val2) + parseFloat(val3)).toFixed(2);
+                } else if (inputfield == 'val3Total') {
+                    var valTotal = (parseFloat(val4) + parseFloat(val5) + parseFloat(val6) + parseFloat(val7) + parseFloat(val8) + parseFloat(val9)).toFixed(2);
+                } else if (inputfield == 'val10Total') {
+                    var valTotal = (parseFloat(val11) + parseFloat(val12)).toFixed(2);
+                } else if (inputfield == 'val12Total') {
+                    var valTotal = (parseFloat(val13) + parseFloat(val14) + parseFloat(val15)).toFixed(2);
+                } else if (inputfield == 'val16Total') {
+                    var valTotal = (parseFloat(val4) + parseFloat(val5) + parseFloat(val6) + parseFloat(val7) + parseFloat(val8) + parseFloat(val9)
+                        + parseFloat(val13) + parseFloat(val14) + parseFloat(val15)).toFixed(2);
+                }
+
+                var rowID = inputfield.substring(inputfield.lastIndexOf('val') + 3, inputfield.lastIndexOf('Total'));
+                $('#val' + rowID).val(valTotal);
+                let params = {
+                    'reportId': aesUtil.encrypt(salt, iv, passphrase, FR_SC08.reportId.toString()),
+                    'rowId': aesUtil.encrypt(salt, iv, passphrase, rowID),
+                    'salt': salt,
+                    'iv': iv,
+                    'value': aesUtil.encrypt(salt, iv, passphrase, valTotal.toString()),
+                };
+
+                FR_SC08Factory.updateField(params).then(function (data) {
+                }, function (errResponse) {
+                    console.error('update failed. ' + errResponse);
+                });
+            }
+        }, 1300);
+
+    }
+
+
+    FR_SC08.checkAmountSC08 = function (numVal) {
+        if (numVal == 2 || numVal == 11) {
+            let amt = String(document.getElementById("val" + numVal).value);
+            if (amt != 0 || amt != 0.00) {
+                amt = amt.replace(/^0+/, "");
+            }
+            document.getElementById("val" + numVal).value = amt;
+            if (amt.match(/\s/g)) {
+                alert("Space is not allowed");
+                document.getElementById("val" + numVal).value = "";
+                document.getElementById("val" + numVal).focus();
+                return false;
+            }
+            if (isNaN(amt)) {
+                alert("Please enter Numeric Value only");
+                document.getElementById("val" + numVal).value = "";
+                document.getElementById("val" + numVal).focus();
+                return false;
+            }
+            let c = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+            if (c.test(amt) || amt === "") {
+                let idot = amt.indexOf('.');
+                if (idot === -1) {
+                    if (amt === "") {
+                        document.getElementById("val" + numVal).value = amt.concat("0.00");
+                    } else if ((numVal == "val2") || (numVal == "val4") || (numVal == "val7")) {
+                    } else {
+                        document.getElementById('val' + numVal).value = amt.concat(".00");
+                    }
+                } else if ((numVal == "val2") || (numVal == "val4") || (numVal == "val7")) {
+                } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
+                    document.getElementById('val' + numVal).value = amt.concat("0");
+                }
+            } else {
+                alert("Amount is not allowed more than 15 digits and two decimal digits.");
+                document.getElementById("val" + numVal).value = "";
+                document.getElementById("val" + numVal).focus();
+                return false;
+            }
+
+            return true;
+        }
+
+    }
+
+
+    FR_SC08.attachDecimalnoSC08 = function (numVal) {
+        if (document.getElementById(numVal).value == null) {
+            document.getElementById(numVal).value = 0.00;
+        }
+        let amt = document.getElementById(numVal).value;
+        if (amt.length !== 0) {
+            let c = /^(?:\-?\d{1,17}\.\d{1,2}|\-?\d{1,17})$/;
+            if (c.test(amt) || amt === "") {
+                let idot = amt.indexOf('.');
+                if (idot === -1) {
+                    if (amt === "") {
+                        document.getElementById(numVal).value = amt.concat("0.00");
+                    } else {
+                        document.getElementById(numVal).value = amt.concat(".00");
+                    }
+                } else if (idot !== -1 && amt.charAt(idot + 2) === "") {
+                    document.getElementById(numVal).value = amt.concat("0");
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+    FR_SC08.updateField = function (rowId) {
+
+        var rowVal = ($('#val' + rowId).val()).toString();
+        let reportId = FR_SC08.reportId.toString();
+        let params1 = {
+            'reportId': aesUtil.encrypt(salt, iv, passphrase, reportId),
+            'rowId': aesUtil.encrypt(salt, iv, passphrase, rowId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'value': aesUtil.encrypt(salt, iv, passphrase, rowVal),
+        };
+
+        FR_SC08Factory.updateField(params1).then(function (data) {
+        }, function (errResponse) {
+            console.error('update failed. ' + errResponse);
+        })
+
+    }
+
+    FR_SC08.submitIndividual = function (){
+        let params = {
+          /*  'reportId' :  FR_SC08.reportId.toString(),*/
+            'reportId': aesUtil.encrypt(salt, iv, passphrase,  FR_SC08.reportId.toString()),
+            'salt': salt,
+            'iv': iv,
+            'qed': qed,
+
+        };
+        frReturnFactory.submitIndividual(params).then(function (data){
+
+            if(data==1){
+                FR_SC08.displayMessage = FR_SC08.reportName+" report has been submitted successfully.";
+                console.log(FR_SC08.displayMessage);
+                $('#modalSubmit').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+                $('#modalSubmit').on('shown.bs.modal', function () {
+                    $('#modalSubmit').trigger('focus');
+                });
+            }
+            //modal
+        }, function (errResponse){
+            console.error('Submit individual failed. '+errResponse);
+        })
+    }
+
+    FR_SC08.redirectToFRReturn = function () {
+        $timeout(function () {
+            $state.go('frt_maker.frReturn');
+            // $state.reload();
+        }, 500);
+    }
+
+});
+
+
+
+
+
+
+New react jsx code :
+import { Box } from '@mui/material';
+import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useLocation } from 'react-router-dom';
+import useCustomSnackbar from '../../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../../common/hooks/useApi';
+import { callInsertOnLoad, callFetchData, callUpdateField } from './InvestmentsAPI';
+import FRReturnsReport from '../../components/FRReturnsReport';
+
+const disabledFields = [0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15];
+
+export default function InvestmentsReport() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [reportId, setReportId] = useState(report?.subReportFR_RID || null);
+  const [rows, setRows] = useState(null);
+  const [data, setData] = useState(null);
+  const [, startTransition] = useTransition();
+
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  const saveField = useCallback(
+    async (key, value) => {
+      try {
+        await callUpdateField(reportId.toString() ?? report?.subReportFR_RID, String(key), String(value), callApi);
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        console.log(error);
+      }
+    },
+    [reportId, report, callApi]
+  );
+
+  const calculateTotals = useCallback((item, data) => {
+    const newData = [...data];
+    const total4 = Number(data[12]) + Number(data[13]) + Number(data[14]);
+    const total3 = Number(data[10]) + total4;
+    const total2 =
+      Number(data[3]) +
+      Number(data[4]) +
+      Number(data[5]) +
+      Number(data[6]) +
+      Number(data[7]) +
+      Number(data[8]) +
+      Number(data[9]);
+    const total1 = Number(data[1]) + total2;
+    newData[0] = total1.toFixed(2);
+    newData[2] = total2.toFixed(2);
+    newData[9] = total3.toFixed(2);
+    newData[11] = total4.toFixed(2);
+    setData(newData);
+  }, []);
+
+  const handleCellChange = useCallback(
+    (item, value) => {
+      const newData = [...data];
+      newData.splice(item?.dataIndex, 1, value);
+      setData(newData);
+      startTransition(() => {
+        calculateTotals(item, newData);
+      });
+    },
+    [data, calculateTotals]
+  );
+
+  const handleCellBlur = useCallback(
+    (item, value) => {
+      if (!item || disabledFields.includes(item.dataIndex)) return;
+      const rowIndex = item.dataIndex + 1;
+      saveField(rowIndex, value);
+    },
+    [saveField]
+  );
+
+  const processResponse = useCallback(async (response) => {
+    const rows = [];
+    const data = [];
+    const isSubTitlePattern = /^[A-Z]+\. ?M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\. /;
+    const isSubSubTitlePattern = /^\d+ /;
+
+    Object.entries(response).forEach(([, value]) => {
+      const desc = value.SC08_DESC;
+      const index = value.SC08_ID - 1;
+      const isSubTitle = isSubTitlePattern.test(desc);
+      const isSubSubTitle = isSubSubTitlePattern.test(desc);
+      const indent = isSubTitle ? 3 : isSubSubTitle ? 6 : 0;
+      rows.push([
+        {
+          title: desc,
+          cellProps: {
+            sx: {
+              ml: indent,
+            },
+          },
+        },
+        {
+          dataIndex: index,
+          cellProps: {
+            readOnly: disabledFields.includes(index),
+          },
+        },
+      ]);
+      data.push(String(value.SC08_VAL_CY));
+    });
+    setRows(rows);
+    setData(data);
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    if (!report) return;
+    const insertOnLoad = async () => {
+      try {
+        let response = await callInsertOnLoad(user.quarterEndDate, user.userId, report.subReportFR_RMID, callApi);
+        if (response && Array.isArray(response) && response.length > 0) {
+          const reportId = response[0].SC08_RPTID_FK;
+          if (reportId) {
+            setReportId(reportId);
+            processResponse(response);
+          }
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setData(null);
+        snackbar('Failed to Fetch Data!', 'error');
+        console.log('Report id generation error : ', error);
+      }
+      setIsLoading(false);
+    };
+    const fetchData = async () => {
+      try {
+        let response = await callFetchData(reportId ?? report.subReportFR_RID, callApi);
+        if (response) {
+          processResponse(response);
+        }
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setData(null);
+        snackbar('Failed to Fetch Data!', 'error');
+      }
+      setIsLoading(false);
+    };
+    const init = async () => {
+      try {
+        const reportStatus = report.subReportStatus;
+        if (reportStatus === null || reportStatus === '') {
+          await insertOnLoad();
+        } else {
+          await fetchData();
+        }
+      } catch (error) {
+        console.log(error);
+        snackbar('Something went wrong!', 'error');
+      }
+    };
+    init();
+  }, []);
+
+  return (
+    <>
+      <Box sx={{ mt: 2, mb: 4, width: '100%' }}>
+        <FRReturnsReport
+          reportId={reportId ?? reportId ?? report?.subReportFR_RID}
+          qed={user.quarterEndDate}
+          columns={[
+            { title: 'Particulars', cellProps: {} },
+            { title: 'Current Year', cellProps: {} },
+          ]}
+          rows={rows}
+          data={data}
+          onCellChange={handleCellChange}
+          onCellBlur={handleCellBlur}
+          isLoading={isLoading}
+          completeButtonEnabled={true}
+        />
+      </Box>
+    </>
+  );
+}
+
