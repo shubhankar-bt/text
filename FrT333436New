@@ -399,3 +399,428 @@ const CommonFRAddRow = () => {
 };
 
 export default CommonFRAddRow;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Box,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  CircularProgress,
+  Stack,
+} from '@mui/material';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
+import ActionResultDialog from '../../../../common/components/ui/dialogs/ActionResultDialog';
+
+/**
+ * @author: v1018405 (Shubhankar Das)
+ * @description: CommonAddRow handles table 33, 34, 35 all three tables.
+ * @param:  Differentiate screens by table name, received from state
+ */
+
+const validateAndFormatAmount = (value) => {
+  if (value === null || value === undefined) value = '';
+  let amt = String(value).replace(/ /g, '');
+
+  if (isNaN(amt)) {
+    return { isValid: false, value: '', error: 'Please enter a numeric value only.' };
+  }
+
+  const pattern = /^(?:\-?\d{1,15}\.\d{1,2}|\-?\d{1,15})$/;
+  if (!pattern.test(amt) && amt !== '') {
+    return { isValid: false, value, error: 'Amount cannot exceed 15 digits before and 2 digits after the decimal.' };
+  }
+
+  // Format to two decimal places on blur
+  if (amt.includes('.')) {
+    const parts = amt.split('.');
+    amt = `${parts[0]}.${parts[1].padEnd(2, '0')}`;
+  } else if (amt !== '') {
+    amt = `${amt}.00`;
+  }
+
+  return { isValid: true, value: amt, error: '' };
+};
+const CommonFRAddRow = () => {
+  const navigate = useNavigate();
+  const snackbar = useCustomSnackbar();
+  const { callApi } = useApi();
+  const userInfo = JSON.parse(localStorage.getItem('user'));
+  const { state } = useLocation();
+  const report = state?.report;
+  const {
+    subReportFR_RMID: rMId,
+    subReportName,
+    subReportFR_RPT_DATATBL: tableName,
+    subReportFR_RID: initialReportId,
+    subReportStatus: status,
+  } = report || {};
+
+  const [rows, setRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportId, setReportId] = useState(initialReportId);
+  const [isSuccessDialogVisible, setIsSuccessDialogVisible] = useState(false);
+
+  // Memoize the value to avoid re-calculating on every render
+  const isAnyRowEditing = useMemo(() => rows.some((row) => row.isEditing), [rows]);
+
+  const initializeAndFetchData = useCallback(async () => {
+    setIsLoading(true);
+    let currentReportId = reportId;
+
+    try {
+      if (!status || status.length === 0) {
+        const insertParams = {
+          qed: userInfo.quarterEndDate,
+          userId: userInfo.userId,
+          tableName: tableName,
+          rMId: rMId,
+        };
+        const newReportId = await callApi('/frAddRow/insertOnLoad', insertParams, 'POST');
+
+        if (!newReportId) {
+          throw new Error('Failed to create new report entry.');
+        }
+        if (typeof newReportId === 'string' && newReportId.includes('Report ID not generated')) {
+          console.log('Report ID generation failed');
+          snackbar('Error Loading the Data! Reopen this report from worklist again.', 'error');
+          navigate(-1);
+        }
+
+        setReportId(newReportId);
+        currentReportId = newReportId; // Use the new ID for the subsequent fetch
+      }
+
+      // Proceeding to fetch screen parameters
+      if (!currentReportId) {
+        throw new Error('Report ID is missing, cannot fetch data.');
+      }
+
+      const fetchParams = {
+        qed: userInfo.quarterEndDate,
+        userId: userInfo.userId,
+        reportId: currentReportId.toString(),
+        tableName: tableName,
+      };
+      const data = await callApi('/frAddRow/getScreenParam', fetchParams, 'POST');
+
+      if (data) {
+        setRows(data.map((row) => ({ ...row, isEditing: false, error: '' })));
+      } else {
+        throw new Error('Failed to fetch screen data.');
+      }
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        console.log('Initialization Fails', error.message);
+        snackbar(error.message, 'error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reportId, status, tableName, rMId, userInfo, snackbar, navigate, callApi]);
+
+  useEffect(() => {
+    if (!tableName || !rMId) {
+      snackbar('Required report details are missing.', 'warning');
+      navigate(-1);
+      return;
+    }
+    initializeAndFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const handleInputChange = (e, index, field) => {
+    const newRows = [...rows];
+    newRows[index][field] = e.target.value;
+    if (field === 'CY') {
+      newRows[index].error = '';
+    }
+    setRows(newRows);
+  };
+  const handleAmountBlur = (index) => {
+    const row = rows[index];
+    const { value, error } = validateAndFormatAmount(row.CY);
+    const newRows = [...rows];
+    newRows[index].CY = value;
+    newRows[index].error = error;
+    setRows(newRows);
+  };
+
+  const handleEditRow = (index) => {
+    if (isAnyRowEditing) {
+      snackbar('Please save the current row before editing another.', 'warning');
+      return;
+    }
+    const newRows = [...rows];
+    newRows[index].isEditing = true;
+    console.log('Edit row clicked : ', newRows);
+    setRows(newRows);
+  };
+
+  const handleAddRow = useCallback(() => {
+    if (isAnyRowEditing) {
+      snackbar('Please save the current row before adding a new one.', 'warning');
+      return;
+    }
+    setRows((prevRows) => [
+      ...prevRows,
+      {
+        id: 0,
+        DESCE: '',
+        CY: '',
+        editable: 'Y',
+        isEditing: true,
+        error: '',
+      },
+    ]);
+  }, [isAnyRowEditing, snackbar]);
+  const handleSaveRow = useCallback(
+    async (index) => {
+      const row = rows[index];
+      if (row.CY.trim() === '' && row.DESCE.trim() === '') {
+        snackbar('Please enter some data to save row.', 'error');
+        return;
+      }
+
+      // Final validation before saving
+      const validation = validateAndFormatAmount(row.CY);
+      if (!validation.isValid) {
+        snackbar(validation.error, 'error');
+        const newRows = [...rows];
+        newRows[index].error = validation.error;
+        setRows(newRows);
+        return;
+      }
+
+      const isNewRow = row.id === 0;
+      const url = isNewRow ? '/frAddRow/saveRow' : '/frAddRow/editRow';
+
+      const payload = {
+        reportId: reportId.toString(),
+        id: row.id.toString(),
+        tableName: tableName.toString(),
+        qed: userInfo.quarterEndDate.toString(),
+        desc: row.DESCE.toString(),
+        cy: validation.value, // formatted value
+      };
+
+      try {
+        const response = await callApi(url, payload, 'POST');
+        if (response) {
+          const newRows = [...rows];
+          const updatedRow = { ...newRows[index], isEditing: false, CY: validation.value };
+          if (isNewRow) {
+            updatedRow.id = response;
+          }
+          newRows[index] = updatedRow;
+          setRows(newRows);
+          snackbar('Row saved successfully!', 'success');
+        } else {
+          throw new Error(response || 'Failed to save row.');
+        }
+      } catch (error) {
+        console.log('Error in save row : ', error.message);
+        snackbar(error.message, 'error');
+      }
+    },
+    [rows, reportId, tableName, userInfo, snackbar, callApi]
+  );
+  const handleDeleteRow = useCallback(
+    async (index) => {
+      const row = rows[index];
+      if (row.id === 0) {
+        // If row is not saved yet
+        console.log('removed unsaved new row : ', row);
+        setRows((prevRows) => prevRows.filter((_, i) => i !== index));
+        return;
+      }
+
+      const params = {
+        reportId,
+        tableName,
+        id: row.id,
+        qed: userInfo.quarterEndDate,
+        desc: row.DESCE,
+        cy: row.CY,
+      };
+
+      try {
+        const response = await callApi('/frAddRow/deleteRow', params, 'POST');
+        if (response === 1) {
+          setRows((prevRows) => prevRows.filter((_, i) => i !== index));
+          snackbar('Row deleted successfully!', 'warning');
+        } else {
+          const data = await response.json();
+          throw new Error(data.message || 'Failed to delete row.');
+        }
+      } catch (error) {
+        console.log('Delete failed : ', error);
+        snackbar(error.message, 'error');
+      }
+    },
+    [rows, reportId, tableName, userInfo, snackbar, callApi]
+  );
+  const handleSubmit = useCallback(async () => {
+    setIsSubmitting(true);
+    const params = {
+      reportId: reportId.toString(),
+      qed: userInfo.quarterEndDate,
+    };
+    try {
+      const response = await callApi('/frReturn/submitIndividual', params, 'POST');
+      if (response === 1) {
+        setIsSuccessDialogVisible(true);
+      } else {
+        snackbar(`Failed to submit ${subReportName}!`, 'error');
+      }
+    } catch (error) {
+      if (error.code === 'ERR_CANCELED') {
+        return;
+      }
+      console.log(`${subReportName} report failed to submit.`, error);
+      snackbar(`Failed to submit ${subReportName}!`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [reportId, userInfo, snackbar, callApi, subReportName]);
+  const handleSuccessDialogClose = useCallback(() => {
+    setIsSuccessDialogVisible(false);
+    navigate('../');
+  }, [navigate]);
+  if (isLoading) {
+    return (
+      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'left' }}>
+        <CustomButton
+          label={'Add Row'}
+          buttonType={'create'}
+          onClickHandler={handleAddRow}
+          disabled={isLoading || isAnyRowEditing}
+        />
+        <CustomButton
+          buttonType={'submit'}
+          label={'Complete'}
+          disabled={isSubmitting || isAnyRowEditing || isLoading}
+          onClickHandler={handleSubmit}
+        />
+      </Box>
+
+      <Box component={Paper} elevation={3} sx={{ mt: 1 }}>
+        <TableContainer component={Paper} sx={{ maxHeight: 650 }}>
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow sx={{ '& th': { fontWeight: 'bold' } }}>
+                <TableCell align="center">Particulars</TableCell>
+                <TableCell align="center">Current Year</TableCell>
+                <TableCell align="center" sx={{ width: '180px' }}>
+                  Action
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((row, index) => (
+                <TableRow key={row.id || `new-${index}`} hover>
+                  <TableCell>
+                    <FormInput
+                      fullWidth
+                      inputType={'text'}
+                      value={row.DESCE || ''}
+                      onChange={(e) => handleInputChange(e, index, 'DESCE')}
+                      onBlur={() => handleAmountBlur(index)}
+                      readOnly={!row.isEditing || row.editable === 'N'}
+                      debounceDuration={1}
+                      maxLength={250}
+                      inputProps={{ id: `val${index}` }}
+                    />
+                  </TableCell>
+
+                  <TableCell>
+                    <FormInput
+                      fullWidth
+                      inputType={'wholeAmountDecimal'}
+                      value={row.CY || '0'}
+                      onChange={(e) => handleInputChange(e, index, 'CY')}
+                      onBlur={() => handleAmountBlur(index)}
+                      readOnly={!row.isEditing}
+                      placeholder={'Enter value'}
+                      debounceDuration={1}
+                      error={!!row.error}
+                      helperText={row.error}
+                      inputProps={{ id: `val${index}` }}
+                    />
+                  </TableCell>
+
+                  <TableCell align="center">
+                    <Stack direction={'row'} sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                      {row.isEditing ? (
+                        <CustomButton
+                          onClickHandler={() => handleSaveRow(index)}
+                          buttonType={'save'}
+                          onlyIconButton={true}
+                          label={'Save this row'}
+                        />
+                      ) : (
+                        <CustomButton
+                          onClickHandler={() => handleEditRow(index)}
+                          buttonType={'edit'}
+                          onlyIconButton={true}
+                          label={'Edit this row'}
+                        />
+                      )}
+                      <CustomButton
+                        onClickHandler={() => handleDeleteRow(index)}
+                        buttonType={'delete'}
+                        onlyIconButton={true}
+                        disabled={row.editable === 'N'}
+                        label={'Delete this row'}
+                      />
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      <ActionResultDialog
+        open={isSuccessDialogVisible}
+        onClose={handleSuccessDialogClose}
+        message={`${subReportName} report has been submitted succesfully!`}
+      />
+    </Box>
+  );
+};
+
+export default CommonFRAddRow;
+
