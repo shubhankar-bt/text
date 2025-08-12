@@ -1988,3 +1988,358 @@ apis from old screen code:
     var REST_SERVICE_URI_10 = './Maker/getDataTwo';
     var REST_SERVICE_URI_11 = './Maker/getPreDataTwo';
     var REST_SERVICE_URI_12 = './Maker/getCountCheck';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------------------
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Typography, Table, TableBody, TableCell, TableHead, TableRow, Box, Card, Container } from '@mui/material';
+import ActionModal from './components/ActionModal';
+import ReserveCategory from './components/ReserveCategory';
+import FormInput from '../../../../common/components/ui/FormInput';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { api } from './components/apiServices';
+import useApi from '../../../../common/hooks/useApi';
+import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
+import ValidationErrorDialog from './components/ValidationErrorDialog';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+
+const parseFloatSafe = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+};
+
+const Schedule2 = () => {
+  const [formData, setFormData] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [modalState, setModalState] = useState({ open: false, title: '', messages: [], actions: [] });
+  const [errors, setErrors] = useState([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { callApi, loading: isLoading } = useApi();
+  const sessionUser = JSON.parse(localStorage.getItem('user'));
+  const reportObject = location?.state?.report;
+  const isDisabled = !(reportObject?.status === 'Pending' || reportObject?.status === null);
+  const snackbar = useCustomSnackbar();
+
+  const reserveCategories = useMemo(
+    () => [
+      { id: '', serial: 'I.', title: 'Statutory Reserves' },
+      { id: '1', serial: 'II.', title: 'Capital Reserves' },
+      { id: '2', serial: 'III.', title: 'Share Premium' },
+      { id: '6', serial: 'IV.', title: 'Foreign currency Translation Reserve' },
+      { id: '5', serial: 'V.', title: 'Revenue and Other Reserves*' },
+      { id: '7', serial: 'VI.', title: 'Revaluation Reserve' },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!reportObject) {
+      navigate('../');
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        const prevYearParams = {
+          circleCode: sessionUser.circleCode,
+          previousYearEndDate: sessionUser.previousYearEndDate,
+        };
+        const prevYearData = await api.getPreDataTwo(prevYearParams, callApi);
+
+        if (!prevYearData) {
+          throw new Error("Failed to fetch previous year's data.");
+        }
+
+        let currentData = {};
+        if (reportObject.status) {
+          const currentYearParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getDataTwo(currentYearParams, callApi);
+        } else {
+          const savedParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getSavedDataTwo(savedParams, callApi);
+        }
+
+        if (Object.keys(currentData).length === 0 && !reportObject.status) {
+            // In the old code, if saved data is empty, it proceeds with previous year data.
+            // This behavior is preserved.
+        }
+        
+        setFormData({ ...prevYearData, ...currentData });
+
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          setFormData(null);
+          snackbar('Failed to load data!', 'error');
+        }
+      }
+    };
+
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    setIsDirty(true);
+  }, []);
+
+  const handleInputBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    if (!value || value.trim() === '') {
+      setFormData((prevData) => ({ ...prevData, [name]: '0.00' }));
+    }
+  }, []);
+
+  const calculateTotals = useCallback(() => {
+    if (!formData) return;
+
+    setFormData((prev) => {
+        const updatedFormData = { ...prev };
+
+        // Calculate current year balances from details
+        reserveCategories.forEach(cat => {
+            const openBal = parseFloatSafe(updatedFormData[`openBal${cat.id}`]);
+            const addDurYear = parseFloatSafe(updatedFormData[`addDurYear${cat.id}`]);
+            const dedDurYear = parseFloatSafe(updatedFormData[`dedDurYear${cat.id}`]);
+            updatedFormData[`currYearBal${cat.id}`] = (openBal + addDurYear - dedDurYear).toFixed(2);
+        });
+        
+        const { Pyr, Pyr1, Pyr2, Pyr5, Pyr6, Pyr7, Pyr8 } = updatedFormData;
+        const totalPyr9 = (
+          parseFloatSafe(Pyr) +
+          parseFloatSafe(Pyr1) +
+          parseFloatSafe(Pyr2) +
+          parseFloatSafe(Pyr5) +
+          parseFloatSafe(Pyr6) +
+          parseFloatSafe(Pyr7) +
+          parseFloatSafe(Pyr8)
+        ).toFixed(2);
+    
+        const { currYearBal, currYearBal1, currYearBal2, currYearBal5, currYearBal6, currYearBal7, currYearBal8 } =
+        updatedFormData;
+        const totalCurrYearBal9 = (
+          parseFloatSafe(currYearBal) +
+          parseFloatSafe(currYearBal1) +
+          parseFloatSafe(currYearBal2) +
+          parseFloatSafe(currYearBal5) +
+          parseFloatSafe(currYearBal6) +
+          parseFloatSafe(currYearBal7) +
+          parseFloatSafe(currYearBal8)
+        ).toFixed(2);
+
+        return { ...updatedFormData, Pyr9: totalPyr9, currYearBal9: totalCurrYearBal9 };
+    });
+  }, [formData, reserveCategories]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData?.openBal, formData?.addDurYear, formData?.dedDurYear,
+    formData?.openBal1, formData?.addDurYear1, formData?.dedDurYear1,
+    formData?.openBal2, formData?.addDurYear2, formData?.dedDurYear2,
+    formData?.openBal5, formData?.addDurYear5, formData?.dedDurYear5,
+    formData?.openBal6, formData?.addDurYear6, formData?.dedDurYear6,
+    formData?.openBal7, formData?.addDurYear7, formData?.dedDurYear7,
+    calculateTotals,
+  ]);
+
+  const validateAndSubmit = (e) => {
+    e.preventDefault();
+    const validationErrors = reserveCategories
+      .map((cat) => {
+        const { id, title } = cat;
+        const openBal = parseFloatSafe(formData[`openBal${id}`]);
+        const addDurYear = parseFloatSafe(formData[`addDurYear${id}`]);
+        const dedDurYear = parseFloatSafe(formData[`dedDurYear${id}`]);
+        const currYearBal = parseFloatSafe(formData[`currYearBal${id}`]);
+        const calculatedTotal = (openBal + addDurYear - dedDurYear);
+
+        if (calculatedTotal.toFixed(2) !== currYearBal.toFixed(2)) {
+          return {
+            particular: title,
+            expected: currYearBal.toFixed(2),
+            found: calculatedTotal.toFixed(2),
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    if (!isDirty) {
+      setModalState({
+        open: true,
+        title: 'Confirm Submission',
+        messages: ["You haven't changed any data. Would you like to submit the report?"],
+        actions: [
+          { text: 'Yes', onClick: () => { setModalState({ open: false }); performSubmit(); }, color: 'success' },
+          { text: 'No', onClick: () => setModalState({ open: false }) },
+        ],
+      });
+    } else {
+      performSubmit();
+    }
+  };
+
+  const performSubmit = async () => {
+    try {
+      const submissionData = {
+        ...formData,
+        circleCode: sessionUser.circleCode,
+        quarterEndDate: sessionUser.quarterEndDate,
+        userId: sessionUser.userId,
+        reportName: reportObject.name,
+        reportId: reportObject.reportId,
+        reportMasterId: reportObject.reportMasterId,
+        status: reportObject.status,
+      };
+
+      if (sessionUser.capacity !== '61') {
+        submissionData.areMocPending = reportObject.areMocPending;
+      }
+
+      const response = await api.submitScrTwo(submissionData, callApi);
+
+      if (response && response >= 1) {
+        snackbar('Report Submitted Successfully!', 'success');
+        handleRedirect();
+      } else {
+        throw new Error('Error submitting the data!');
+      }
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar('Error submitting the data!', 'error');
+      }
+    }
+  };
+  
+  const handleRedirect = () => {
+      if (sessionUser.capacity === "61") {
+          navigate('/frt_maker/worklist');
+      } else {
+          navigate('/circle_maker/worklist');
+      }
+  };
+
+  if (isLoading) {
+    return (
+      <SkeletonWrapper
+        isLoading={isLoading}
+        skeletonType="table"
+        skeletonConfig={{ rows: 15, columns: 4, hasHeader: true, hasActions: false }}
+      />
+    );
+  }
+
+  if (!formData) {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h6" align="center">
+          Failed to load Schedule 2 Data!
+        </Typography>
+      </Container>
+    );
+  }
+
+  return (
+    <>
+      <Box sx={{ width: '100%' }}>
+        <Box component={'form'} onSubmit={validateAndSubmit}>
+          <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <CustomButton label={'Submit'} type="submit" disabled={isDisabled}>
+              Submit
+            </CustomButton>
+          </Box>
+          <Table component={Card} sx={{ p: 0 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell><b>Sr. No.</b></TableCell>
+                <TableCell><b>Particulars</b></TableCell>
+                <TableCell align="center"><b>Previous Year Balance as on {sessionUser.previousYearEndDate}</b></TableCell>
+                <TableCell align="center"><b>Current Year Balance as on {sessionUser.quarterEndDate}</b></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {reserveCategories.map((cat) => (
+                <ReserveCategory
+                  key={cat.id}
+                  serial={cat.serial}
+                  title={cat.title}
+                  values={{
+                    id: cat.id,
+                    currYearBal: formData[`currYearBal${cat.id}`],
+                    openBal: formData[`openBal${cat.id}`],
+                    addDurYear: formData[`addDurYear${cat.id}`],
+                    dedDurYear: formData[`dedDurYear${cat.id}`],
+                    Pyr: formData[`Pyr${cat.id}`],
+                    pyrOpenBal: formData[`pyrOpenBal${cat.id}`],
+                    pyrAddDurYear: formData[`pyrAddDurYear${cat.id}`],
+                    pyrDedDurYear: formData[`pyrDedDurYear${cat.id}`],
+                  }}
+                  handleChange={handleInputChange}
+                  handleInputBlur={handleInputBlur}
+                  disabled={isDisabled}
+                />
+              ))}
+              <TableRow hover>
+                <TableCell><Typography variant="body1" fontWeight="bold">VII.</Typography></TableCell>
+                <TableCell><Typography variant="body1" fontWeight="bold">BALANCE OF PROFIT AND LOSS A/C</Typography></TableCell>
+                <TableCell align="right"><FormInput name="Pyr8" value={formData.Pyr8 || '0.00'} readOnly /></TableCell>
+                <TableCell align="right"><FormInput name="currYearBal8" value={formData.currYearBal8 || '0.00'} readOnly /></TableCell>
+              </TableRow>
+              <TableRow hover>
+                <TableCell></TableCell>
+                <TableCell><Typography variant="h6">TOTAL RESERVES & SURPLUS</Typography></TableCell>
+                <TableCell align="right"><FormInput name="Pyr9" value={formData.Pyr9 || '0.00'} readOnly /></TableCell>
+                <TableCell align="right"><FormInput name="currYearBal9" value={formData.currYearBal9 || '0.00'} readOnly /></TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Box>
+      </Box>
+
+      <ValidationErrorDialog open={errors.length > 0} onClose={() => setErrors([])} errors={errors} />
+
+      <ActionModal
+        open={modalState.open}
+        handleClose={() => setModalState({ ...modalState, open: false })}
+        title={modalState.title}
+        messages={modalState.messages}
+        actions={modalState.actions}
+      />
+    </>
+  );
+};
+
+export default Schedule2;
