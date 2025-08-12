@@ -2343,3 +2343,364 @@ const Schedule2 = () => {
 };
 
 export default Schedule2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
+import { Typography, Table, TableBody, TableCell, TableHead, TableRow, Box, Card, Container } from '@mui/material';
+import ActionModal from './components/ActionModal';
+import FormInput from '../../../../common/components/ui/FormInput';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { api } from './components/apiServices';
+import useApi from '../../../../common/hooks/useApi';
+import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
+import ValidationErrorDialog from './components/ValidationErrorDialog';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+
+const parseFloatSafe = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+};
+
+const Schedule2 = () => {
+  const [formData, setFormData] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [modalState, setModalState] = useState({ open: false, title: '', messages: [], actions: [] });
+  const [errors, setErrors] = useState([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { callApi, loading: isLoading } = useApi();
+  const sessionUser = JSON.parse(localStorage.getItem('user'));
+  const reportObject = location?.state?.report;
+  const isDisabled = !(reportObject?.status === 'Pending' || reportObject?.status === null);
+  const snackbar = useCustomSnackbar();
+
+  const reserveCategories = useMemo(
+    () => [
+      { id: '', serial: 'I.', title: 'Statutory Reserves' },
+      { id: '1', serial: 'II.', title: 'Capital Reserves' },
+      { id: '2', serial: 'III.', title: 'Share Premium' },
+      { id: '6', serial: 'IV.', title: 'Foreign currency Translation Reserve' },
+      { id: '5', serial: 'V.', title: 'Revenue and Other Reserves*' },
+      { id: '7', serial: 'VI.', title: 'Revaluation Reserve' },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!reportObject) {
+      navigate('../');
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        // This logic replicates the old controller's data fetching flow.
+        // It fetches previous year data for calculations and then fetches
+        // current year data based on the report's status.
+        const prevYearParams = {
+          circleCode: sessionUser.circleCode,
+          previousYearEndDate: sessionUser.previousYearEndDate,
+        };
+        [span_0](start_span)[span_1](start_span)[span_2](start_span)const prevYearData = await api.getPreDataTwo(prevYearParams, callApi); // Like sc02Factory.getPreDataTwo[span_0](end_span)[span_1](end_span)[span_2](end_span)
+
+        let currentData = {};
+        [span_3](start_span)[span_4](start_span)if (reportObject.status) { // Like if ($rootScope.reportObject.status != undefined)[span_3](end_span)[span_4](end_span)
+          const currentYearParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getDataTwo(currentYearParams, callApi); [span_5](start_span)[span_6](start_span)[span_7](start_span)// Like sc02Factory.getDataTwo[span_5](end_span)[span_6](end_span)[span_7](end_span)
+        } else {
+          const savedParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getSavedDataTwo(savedParams, callApi); [span_8](start_span)[span_9](start_span)// Like sc02Factory.getSavedDataTwo[span_8](end_span)[span_9](end_span)
+        }
+
+        setFormData({ ...prevYearData, ...currentData });
+
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          setFormData(null);
+          snackbar('Failed to load data!', 'error');
+        }
+      }
+    };
+
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    setIsDirty(true);
+  }, []);
+
+  const handleInputBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    if (!value || value.trim() === '') {
+      setFormData((prevData) => ({ ...prevData, [name]: '0.00' }));
+    }
+  }, []);
+
+  const calculateTotals = useCallback(() => {
+    if (!formData) return;
+
+    setFormData((prev) => {
+        const updatedFormData = { ...prev };
+
+        reserveCategories.forEach(cat => {
+            const openBal = parseFloatSafe(updatedFormData[`openBal${cat.id}`]);
+            const addDurYear = parseFloatSafe(updatedFormData[`addDurYear${cat.id}`]);
+            const dedDurYear = parseFloatSafe(updatedFormData[`dedDurYear${cat.id}`]);
+            updatedFormData[`currYearBal${cat.id}`] = (openBal + addDurYear - dedDurYear).toFixed(2);
+        });
+        
+        const { currYearBal, currYearBal1, currYearBal2, currYearBal5, currYearBal6, currYearBal7, currYearBal8 } =
+        updatedFormData;
+        const totalCurrYearBal9 = (
+          parseFloatSafe(currYearBal) +
+          parseFloatSafe(currYearBal1) +
+          parseFloatSafe(currYearBal2) +
+          parseFloatSafe(currYearBal5) +
+          parseFloatSafe(currYearBal6) +
+          parseFloatSafe(currYearBal7) +
+          parseFloatSafe(currYearBal8)
+        ).toFixed(2);
+
+        return { ...updatedFormData, currYearBal9: totalCurrYearBal9 };
+    });
+  }, [formData, reserveCategories]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData?.openBal, formData?.addDurYear, formData?.dedDurYear,
+    formData?.openBal1, formData?.addDurYear1, formData?.dedDurYear1,
+    formData?.openBal2, formData?.addDurYear2, formData?.dedDurYear2,
+    formData?.openBal5, formData?.addDurYear5, formData?.dedDurYear5,
+    formData?.openBal6, formData?.addDurYear6, formData?.dedDurYear6,
+    formData?.openBal7, formData?.addDurYear7, formData?.dedDurYear7,
+    calculateTotals,
+  ]);
+
+  const validateAndSubmit = (e) => {
+    e.preventDefault();
+    const validationErrors = reserveCategories
+      .map((cat) => {
+        const { id, title } = cat;
+        const openBal = parseFloatSafe(formData[`openBal${id}`]);
+        const addDurYear = parseFloatSafe(formData[`addDurYear${id}`]);
+        const dedDurYear = parseFloatSafe(formData[`dedDurYear${id}`]);
+        const currYearBal = parseFloatSafe(formData[`currYearBal${id}`]);
+        const calculatedTotal = (openBal + addDurYear - dedDurYear);
+
+        if (calculatedTotal.toFixed(2) !== currYearBal.toFixed(2)) {
+          return {
+            particular: title,
+            expected: currYearBal.toFixed(2),
+            found: calculatedTotal.toFixed(2),
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    [span_10](start_span)if (!isDirty) { // Mirrrors if ($scope.sh02Form.$dirty == false)[span_10](end_span)
+      setModalState({
+        open: true,
+        title: 'Confirm Submission',
+        [span_11](start_span)messages: ["You haven't changed any data. Would you like to submit the report?"], //[span_11](end_span)
+        actions: [
+          { text: 'Yes', onClick: () => { setModalState({ open: false }); performSubmit(); [span_12](start_span)}, color: 'success' }, //[span_12](end_span)
+          { text: 'No', onClick: () => setModalState({ open: false }) },
+        ],
+      });
+    } else {
+      performSubmit();
+    }
+  };
+
+  const performSubmit = async () => {
+    try {
+      const submissionData = {
+        ...formData,
+        circleCode: sessionUser.circleCode,
+        quarterEndDate: sessionUser.quarterEndDate,
+        userId: sessionUser.userId,
+        reportName: reportObject.name,
+        reportId: reportObject.reportId,
+        reportMasterId: reportObject.reportMasterId,
+        status: reportObject.status,
+      };
+
+      if (sessionUser.capacity !== '61') {
+        submissionData.areMocPending = reportObject.areMocPending; [span_13](start_span)//[span_13](end_span)
+      }
+
+      const response = await api.submitScrTwo(submissionData, callApi); [span_14](start_span)// Like submitScrTwo(copy)[span_14](end_span)
+
+      if (response && response >= 1) {
+        snackbar('Report Submitted Successfully!', 'success'); [span_15](start_span)//[span_15](end_span)
+        handleRedirect();
+      } else {
+        throw new Error('Error submitting the data!');
+      }
+    } catch (error) {
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar('Error submitting the data!', 'error');
+      }
+    }
+  };
+  
+  [span_16](start_span)const handleRedirect = () => { //[span_16](end_span)
+      if (sessionUser.capacity === "61") {
+          navigate('/frt_maker/worklist');
+      } else {
+          navigate('/circle_maker/worklist'); [span_17](start_span)//[span_17](end_span)
+      }
+  };
+
+  if (isLoading) {
+    return (
+      <SkeletonWrapper
+        isLoading={isLoading}
+        skeletonType="table"
+        skeletonConfig={{ rows: 15, columns: 3, hasHeader: true, hasActions: false }}
+      />
+    );
+  }
+
+  if (!formData) {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h6" align="center">
+          Failed to load Schedule 2 Data!
+        </Typography>
+      </Container>
+    );
+  }
+
+  return (
+    <>
+      <Box sx={{ width: '100%' }}>
+        <Box component={'form'} onSubmit={validateAndSubmit}>
+          <Box sx={{ mb: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            <CustomButton label={'Submit'} type="submit" disabled={isDisabled}>
+              Submit
+            </CustomButton>
+          </Box>
+          <Table component={Card} sx={{ p: 0 }}>
+            <TableHead>
+              <TableRow>
+                [span_18](start_span)<TableCell><b>Sr. No.</b></TableCell> {/*[span_18](end_span) */}
+                [span_19](start_span)<TableCell><b>Particulars</b></TableCell> {/*[span_19](end_span) */}
+                [span_20](start_span)<TableCell align="center"><b>Current Year Balance <br />as on {sessionUser.quarterEndDate}</b></TableCell> {/*[span_20](end_span) */}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {reserveCategories.map((cat) => (
+                <Fragment key={cat.id}>
+                  <TableRow hover>
+                    <TableCell><Typography variant="body1" fontWeight="bold">{cat.serial}</Typography></TableCell>
+                    <TableCell><Typography variant="body1" fontWeight="bold">{cat.title}</Typography></TableCell>
+                    <TableCell align="right">
+                        <FormInput name={`currYearBal${cat.id}`} value={formData[`currYearBal${cat.id}`] || '0.00'} readOnly />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow hover>
+                    <TableCell></TableCell>
+                    <TableCell>Opening Balance</TableCell>
+                    <TableCell align="right">
+                        <FormInput name={`openBal${cat.id}`} value={formData[`openBal${cat.id}`] || ''} onChange={handleInputChange} onBlur={handleInputBlur} disabled={isDisabled} />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow hover>
+                    <TableCell></TableCell>
+                    <TableCell>Additions during the year</TableCell>
+                    <TableCell align="right">
+                        <FormInput name={`addDurYear${cat.id}`} value={formData[`addDurYear${cat.id}`] || ''} onChange={handleInputChange} onBlur={handleInputBlur} disabled={isDisabled} />
+                    </TableCell>
+                  </TableRow>
+                  <TableRow hover>
+                    <TableCell></TableCell>
+                    <TableCell>Deductions during the year</TableCell>
+                    <TableCell align="right">
+                        <FormInput name={`dedDurYear${cat.id}`} value={formData[`dedDurYear${cat.id}`] || ''} onChange={handleInputChange} onBlur={handleInputBlur} disabled={isDisabled} />
+                    </TableCell>
+                  </TableRow>
+                </Fragment>
+              ))}
+              <TableRow hover>
+                <TableCell><Typography variant="body1" fontWeight="bold">VII.</Typography></TableCell>
+                [span_21](start_span)<TableCell><Typography variant="body1" fontWeight="bold">BALANCE OF PROFIT AND LOSS A/C</Typography></TableCell> {/*[span_21](end_span) */}
+                <TableCell align="right">
+                    <FormInput name="currYearBal8" value={formData.currYearBal8 || '0.00'} readOnly />
+                </TableCell>
+              </TableRow>
+              <TableRow hover>
+                <TableCell></TableCell>
+                <TableCell><Typography variant="h6">TOTAL RESERVES & SURPLUS</Typography></TableCell>
+                <TableCell align="right">
+                    <FormInput name="currYearBal9" value={formData.currYearBal9 || '0.00'} readOnly />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Box>
+      </Box>
+
+      <ValidationErrorDialog open={errors.length > 0} onClose={() => setErrors([])} errors={errors} />
+
+      <ActionModal
+        open={modalState.open}
+        handleClose={() => setModalState({ ...modalState, open: false })}
+        title={modalState.title}
+        messages={modalState.messages}
+        actions={modalState.actions}
+      />
+    </>
+  );
+};
+
+export default Schedule2;
