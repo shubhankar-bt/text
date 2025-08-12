@@ -1,0 +1,1990 @@
+New scedule2 code : 
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Typography, Table, TableBody, TableCell, TableHead, TableRow, Box, Card, Container } from '@mui/material';
+import ActionModal from './components/ActionModal';
+import ReserveCategory from './components/ReserveCategory';
+import FormInput from '../../../../common/components/ui/FormInput';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { api } from './components/apiServices';
+import useApi from '../../../../common/hooks/useApi';
+import SkeletonWrapper from '../../../../common/components/ui/SkeletonWrapper';
+import ValidationErrorDialog from './components/ValidationErrorDialog';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+
+const parseFloatSafe = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+};
+
+const Schedule2 = () => {
+  // const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(null);
+
+  const [isDirty, setIsDirty] = useState(false);
+  const [modalState, setModalState] = useState({ open: false, title: '', messages: [], actions: [] });
+  const [errors, setErrors] = useState([]);
+  // const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { callApi, loading: isLoading } = useApi();
+  const sessionUser = JSON.parse(localStorage.getItem('user'));
+  const reportObject = location?.state.report;
+  const isDisabled = /* !(reportObject.status === 'Pending' || reportObject.status === null) */ false;
+  const snackbar = useCustomSnackbar();
+
+  const reserveCategories = useMemo(
+    () => [
+      { id: '', serial: 'I.', title: 'Statutory Reserves' },
+      { id: '1', serial: 'II.', title: 'Capital Reserves' },
+      { id: '2', serial: 'III.', title: 'Share Premium' },
+      { id: '6', serial: 'IV.', title: 'Foreign currency Translation Reserve' },
+      { id: '5', serial: 'V.', title: 'Revenue and Other Reserves*' },
+      { id: '7', serial: 'VI.', title: 'Revaluation Reserve' },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!reportObject) {
+      navigate('../');
+      return;
+    }
+    const fetchData = async () => {
+      // This logic mimics the original controller's data fetching flow
+      const prevYearParams = {
+        circleCode: sessionUser.circleCode,
+        previousYearEndDate: sessionUser.previousYearEndDate,
+      };
+      try {
+        const prevYearData = await api.getPreDataTwo(prevYearParams, callApi);
+        if (!prevYearData) {
+          throw new Error();
+        }
+        let currentData = {};
+        if (reportObject.status) {
+          const currentYearParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getDataTwo(currentYearParams, callApi);
+        } else {
+          const savedParams = { circleCode: sessionUser.circleCode, quarterEndDate: sessionUser.quarterEndDate };
+          currentData = await api.getSavedDataTwo(savedParams, callApi);
+        }
+        if (Object.keys(currentData).length === 0) {
+          throw new Error();
+        }
+        setFormData((prev) => ({ ...prev, ...prevYearData, ...currentData }));
+      } catch (error) {
+        if (error.code === 'ERR_CANCELED') {
+          return;
+        }
+        setFormData(null);
+        snackbar('Failed to load data!', 'error');
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    setIsDirty(true);
+  }, []);
+
+  const handleInputBlur = useCallback((e) => {
+    const { name, value } = e.target;
+    if (value && value !== '') return;
+    setFormData((prevData) => ({ ...prevData, [name]: '0.00' }));
+    setIsDirty(true);
+  }, []);
+
+  const calculateTotals = useCallback(() => {
+    if (!formData) return;
+    const { Pyr, Pyr1, Pyr2, Pyr5, Pyr6, Pyr7, Pyr8 } = formData;
+    const totalPyr9 = (
+      parseFloatSafe(Pyr) +
+      parseFloatSafe(Pyr1) +
+      parseFloatSafe(Pyr2) +
+      parseFloatSafe(Pyr5) +
+      parseFloatSafe(Pyr6) +
+      parseFloatSafe(Pyr7) +
+      parseFloatSafe(Pyr8)
+    ).toFixed(2);
+
+    const { currYearBal, currYearBal1, currYearBal2, currYearBal5, currYearBal6, currYearBal7, currYearBal8 } =
+      formData;
+    const totalCurrYearBal9 = (
+      parseFloatSafe(currYearBal) +
+      parseFloatSafe(currYearBal1) +
+      parseFloatSafe(currYearBal2) +
+      parseFloatSafe(currYearBal5) +
+      parseFloatSafe(currYearBal6) +
+      parseFloatSafe(currYearBal7) +
+      parseFloatSafe(currYearBal8)
+    ).toFixed(2);
+
+    setFormData((prev) => ({ ...prev, Pyr9: totalPyr9, currYearBal9: totalCurrYearBal9 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData?.Pyr,
+    formData?.currYearBal,
+    formData?.Pyr1,
+    formData?.currYearBal1,
+    formData?.Pyr2,
+    formData?.currYearBal2,
+    formData?.Pyr5,
+    formData?.currYearBal5,
+    formData?.Pyr6,
+    formData?.currYearBal6,
+    formData?.Pyr7,
+    formData?.currYearBal7,
+    formData?.Pyr8,
+    formData?.currYearBal8,
+    calculateTotals,
+  ]);
+
+  const validateAndSubmit = (e) => {
+    e.preventDefault();
+
+    const errors = reserveCategories
+      .map((cat) => {
+        const { id, title } = cat;
+        const openBal = parseFloatSafe(formData[`openBal${id}`]);
+        const addDurYear = parseFloatSafe(formData[`addDurYear${id}`]);
+        const dedDurYear = parseFloatSafe(formData[`dedDurYear${id}`]);
+        const currYearBal = parseFloatSafe(formData[`currYearBal${id}`]);
+        const calculatedTotal = (openBal + addDurYear - dedDurYear).toFixed(2);
+
+        if (calculatedTotal !== currYearBal.toFixed(2)) {
+          return {
+            particular: title,
+            expected: currYearBal.toFixed(2),
+            found: calculatedTotal,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (errors.length > 0) {
+      setErrors(errors);
+      return;
+    }
+
+    if (!isDirty) {
+      setModalState({
+        open: true,
+        title: 'Confirm Submission',
+        messages: ["You haven't changed any data. Would you like to submit the report?"],
+        actions: [
+          {
+            text: 'Yes',
+            onClick: () => {
+              setModalState({ ...modalState, open: false });
+              performSubmit();
+            },
+            color: 'success',
+          },
+          { text: 'No', onClick: () => setModalState({ ...modalState, open: false }) },
+        ],
+      });
+    } else {
+      performSubmit();
+    }
+  };
+
+  const handleRedirect = async () => {
+    navigate('../');
+  };
+
+  const performSubmit = async () => {
+    try {
+      const submissionData = {
+        ...formData,
+        circleCode: sessionUser.circleCode,
+        quarterEndDate: sessionUser.quarterEndDate,
+        userId: sessionUser.userId,
+        reportName: reportObject.name,
+        reportId: reportObject.reportId,
+        reportMasterId: reportObject.reportMasterId,
+        status: reportObject.status,
+      };
+      if (sessionUser.capacity !== '61') {
+        submissionData.areMocPending = reportObject.areMocPending;
+      }
+
+      // Show loading state here
+      const response = await api.submitScrTwo(submissionData, callApi);
+      // Hide loading state here
+
+      if (response && response >= 1) {
+        snackbar('Report Submitted Successfully!', 'success');
+        handleRedirect();
+      } else {
+        throw new Error('Error submitting the data!');
+      }
+    } catch (error) {
+      console.log(error);
+      if (error.code === 'ERR_CANCELED') {
+        return;
+      }
+      snackbar('Error submitting the data!', 'error');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <SkeletonWrapper
+          isLoading={isLoading}
+          skeletonType="table"
+          skeletonConfig={{
+            rows: 15,
+            columns: 2,
+            hasHeader: true,
+            hasActions: false,
+          }}
+        />
+      </>
+    );
+  }
+
+  if (!isLoading && (!formData || Object.keys(formData).length === 0)) {
+    return (
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h6" align="center">
+          Failed to load Schedule 2 Data!
+        </Typography>
+      </Container>
+    );
+  }
+
+  return (
+    <>
+      <Box sx={{ width: '100%' }}>
+        <Box component={'form'} onSubmit={validateAndSubmit}>
+          <Box sx={{ mb: 1 }}>
+            <CustomButton label={'Submit'} buttonType={'submit'} /* disabled={isDisabled} */ type="submit">
+              Submit
+            </CustomButton>
+          </Box>
+          <Table component={Card} sx={{ p: 0 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>
+                  <b>Sr. No.</b>
+                </TableCell>
+                <TableCell>
+                  <b>Particulars</b>
+                </TableCell>
+                <TableCell align="center">
+                  <b>Previous Year Balance as on {sessionUser.previousYearEndDate}</b>
+                </TableCell>
+                <TableCell align="center">
+                  <b>Current Year Balance as on {sessionUser.quarterEndDate}</b>
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {reserveCategories.map((cat) => (
+                <ReserveCategory
+                  key={cat.id}
+                  serial={cat.serial}
+                  title={cat.title}
+                  values={{
+                    id: cat.id,
+                    currYearBal: formData[`currYearBal${cat.id}`],
+                    openBal: formData[`openBal${cat.id}`],
+                    addDurYear: formData[`addDurYear${cat.id}`],
+                    dedDurYear: formData[`dedDurYear${cat.id}`],
+                    Pyr: formData[`Pyr${cat.id}`],
+                    pyrOpenBal: formData[`pyrOpenBal${cat.id}`],
+                    pyrAddDurYear: formData[`pyrAddDurYear${cat.id}`],
+                    pyrDedDurYear: formData[`pyrDedDurYear${cat.id}`],
+                  }}
+                  handleChange={handleInputChange}
+                  handleInputBlur={handleInputBlur}
+                  disabled={isDisabled}
+                />
+              ))}
+              {/* Balance of Profit and Loss */}
+              <TableRow hover>
+                <TableCell>
+                  <Typography variant="body1" fontWeight="bold">
+                    VII.
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body1" fontWeight="bold">
+                    BALANCE OF PROFIT AND LOSS A/C
+                  </Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <FormInput name="Pyr8" value={formData.Pyr8} readOnly />
+                </TableCell>
+                <TableCell align="right">
+                  <FormInput name="currYearBal8" value={formData.currYearBal8} readOnly />
+                </TableCell>
+              </TableRow>
+
+              {/* Total Reserves */}
+              <TableRow hover>
+                <TableCell></TableCell>
+                <TableCell>
+                  <Typography variant="h6">TOTAL RESERVES & SURPLUS</Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <FormInput name="Pyr9" value={formData.Pyr9} readOnly />
+                </TableCell>
+                <TableCell align="right">
+                  <FormInput name="currYearBal9" value={formData.currYearBal9} readOnly />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Box>
+      </Box>
+
+      <ValidationErrorDialog open={errors.length !== 0} onClose={() => setErrors([])} errors={errors} />
+
+      <ActionModal
+        open={modalState.open}
+        handleClose={() => setModalState({ ...modalState, open: false })}
+        title={modalState.title}
+        messages={modalState.messages}
+        actions={modalState.actions}
+        titleColor={modalState.titleColor}
+      />
+    </>
+  );
+};
+
+export default Schedule2;
+
+
+
+
+
+
+
+
+
+old js code :
+
+app
+    .controller(
+        'sh02Controller',
+        function ($scope, $rootScope, $http, $window, $sessionStorage,
+                  $state, $timeout, $location, sc02Factory, Idle,
+                  Keepalive, $modal, ModalService, userFactory, refreshFactory) {
+            if ($rootScope.reportObject == undefined) {
+                refreshFactory.backToState();
+                return;
+            }
+
+
+            $scope.sessionUser = $rootScope.globals.currentUser;
+
+            var app = this;
+            $scope.started = false;
+            var circleCod = $scope.sessionUser.circleCode;
+
+            $scope.date = $scope.sessionUser.quarterEndDate;
+            $scope.PraviousDate = $scope.sessionUser.previousYearEndDate;
+
+            app.parseFloat = function (value) {
+                if (isNaN(value)) {
+                    value = 0;
+                }
+                return parseFloat(value * 1);
+            };
+
+            app.functionCal1 = function (row) {
+                var calBal = app.row.currYearBal;
+                var calBal1 = app.row.currYearBal1;
+                var calBal2 = app.row.currYearBal2;
+                // var calBal3 = app.row.currYearBal3;
+                // var calBal4 = app.row.currYearBal4;
+                var calBal5 = app.parseFloat(app.row.currYearBal5).toFixed(2);
+
+                var calBal6 = app.row.currYearBal6;
+                var calBal7 = app.row.currYearBal7;
+
+
+                var calBal = app.parseFloat(calBal).toFixed(2);
+                var calBal1 = app.parseFloat(calBal1).toFixed(2);
+                var calBal2 = app.parseFloat(calBal2).toFixed(2);
+                var calBal5 = app.parseFloat(calBal5).toFixed(2);
+                var calBal6 = app.parseFloat(calBal6).toFixed(2);
+                var calBal7 = app.parseFloat(calBal7).toFixed(2);
+
+
+                console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@ vvv " + calBal5);
+                // alert("hiiiiiiiii");
+
+                var opBal = app.row.openBal;
+
+                var adBal = app.row.addDurYear;
+                var deBal = app.row.dedDurYear;
+
+
+                var res = (app.parseFloat(app.row.openBal)
+                    + app.parseFloat(app.row.addDurYear)
+                    - app.parseFloat(app.row.dedDurYear)).toFixed(2);
+                //alert("ChanresultNewUp:  "+res+"  calbal  "+calBal+"  difference: ");
+
+
+                /* var res = app.parseFloat(app.row.openBal
+                      + app.row.addDurYear) - (app.row.dedDurYear);*/
+                var res1 = (app.parseFloat(app.row.openBal1)
+                    + app.parseFloat(app.row.addDurYear1) - app
+                        .parseFloat(app.row.dedDurYear1)).toFixed(2);
+                var res2 = (app.parseFloat(app.row.openBal2)
+                    + app.parseFloat(app.row.addDurYear2) - app
+                        .parseFloat(app.row.dedDurYear2)).toFixed(2);
+
+                /*
+						 * var res3 = (app.parseFloat(app.row.openBal3) +
+						 * app.parseFloat(app.row.addDurYear3) - app
+						 * .parseFloat(app.row.dedDurYear3));
+						 */
+                /*
+						 * var res4 = (app.parseFloat(app.row.openBal4) +
+						 * app.parseFloat(app.row.addDurYear4) - app
+						 * .parseFloat(app.row.dedDurYear4));
+						 */
+
+                var res5 = (app.parseFloat(app.row.openBal5)
+                    + app.parseFloat(app.row.addDurYear5) - app
+                        .parseFloat(app.row.dedDurYear5)).toFixed(2);
+                var res6 = (app.parseFloat(app.row.openBal6)
+                    + app.parseFloat(app.row.addDurYear6) - app
+                        .parseFloat(app.row.dedDurYear6)).toFixed(2);
+                var res7 = (app.parseFloat(app.row.openBal7)
+                    + app.parseFloat(app.row.addDurYear7) - app
+                        .parseFloat(app.row.dedDurYear7)).toFixed(2);
+
+                var flag = true;
+
+                if (res != calBal) {
+                    //alert("Open Balance= "+app.row.openBal+"  add dur year=  "+app.row.addDurYear+"    deduction:  "+app.row.dedDurYear);
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Statutory Reserves.");
+                    flag = false;
+                }
+
+                if (res1 != calBal1) {
+
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Capital Reserves.");
+                    flag = false;
+                }
+                if (res2 != calBal2) {
+
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Share Premium.");
+                    flag = false;
+                }
+
+                /*
+						 * if (res3 != calBal3) {
+						 *
+						 * alert("The value of (OpenBalance + Additions during
+						 * the year - Deductions during the year) should match
+						 * with the Closing Balance for Investment Reserve.");
+						 * flag = false; } if (res4 != calBal4) {
+						 *
+						 * alert("The value of (OpenBalance + Additions during
+						 * the year - Deductions during the year) should match
+						 * with the Closing Balance for Investment Fluctuation
+						 * Reserve."); flag = false; }
+						 */
+
+                if (res5 != calBal5) {
+
+                    //alert("result5: "+res5+"  fromdb:"+calBal5);
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Revenue and Other Reserves.");
+                    flag = false;
+                }
+                if (res6 != calBal6) {
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Foreign currency Translation Reserve.");
+                    flag = false;
+                }
+
+                if (res7 != calBal7) {
+                    //alert("result7: "+res7+"  fromdb:"+calBal7);
+                    alert("The value of (OpenBalance + Additions during the year - Deductions during the year) should match with the Closing Balance for Revaluation Reserve.");
+                    flag = false;
+                }
+                console.log(flag);
+                if (flag == true) {
+                    console.log($scope.sh02Form.$dirty);
+                    if ($scope.sh02Form.$dirty == false) {
+                        app.displayMessage111 = "You didn't change any data, would you like to submit report?";
+                        if (app.displayMessage111) {
+                            $('#myModal33').modal({
+                                backdrop: 'static',
+                                keyboard: false,
+                                modal: true
+                            });
+                        }
+                    } else if ($scope.sh02Form.$dirty == true) {
+                        app.submitScrTwo(row);
+                    }
+                }
+            };
+            app.YesSubmitSH02 = function (row) {
+                app.submitScrTwo(row);
+            };
+
+            if ($scope.sessionUser.capacity == "61") {
+
+                //alert("User Capacity= "+$scope.sessionUser.capacity);
+
+                /*  /!*  var row = {
+                        'circleCode': $scope.sessionUser.circleCode,
+                        'quarterEndDate': $scope.sessionUser.quarterEndDate
+                    };
+                    sc02Factory
+                        .getCountCheck(row)
+                        .then(
+                            function (data) {
+                                // console.log(" sc02 frt "+data);
+                                if (data > 0) {*!/
+                                    var curYeaData = {
+                                        'circleCode': $scope.sessionUser.circleCode,
+                                        'quarterEndDate': $scope.sessionUser.quarterEndDate
+                                    };*/
+
+                var curYeaData = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate
+                };
+
+                //current year data
+                sc02Factory
+                    .getDataTwo(curYeaData)
+                    .then(
+                        function (data) {
+
+                            console
+                                .log("data of getDataTwo  current year "
+                                    + data);
+
+                            app.row.currYearBal = data.currYearBal;
+                            app.row.currYearBal1 = data.currYearBal1;
+                            app.row.currYearBal2 = data.currYearBal2;
+                            /*
+                                                     * app.row.currYearBal3 =
+                                                     * data.currYearBal3;
+                                                     * app.row.currYearBal4 =
+                                                     * data.currYearBal4;
+                                                     */
+
+                            app.row.currYearBal5 = data.currYearBal5;
+                            app.row.currYearBal6 = data.currYearBal6;
+                            app.row.currYearBal7 = data.currYearBal7;
+                            app.row.currYearBal8 = data.currYearBal8;
+                            app.row.currYearBal9 = data.currYearBal9;
+
+                            app.row.openBal = data.openBal;
+                            app.row.openBal1 = data.openBal1;
+                            app.row.openBal2 = data.openBal2;
+                            /*
+                                                     * app.row.openBal3 =
+                                                     * data.openBal3;
+                                                     * app.row.openBal4 =
+                                                     * data.openBal4;
+                                                     */
+                            app.row.openBal5 = data.openBal5;
+                            app.row.openBal6 = data.openBal6;
+                            app.row.openBal7 = data.openBal7;
+                            // app.row.openBal8=data.openBal8;
+
+                            app.row.addDurYear = data.addDurYear;
+                            app.row.addDurYear1 = data.addDurYear1;
+                            app.row.addDurYear2 = data.addDurYear2;
+                            /*
+                                                     * app.row.addDurYear3 =
+                                                     * data.addDurYear3;
+                                                     * app.row.addDurYear4 =
+                                                     * data.addDurYear4;
+                                                     */
+
+                            app.row.addDurYear5 = data.addDurYear5;
+                            app.row.addDurYear6 = data.addDurYear6;
+                            app.row.addDurYear7 = data.addDurYear7;
+                            // app.row.addDurYear8=data.addDurYear8;
+
+                            app.row.dedDurYear = data.dedDurYear;
+                            app.row.dedDurYear1 = data.dedDurYear1;
+                            app.row.dedDurYear2 = data.dedDurYear2;
+                            /*
+                                                     * app.row.dedDurYear3 =
+                                                     * data.dedDurYear3;
+                                                     * app.row.dedDurYear4 =
+                                                     * data.dedDurYear4;
+                                                     */
+                            app.row.dedDurYear5 = data.dedDurYear5;
+                            app.row.dedDurYear6 = data.dedDurYear6;
+                            app.row.dedDurYear7 = data.dedDurYear7;
+                            // app.row.dedDurYear8=data.dedDurYear8;
+
+                        },
+                        function (
+                            errResponse) {
+                            console
+                                .error('Error while  fetching details in sh02ControllerForFRT');
+                        });
+
+                var prev = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'previousYearEndDate': $scope.sessionUser.previousYearEndDate
+                };
+
+                // alert("prev"+prev);
+                // console.log(prev);
+                sc02Factory
+                    .getPreDataTwo(prev)
+                    .then(
+                        function (data) {
+
+                            console
+                                .log("data of getPreDataTwo  previous year "
+                                    + data);
+
+                            ///Vk
+                            /*for showing previous years closing balance as current years opening balance
+                            app.row.openBal = data.pyr;
+                            app.row.openBal1 = data.pyr1;
+                            app.row.openBal2 = data.pyr2;
+
+
+                            app.row.openBal5 = data.pyr5;
+                            app.row.openBal6 = data.pyr6;
+                            app.row.openBal7 = data.pyr7;*/
+                            ///Vk
+                            // console.log("previouS
+                            // DatA
+                            // ::"+data);
+                            app.row.Pyr = data.pyr;
+                            app.row.Pyr1 = data.pyr1;
+                            app.row.Pyr2 = data.pyr2;
+                            /*
+                                                     * app.row.Pyr3 =
+                                                     * data.pyr3;
+                                                     * app.row.Pyr4 =
+                                                     * data.pyr4;
+                                                     */
+                            app.row.Pyr5 = data.pyr5;
+                            app.row.Pyr6 = data.pyr6;
+                            app.row.Pyr7 = data.pyr7;
+                            app.row.Pyr8 = data.pyr8;
+                            app.row.Pyr9 = data.pyr9;
+                            console
+                                .log("qqqqqqqqqqqqqq"
+                                    + app.row.Pyr7);
+                            // app.row.Pyr9=data.pyr9;
+                            app.row.Pyr9 = (app
+                                    .parseFloat(app.row.Pyr)
+                                + app
+                                    .parseFloat(app.row.Pyr1)
+                                + app
+                                    .parseFloat(app.row.Pyr2)
+                                /*
+                                                             * +
+                                                             * app.parseFloat(app.row.Pyr3) +
+                                                             * app.parseFloat(app.row.Pyr4)
+                                                             */
+                                + app
+                                    .parseFloat(app.row.Pyr5)
+                                + app
+                                    .parseFloat(app.row.Pyr6)
+                                + app
+                                    .parseFloat(app.row.Pyr7) + app
+                                    .parseFloat(app.row.Pyr8))
+                                .toFixed(2);
+
+                            app.row.pyrOpenBal = data.pyrOpenBal;
+                            app.row.pyrOpenBal1 = data.pyrOpenBal1;
+                            app.row.pyrOpenBal2 = data.pyrOpenBal2;
+                            /*
+                                                     * app.row.pyrOpenBal3 =
+                                                     * data.pyrOpenBal3;
+                                                     * app.row.pyrOpenBal4 =
+                                                     * data.pyrOpenBal4;
+                                                     */
+                            app.row.pyrOpenBal5 = data.pyrOpenBal5;
+                            app.row.pyrOpenBal6 = data.pyrOpenBal6;
+                            app.row.pyrOpenBal7 = data.pyrOpenBal7;
+
+                            app.row.pyrAddDurYear = data.pyrAddDurYear;
+                            app.row.pyrAddDurYear1 = data.pyrAddDurYear1;
+                            app.row.pyrAddDurYear2 = data.pyrAddDurYear2;
+                            /*
+                                                     * app.row.pyrAddDurYear3 =
+                                                     * data.pyrAddDurYear3;
+                                                     * app.row.pyrAddDurYear4 =
+                                                     * data.pyrAddDurYear4;
+                                                     */
+                            app.row.pyrAddDurYear5 = data.pyrAddDurYear5;
+                            app.row.pyrAddDurYear6 = data.pyrAddDurYear6;
+                            app.row.pyrAddDurYear7 = data.pyrAddDurYear7;
+
+                            app.row.pyrDedDurYear = data.pyrDedDurYear;
+                            app.row.pyrDedDurYear1 = data.pyrDedDurYear1;
+                            app.row.pyrDedDurYear2 = data.pyrDedDurYear2;
+                            /*
+                                                     * app.row.pyrDedDurYear3 =
+                                                     * data.pyrDedDurYear3;
+                                                     * app.row.pyrDedDurYear4 =
+                                                     * data.pyrDedDurYear4;
+                                                     */
+                            app.row.pyrDedDurYear5 = data.pyrDedDurYear5;
+                            app.row.pyrDedDurYear6 = data.pyrDedDurYear6;
+                            app.row.pyrDedDurYear7 = data.pyrDedDurYear7;
+
+                        },
+                        function (
+                            errResponse) {
+                            console
+                                .error('Error while login');
+                        });
+
+
+                /*  else if (data == "0") {
+
+                       app.displayMessage = "please submit schedule 2 first from circle maker-- CAO LOLKATA";
+                       if (app.displayMessage) {
+                           $('#myModal1').modal({
+                               backdrop: 'static',
+                               keyboard: false,
+                               modal: true
+                           });
+                           $('#myModal1')
+                               .on(
+                                   'shown.bs.modal',
+                                   function () {
+                                       $(
+                                           '#myModal1')
+                                           .trigger(
+                                               'focus');
+                                   });
+                       }
+
+                   }
+
+          });*/
+                var row = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate
+                };
+                sc02Factory
+                    .getSavedDataTwo(row)
+                    .then(
+                        function (data) {
+                            // alert('inside admn fac 02');
+
+                            console.log(data);
+                            app.row.currYearBal = data.currYearBal;
+                            app.row.currYearBal1 = data.currYearBal1;
+                            app.row.currYearBal2 = data.currYearBal2;
+
+                            /*
+                                             * app.row.currYearBal3 =
+                                             * data.currYearBal3;
+                                             * app.row.currYearBal4 =
+                                             * data.currYearBal4;
+                                             */
+                            app.row.currYearBal5 = data.currYearBal5;
+                            app.row.currYearBal6 = data.currYearBal6;
+                            app.row.currYearBal7 = data.currYearBal7;
+                            app.row.currYearBal8 = data.currYearBal8;
+
+                            app.row.currYearBal9 = (app
+                                    .parseFloat(app.row.currYearBal)
+                                + app
+                                    .parseFloat(app.row.currYearBal1)
+                                + app
+                                    .parseFloat(app.row.currYearBal2)
+                                /*
+                                                     * + app
+                                                     * .parseFloat(app.row.currYearBal3) +
+                                                     * app
+                                                     * .parseFloat(app.row.currYearBal4)
+                                                     */
+                                + app
+                                    .parseFloat(app.row.currYearBal5)
+                                + app
+                                    .parseFloat(app.row.currYearBal6)
+                                + app
+                                    .parseFloat(app.row.currYearBal7) + app
+                                    .parseFloat(app.row.currYearBal8))
+                                .toFixed(2);
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+
+                // var circleCode = $scope.sessionUser.circleCode;
+                // var quarterEndDate =
+                // $scope.sessionUser.quarterEndDate;
+
+                var curYeaData = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate
+                };
+                // //// to check if report has been already submitted
+                if ($rootScope.reportObject.status != undefined) {
+                    console.log("In sttus not undefined!!!!" + $rootScope.reportObject.status);
+                    sc02Factory.getDataTwo(curYeaData).then(
+                        function (data) {
+
+                            console.log("vvvvvv :: " + data);
+                            app.row.openBal = data.openBal;
+                            app.row.openBal1 = data.openBal1;
+                            app.row.openBal2 = data.openBal2;
+                            /*
+                                 * app.row.openBal3 = data.openBal3;
+                                 * app.row.openBal4 = data.openBal4;
+                                 */
+
+                            app.row.openBal5 = data.openBal5;
+                            app.row.openBal6 = data.openBal6;
+                            app.row.openBal7 = data.openBal7;
+                            // app.row.openBal8=data.openBal8;
+
+                            app.row.addDurYear = data.addDurYear;
+                            app.row.addDurYear1 = data.addDurYear1;
+                            app.row.addDurYear2 = data.addDurYear2;
+                            /*
+                                 * app.row.addDurYear3 = data.addDurYear3;
+                                 * app.row.addDurYear4 = data.addDurYear4;
+                                 */
+                            app.row.addDurYear5 = data.addDurYear5;
+                            app.row.addDurYear6 = data.addDurYear6;
+                            app.row.addDurYear7 = data.addDurYear7;
+                            // app.row.addDurYear8=data.addDurYear8;
+
+                            app.row.dedDurYear = data.dedDurYear;
+                            app.row.dedDurYear1 = data.dedDurYear1;
+                            app.row.dedDurYear2 = data.dedDurYear2;
+                            /*
+                                 * app.row.dedDurYear3 = data.dedDurYear3;
+                                 * app.row.dedDurYear4 = data.dedDurYear4;
+                                 */
+                            app.row.dedDurYear5 = data.dedDurYear5;
+                            app.row.dedDurYear6 = data.dedDurYear6;
+                            app.row.dedDurYear7 = data.dedDurYear7;
+                            // app.row.dedDurYear8=data.dedDurYear8;
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+                }
+
+                // var circleC = $scope.sessionUser.circleCode;
+                // var quarterEndD=$scope.sessionUser.quarterEndDate;
+                // var previousYearEndDate =
+                // $scope.sessionUser.previousYearEndDate;
+                // alert("cc : "+circleC);
+                // alert("DAte : "+quarterEndD);
+                var prev = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'previousYearEndDate': $scope.sessionUser.previousYearEndDate
+                };
+
+                // alert("prev"+prev);
+                console.log(prev);
+                sc02Factory
+                    .getPreDataTwo(prev)
+                    .then(
+                        function (data) {
+
+                            console.log("abcd  :" + data.pyr);
+                            console.log("abcd  :"
+                                + data.pyrOpenBal5);
+
+                            // console.log("previouS DatA
+                            // ::"+data);
+                            ///Vk
+                            /*for showing prev Years closing balance as current year open balance
+                            app.row.openBal = data.pyr;
+                            app.row.openBal1 = data.pyr1;
+                            app.row.openBal2 = data.pyr2;
+
+
+                            app.row.openBal5 = data.pyr5;
+                            app.row.openBal6 = data.pyr6;
+                            app.row.openBal7 = data.pyr7;*/
+                            ///Vk
+                            app.row.Pyr = data.pyr;
+                            app.row.Pyr1 = data.pyr1;
+                            app.row.Pyr2 = data.pyr2;
+                            /*
+                                             * app.row.Pyr3 = data.pyr3;
+                                             * app.row.Pyr4 = data.pyr4;
+                                             */
+                            app.row.Pyr5 = data.pyr5;
+                            app.row.Pyr6 = data.pyr6;
+                            app.row.Pyr7 = data.pyr7;
+                            app.row.Pyr8 = data.pyr8;
+                            app.row.Pyr9 = data.pyr9;
+                            console.log("qqqqqqqqqqqqqq"
+                                + app.row.Pyr7);
+                            // app.row.Pyr9=data.pyr9;
+                            app.row.Pyr9 = (app
+                                    .parseFloat(app.row.Pyr)
+                                + app
+                                    .parseFloat(app.row.Pyr1)
+                                + app
+                                    .parseFloat(app.row.Pyr2)
+                                /*
+                                                     * +
+                                                     * app.parseFloat(app.row.Pyr3) +
+                                                     * app.parseFloat(app.row.Pyr4)
+                                                     */
+                                + app
+                                    .parseFloat(app.row.Pyr5)
+                                + app
+                                    .parseFloat(app.row.Pyr6)
+                                + app
+                                    .parseFloat(app.row.Pyr7) + app
+                                    .parseFloat(app.row.Pyr8))
+                                .toFixed(2);
+
+                            app.row.pyrOpenBal = data.pyrOpenBal;
+                            app.row.pyrOpenBal1 = data.pyrOpenBal1;
+                            app.row.pyrOpenBal2 = data.pyrOpenBal2;
+                            /*
+                                             * app.row.pyrOpenBal3 =
+                                             * data.pyrOpenBal3;
+                                             * app.row.pyrOpenBal4 =
+                                             * data.pyrOpenBal4;
+                                             */
+                            app.row.pyrOpenBal5 = data.pyrOpenBal5;
+                            app.row.pyrOpenBal6 = data.pyrOpenBal6;
+                            app.row.pyrOpenBal7 = data.pyrOpenBal7;
+
+                            app.row.pyrAddDurYear = data.pyrAddDurYear;
+                            app.row.pyrAddDurYear1 = data.pyrAddDurYear1;
+                            app.row.pyrAddDurYear2 = data.pyrAddDurYear2;
+                            /*
+                                             * app.row.pyrAddDurYear3 =
+                                             * data.pyrAddDurYear3;
+                                             * app.row.pyrAddDurYear4 =
+                                             * data.pyrAddDurYear4;
+                                             */
+                            app.row.pyrAddDurYear5 = data.pyrAddDurYear5;
+                            app.row.pyrAddDurYear6 = data.pyrAddDurYear6;
+                            app.row.pyrAddDurYear7 = data.pyrAddDurYear7;
+
+                            app.row.pyrDedDurYear = data.pyrDedDurYear;
+                            app.row.pyrDedDurYear1 = data.pyrDedDurYear1;
+                            app.row.pyrDedDurYear2 = data.pyrDedDurYear2;
+                            /*
+                                             * app.row.pyrDedDurYear3 =
+                                             * data.pyrDedDurYear3;
+                                             * app.row.pyrDedDurYear4 =
+                                             * data.pyrDedDurYear4;
+                                             */
+                            app.row.pyrDedDurYear5 = data.pyrDedDurYear5;
+                            app.row.pyrDedDurYear6 = data.pyrDedDurYear6;
+                            app.row.pyrDedDurYear7 = data.pyrDedDurYear7;
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+
+            } else {
+                var row = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate
+                };
+                sc02Factory
+                    .getSavedDataTwo(row)
+                    .then(
+                        function (data) {
+                            // alert('inside admn fac 02');
+
+                            console.log(data);
+                            app.row.currYearBal = data.currYearBal;
+                            app.row.currYearBal1 = data.currYearBal1;
+                            app.row.currYearBal2 = data.currYearBal2;
+
+                            /*
+											 * app.row.currYearBal3 =
+											 * data.currYearBal3;
+											 * app.row.currYearBal4 =
+											 * data.currYearBal4;
+											 */
+                            app.row.currYearBal5 = data.currYearBal5;
+                            app.row.currYearBal6 = data.currYearBal6;
+                            app.row.currYearBal7 = data.currYearBal7;
+                            app.row.currYearBal8 = data.currYearBal8;
+
+                            app.row.currYearBal9 = (app
+                                    .parseFloat(app.row.currYearBal)
+                                + app
+                                    .parseFloat(app.row.currYearBal1)
+                                + app
+                                    .parseFloat(app.row.currYearBal2)
+                                /*
+													 * + app
+													 * .parseFloat(app.row.currYearBal3) +
+													 * app
+													 * .parseFloat(app.row.currYearBal4)
+													 */
+                                + app
+                                    .parseFloat(app.row.currYearBal5)
+                                + app
+                                    .parseFloat(app.row.currYearBal6)
+                                + app
+                                    .parseFloat(app.row.currYearBal7) + app
+                                    .parseFloat(app.row.currYearBal8))
+                                .toFixed(2);
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+
+                // var circleCode = $scope.sessionUser.circleCode;
+                // var quarterEndDate =
+                // $scope.sessionUser.quarterEndDate;
+
+                var curYeaData = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate
+                };
+                // //// to check if report has been already submitted
+                if ($rootScope.reportObject.status != undefined) {
+                    sc02Factory.getDataTwo(curYeaData).then(
+                        function (data) {
+
+                            console.log("vvvvvv :: " + data);
+                            app.row.openBal = data.openBal;
+                            app.row.openBal1 = data.openBal1;
+                            app.row.openBal2 = data.openBal2;
+                            app.row.openBal5 = data.openBal5;
+                            app.row.openBal6 = data.openBal6;
+                            app.row.openBal7 = data.openBal7;
+                            // app.row.openBal8=data.openBal8;
+
+                            app.row.addDurYear = data.addDurYear;
+                            app.row.addDurYear1 = data.addDurYear1;
+                            app.row.addDurYear2 = data.addDurYear2;
+                            /*
+								 * app.row.addDurYear3 = data.addDurYear3;
+								 * app.row.addDurYear4 = data.addDurYear4;
+								 */
+                            app.row.addDurYear5 = data.addDurYear5;
+                            app.row.addDurYear6 = data.addDurYear6;
+                            app.row.addDurYear7 = data.addDurYear7;
+                            // app.row.addDurYear8=data.addDurYear8;
+
+                            app.row.dedDurYear = data.dedDurYear;
+                            app.row.dedDurYear1 = data.dedDurYear1;
+                            app.row.dedDurYear2 = data.dedDurYear2;
+                            /*
+								 * app.row.dedDurYear3 = data.dedDurYear3;
+								 * app.row.dedDurYear4 = data.dedDurYear4;
+								 */
+                            app.row.dedDurYear5 = data.dedDurYear5;
+                            app.row.dedDurYear6 = data.dedDurYear6;
+                            app.row.dedDurYear7 = data.dedDurYear7;
+                            // app.row.dedDurYear8=data.dedDurYear8;
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+                }
+
+                // var circleC = $scope.sessionUser.circleCode;
+                // var quarterEndD=$scope.sessionUser.quarterEndDate;
+                // var previousYearEndDate =
+                // $scope.sessionUser.previousYearEndDate;
+                // alert("cc : "+circleC);
+                // alert("DAte : "+quarterEndD);
+                var prev = {
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'previousYearEndDate': $scope.sessionUser.previousYearEndDate
+                };
+
+                // alert("prev"+prev);
+                console.log(prev);
+                sc02Factory
+                    .getPreDataTwo(prev)
+                    .then(
+                        function (data) {
+
+                            console.log("abcd  :" + data.pyr);
+                            console.log("abcd  :"
+                                + data.pyrOpenBal5);
+                            ///V
+                            /*for showing prev year closing balance as current year open balance
+                            app.row.openBal = data.pyr;
+                            app.row.openBal1 = data.pyr1;
+                            app.row.openBal2 = data.pyr2;
+
+
+                            app.row.openBal5 = data.pyr5;
+                            app.row.openBal6 = data.pyr6;
+                            app.row.openBal7 = data.pyr7;*/
+                            ///V
+
+                            // console.log("previouS DatA
+                            // ::"+data);
+                            app.row.Pyr = data.pyr;
+                            app.row.Pyr1 = data.pyr1;
+                            app.row.Pyr2 = data.pyr2;
+                            /*
+											 * app.row.Pyr3 = data.pyr3;
+											 * app.row.Pyr4 = data.pyr4;
+											 */
+                            app.row.Pyr5 = data.pyr5;
+                            app.row.Pyr6 = data.pyr6;
+                            app.row.Pyr7 = data.pyr7;
+                            app.row.Pyr8 = data.pyr8;
+                            app.row.Pyr9 = data.pyr9;
+                            console.log("qqqqqqqqqqqqqq"
+                                + app.row.Pyr7);
+                            // app.row.Pyr9=data.pyr9;
+                            app.row.Pyr9 = (app
+                                    .parseFloat(app.row.Pyr)
+                                + app
+                                    .parseFloat(app.row.Pyr1)
+                                + app
+                                    .parseFloat(app.row.Pyr2)
+                                /*
+													 * +
+													 * app.parseFloat(app.row.Pyr3) +
+													 * app.parseFloat(app.row.Pyr4)
+													 */
+                                + app
+                                    .parseFloat(app.row.Pyr5)
+                                + app
+                                    .parseFloat(app.row.Pyr6)
+                                + app
+                                    .parseFloat(app.row.Pyr7) + app
+                                    .parseFloat(app.row.Pyr8))
+                                .toFixed(2);
+
+                            app.row.pyrOpenBal = data.pyrOpenBal;
+                            app.row.pyrOpenBal1 = data.pyrOpenBal1;
+                            app.row.pyrOpenBal2 = data.pyrOpenBal2;
+                            /*
+											 * app.row.pyrOpenBal3 =
+											 * data.pyrOpenBal3;
+											 * app.row.pyrOpenBal4 =
+											 * data.pyrOpenBal4;
+											 */
+                            app.row.pyrOpenBal5 = data.pyrOpenBal5;
+                            app.row.pyrOpenBal6 = data.pyrOpenBal6;
+                            app.row.pyrOpenBal7 = data.pyrOpenBal7;
+
+                            app.row.pyrAddDurYear = data.pyrAddDurYear;
+                            app.row.pyrAddDurYear1 = data.pyrAddDurYear1;
+                            app.row.pyrAddDurYear2 = data.pyrAddDurYear2;
+                            /*
+											 * app.row.pyrAddDurYear3 =
+											 * data.pyrAddDurYear3;
+											 * app.row.pyrAddDurYear4 =
+											 * data.pyrAddDurYear4;
+											 */
+                            app.row.pyrAddDurYear5 = data.pyrAddDurYear5;
+                            app.row.pyrAddDurYear6 = data.pyrAddDurYear6;
+                            app.row.pyrAddDurYear7 = data.pyrAddDurYear7;
+
+                            app.row.pyrDedDurYear = data.pyrDedDurYear;
+                            app.row.pyrDedDurYear1 = data.pyrDedDurYear1;
+                            app.row.pyrDedDurYear2 = data.pyrDedDurYear2;
+                            /*
+											 * app.row.pyrDedDurYear3 =
+											 * data.pyrDedDurYear3;
+											 * app.row.pyrDedDurYear4 =
+											 * data.pyrDedDurYear4;
+											 */
+                            app.row.pyrDedDurYear5 = data.pyrDedDurYear5;
+                            app.row.pyrDedDurYear6 = data.pyrDedDurYear6;
+                            app.row.pyrDedDurYear7 = data.pyrDedDurYear7;
+
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+            }
+
+            app.submitScrTwo = function (row) {
+                var params = {
+                    'row': $scope.row,
+                    'circleCode': $scope.sessionUser.circleCode,
+                    'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                    'userId': $scope.sessionUser.userId
+                };
+
+                $scope.sc02 = {};
+                $scope.sc02.pk = "";
+
+                var i = {};
+                i = app.row;
+                console.log(i);
+                var circleCode = $scope.sessionUser.circleCode;
+                var quarterEndDate = $scope.sessionUser.quarterEndDate;
+
+                if ($scope.sessionUser.capacity == "61") {
+
+                    var row1 = {
+                        'circleCode': circleCode,
+                        'quarterEndDate': quarterEndDate,
+                        'userId': $scope.sessionUser.userId,
+                        'reportName': $rootScope.reportObject.name,
+                        'reportId': $rootScope.reportObject.reportId,
+                        'reportMasterId': $rootScope.reportObject.reportMasterId,
+                        'status': $rootScope.reportObject.status
+                    };
+                } else {
+                    var row1 = {
+                        'circleCode': circleCode,
+                        'quarterEndDate': quarterEndDate,
+                        'userId': $scope.sessionUser.userId,
+                        'reportName': $rootScope.reportObject.name,
+                        'reportId': $rootScope.reportObject.reportId,
+                        'reportMasterId': $rootScope.reportObject.reportMasterId,
+                        'status': $rootScope.reportObject.status,
+                        'areMocPending': $rootScope.reportObject.areMocPending
+                    };
+                }
+
+                var copy = angular.extend({}, i, row1);
+                sc02Factory
+                    .submitScrTwo(copy)
+                    .then(
+                        function (data) {
+
+                            // alert("data "+data) ;
+                            if (data >= 1) {
+                                $scope.sc02 = {};
+                                $scope.sc02.pk = "1";
+                                app.displayMessage = "Report Submitted Successfully";
+
+                                if (app.displayMessage) {
+
+                                    $('#myModal1').modal({
+                                        backdrop: 'static',
+                                        keyboard: false,
+                                        modal: true
+                                    });
+                                    $('#myModal1')
+                                        .on(
+                                            'shown.bs.modal',
+                                            function () {
+                                                $(
+                                                    '#myModal1')
+                                                    .trigger(
+                                                        'focus');
+                                            });
+                                }
+
+                            }
+
+                            // console.log(data);
+                        }, function (errResponse) {
+                            console.error('Error while login');
+                        });
+            };
+
+            app.redirect = function () {
+                $timeout(function () {
+                    if ($scope.sessionUser.capacity == "61") {
+                        $state.go('frt_maker.worklist');
+                    } else {
+                        $state.go('circle_maker.worklist');
+                    }
+                }, 500);
+            }
+
+
+        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+old jsp code : 
+
+<div class="wrapper">
+    <div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+        <div class="container">
+            <div class="row tim-row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="brand">
+                        <h3 style="color: white;">Schedule 2</h3>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    <div class="main main-raised">
+        <div class="section">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <!-- <form  name="sh02Form" > -->
+                        <script type="text/javascript">
+                            $(".decimal-2-places").numeric({decimalPlaces: 2});
+
+                        </script>
+
+
+                        <form data-ng-submit="sh02.functionCal1(sh02.row)" name="sh02Form">
+                            <!-- <button type="submit" class="btn btn-primary">Add Row</button> -->
+
+                            <table id="example1"
+                                   class="table table-hover table-responsive no-padding dataTable no-footer">
+                                <thead>
+                                <tr>
+                                    <th><b>Sr.No</b></th>
+                                    <th><b>Particulars</b></th>
+                                    <%--<th style="text-align:Center"><b>Previous Year Balance <br>as on {{PraviousDate}}</b></th>--%>
+                                    <th style="text-align:Center"><b>Current Year Balance <br>as on {{date}}</b></th>
+                                </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                <tr>
+                                    <td><b>I.</b></td>
+                                    <td><b>Statutory Reserves</b></td>
+                                    <!--   <td><input ng-init="sh02.row.particulars='Statutory Reserves'" ng-model="sh02.row.particulars"class="form-control"  ng-readonly="true"></td>-->
+                                    <%--<td><input type="text" ng-model="sh02.row.Pyr" style="text-align:right;" name="Pyr"
+                                               maxlength="18" class="form-control" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal"
+                                               style="text-align:right" name="currYearBal" maxlength="18"
+                                               class="form-control" ng-disabled="row.isDisabled == 'true'"
+                                               ng-required="true" ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal"
+                                               style="text-align:right;" name="pyrOpenBal" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-minlength="0" ng-model="sh02.row.openBal"
+                                               style="text-align:right" name="openBal"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'" />
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear"
+                                               style="text-align:right;" name="pyrAddDurYear" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear" style="text-align:right" name="addDurYear"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear"
+                                               style="text-align:right;" name="pyrDedDurYear" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.dedDurYear" style="text-align:right" name="dedDurYear"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td><b>II.</b></td>
+                                    <td><b>Capital Reserves</b></td>
+                                    <!-- <td><input ng-init="sh02.row.particulars1='Capital Reserves'" ng-model="sh02.row.particulars1"class="form-control"  ng-readonly="true"></td>-->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr1"
+                                               style="text-align:right;" name="Pyr1" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal1"
+                                               style="text-align:right" name="currYearBal1" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal1"
+                                               style="text-align:right;" name="pyrOpenBal1" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0" ng-model="sh02.row.openBal1"
+                                               style="text-align:right" name="openBal1"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'" />
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear1"
+                                               style="text-align:right;" name="pyrAddDurYear1" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear1" style="text-align:right"
+                                               name="addDurYear1" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear1"
+                                               style="text-align:right;" name="pyrDedDurYear1" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.dedDurYear1" style="text-align:right"
+                                               name="dedDurYear1" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td><b>III.</b></td>
+                                    <td><b>Share Premium</b></td>
+                                    <!--<td><input ng-init="sh02.row.particulars2='Share Premium'" ng-model="sh02.row.particulars2"class="form-control"  ng-readonly="true"></td> -->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr2"
+                                               style="text-align:right;" name="Pyr2" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal2"
+                                               style="text-align:right" name="currYearBal2" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal2"
+                                               style="text-align:right;" name="pyrOpenBal2" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-model="sh02.row.openBal2"
+                                               style="text-align:right" name="openBal2"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'" />
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear2"
+                                               style="text-align:right;" name="pyrAddDurYear2" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear2" style="text-align:right"
+                                               name="addDurYear2" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear2"
+                                               style="text-align:right;" name="pyrDedDurYear2" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-model="sh02.row.dedDurYear2"
+                                               style="text-align:right" name="dedDurYear2"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <!-- <tr>
+                                     <td><b>IV.</b></td>
+                                      <td><b>Investment Reserve</b></td>
+                                     <td><input ng-init="sh02.row.particulars3='Investment Reserve'" ng-model="sh02.row.particulars3"class="form-control"  ng-readonly="true"></td>
+                                     <td><input type="text" maxlength="18" ng-model="sh02.row.Pyr3" style="text-align:right;" name="Pyr3"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                     <td><input type="text"   maxlength="18"  ng-model="sh02.row.currYearBal3" style="text-align:right" name="currYearBal3" class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                </tr>
+
+
+
+
+                             <tr>
+                                  <td></td>
+                                  <td>Opening Balance</td>
+                                  <td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal3" style="text-align:right;" name="pyrOpenBal3"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                  <td>
+                                  <input type="text"   maxlength="18"  ng-minlength="0" ng-model="sh02.row.openBal3" style="text-align:right" name="openBal3"class="form-control decimal-2-places" ng-disabled="row.isDisabled == 'true'" />
+
+                                 </td>
+                             </tr>
+
+
+
+
+                             <tr>
+                                 <td></td>
+                                  <td>Additions during the year</td>
+                                  <td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear3" style="text-align:right;" name="pyrAddDurYear3"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                  <td>
+                                  <input type="text"   maxlength="18"  ng-minlength="0" ng-model="sh02.row.addDurYear3" style="text-align:right" name="addDurYear3" class="form-control decimal-2-places" ng-disabled="row.isDisabled == 'true'" />
+
+                                  </td>
+                             </tr>
+
+
+
+
+
+
+
+
+                                  <tr>
+                                      <td></td>
+                                      <td>Deductions during the year</td>
+                                      <td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear3" style="text-align:right;" name="pyrDedDurYear3"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                      <td>
+                                      <input type="text"   maxlength="18" ng-minlength="0" ng-model="sh02.row.dedDurYear3" style="text-align:right" name="dedDurYear3"class="form-control decimal-2-places" ng-disabled="row.isDisabled == 'true'" />
+
+                                     </td>
+                                 </tr>
+
+                                   -->
+
+                                <tr>
+                                    <td><b>IV.</b></td>
+                                    <td><b>Foreign currency Translation Reserve</b></td>
+                                    <!--<td><input ng-init="sh02.row.particulars6='Foreign currency Translation Reserve'" ng-model="sh02.row.particulars6"class="form-control"  ng-readonly="true"></td>-->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr6"
+                                               style="text-align:right;" name="Pyr6" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal6"
+                                               style="text-align:right" name="currYearBal6" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal6"
+                                               style="text-align:right;" name="pyrOpenBal6" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0" ng-model="sh02.row.openBal6"
+                                               style="text-align:right" name="openBal6"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'" />
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear6"
+                                               style="text-align:right;" name="pyrAddDurYear6" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear6" style="text-align:right"
+                                               name="addDurYear6" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear6"
+                                               style="text-align:right;" name="pyrDedDurYear6" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.dedDurYear6" style="text-align:right"
+                                               name="dedDurYear6" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td><b>V.</b></td>
+                                    <td><b>Revenue and Other Reserves*</b></td>
+                                    <!--<td><input ng-init="sh02.row.particulars5='Revenue and Other Reserves'" ng-model="sh02.row.particulars5"class="form-control"  ng-readonly="true"></td> -->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr5"
+                                               style="text-align:right;" name="Pyr5" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal5"
+                                               style="text-align:right" name="currYearBal5" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal5"
+                                               style="text-align:right;" name="pyrOpenBal5" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0" ng-model="sh02.row.openBal5"
+                                               style="text-align:right" name="openBal5"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"  />
+
+                                    </td>
+                                </tr>
+
+
+                                <tr ng-form="myform16">
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear5"
+                                               style="text-align:right;" name="pyrAddDurYear5" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear5" style="text-align:right"
+                                               name="addDurYear5" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear5"
+                                               style="text-align:right;" name="pyrDedDurYear5" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.dedDurYear5" style="text-align:right"
+                                               name="dedDurYear5" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <!-- <tr>
+                                   <td><b>V.</b></td>
+                                   <td><b>Investment Fluctuation Reserve</b></td>
+                                    <td><input ng-init="sh02.row.particulars4='Investment Fluctuation Reserve'" ng-model="sh02.row.particulars4"class="form-control"  ng-readonly="true"></td>
+                                   <td><input type="text" maxlength="18" ng-model="sh02.row.Pyr4" style="text-align:right;" name="Pyr4"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                   <td><input type="text"   maxlength="18"  ng-model="sh02.row.currYearBal4" style="text-align:right" name="currYearBal4" class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                </tr>
+
+
+
+
+
+                               <tr>
+                                      <td></td>
+                                      <td>Opening Balance</td>
+                                      <td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal4" style="text-align:right;" name="pyrOpenBal4"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                      <td>
+                                      <input type="text"   maxlength="18"  ng-minlength="0" ng-model="sh02.row.openBal4" style="text-align:right" name="openBal4"class="form-control decimal-2-places" ng-disabled="row.isDisabled == 'true'" />
+
+                                      </td>
+                               </tr>
+
+
+
+
+                                 <tr>
+                                      <td></td>
+                                      <td>Additions during the year</td>
+                                      <td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear4" style="text-align:right;" name="pyrAddDurYear4"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                      <td>
+                                      <input type="text"   maxlength="18"  ng-minlength="0" ng-model="sh02.row.addDurYear4" style="text-align:right" name="addDurYear4" class="form-control decimal-2-places" ng-disabled="row.isDisabled == 'true'" />
+
+                                      </td>
+                                 </tr>
+
+
+
+
+                                 <tr>
+                                      <td></td>
+                                      <td>Deductions during the year</td>
+                                      <td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear4" style="text-align:right;" name="pyrDedDurYear4"  class="form-control" ng-disabled="row.isDisabled == 'true'" ng-required="true" ng-readonly="true"/></td>
+                                      <td>
+                                      <input type="text"   maxlength="18" ng-minlength="0" ng-model="sh02.row.dedDurYear4" style="text-align:right" name="dedDurYear4" class="form-control decimal-2-places"ng-disabled="row.isDisabled == 'true'" />
+
+                                      </td>
+                                  </tr>
+
+
+                                    -->
+
+                                <tr>
+                                    <td><b>VI.</b></td>
+                                    <td><b>Revaluation Reserve</b></td>
+                                    <!-- <td><input ng-init="sh02.row.particulars7='Revaluation Reserve'" ng-model="sh02.row.particulars7"class="form-control"  ng-readonly="true"></td>-->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr7"
+                                               style="text-align:right;" name="Pyr7" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal7"
+                                               style="text-align:right" name="currYearBal7" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Opening Balance</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrOpenBal7"
+                                               style="text-align:right;" name="pyrOpenBal7" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0" ng-model="sh02.row.openBal7"
+                                               style="text-align:right" name="openBal7"
+                                               class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'" />
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Additions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrAddDurYear7"
+                                               style="text-align:right;" name="pyrAddDurYear7" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.addDurYear7" style="text-align:right"
+                                               name="addDurYear7" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <td>Deductions during the year</td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.pyrDedDurYear7"
+                                               style="text-align:right;" name="pyrDedDurYear7" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td>
+                                        <input type="text" maxlength="18" ng-minlength="0"
+                                               ng-model="sh02.row.dedDurYear7" style="text-align:right"
+                                               name="dedDurYear7" class="form-control decimal-2-places"
+                                               ng-disabled="row.isDisabled == 'true'"/>
+
+                                    </td>
+                                </tr>
+
+
+                                <tr>
+                                    <td><b>VII.</b></td>
+                                    <td><b>BALANCE OF PROFIT AND LOSS A/C </b></td>
+                                    <!--<td><input ng-init="sh02.row.particulars8='Balance in Profit & Loss Account'" ng-model="sh02.row.particulars8"class="form-control"  ng-readonly="true"></td>-->
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr8"
+                                               style="text-align:right;" name="Pyr8" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal8"
+                                               style="text-align:right" name="currYearBal8" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+
+                                <tr>
+                                    <td></td>
+                                    <!--<td><b>TOTAL RESERVES & SURPLUS</b></td>  -->
+                                    <td><input ng-init="sh02.row.particulars9='TOTAL RESERVES & SURPLUS'"
+                                               ng-model="sh02.row.particulars9" class="form-control" ng-readonly="true"></td>
+                                    <%--<td><input type="text" maxlength="18" ng-model="sh02.row.Pyr9"
+                                               style="text-align:right;" name="Pyr9" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>--%>
+                                    <td><input type="text" maxlength="18" ng-model="sh02.row.currYearBal9"
+                                               style="text-align:right" name="currYearBal9" class="form-control"
+                                               ng-disabled="row.isDisabled == 'true'" ng-required="true"
+                                               ng-readonly="true"/></td>
+                                </tr>
+
+                                </tbody>
+                            </table>
+
+
+                            <!-- start: div for alert message -->
+
+                            <!--end: div for alert message -->
+
+                            <div class="modal-footer">
+
+                                <button class="btn btn-default btn-success" data-dismiss="modal" type="submit">Submit
+                                </button>
+                                <!--      <button type="button" class="btn btn-default btn-success"  ng-click="submitScrTwo(row);" >Submit</button>   -->
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+                <h4 class="modal-title" style="color: white;">Attention!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer"
+                       style="width: 100%">
+                    <thead>
+                    <tr>
+                        <th style="width: 100%"></th>
+                    </thead>
+
+                    <td>{{sh02.displayMessage}}</td>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal"
+                        ng-click="sh02.redirect();">Continue
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+</div>
+
+<div class="modal fade" id="myModal33" role="dialog" style="z-index : 1400">
+    <div class="modal-dialog">
+
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #E74C3C" ;>
+                <!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+                <h4 class="modal-title" style="color: white;">Attention!</h4>
+            </div>
+            <div class="modal-body" id="popup">
+                <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer"
+                       style="width: 100%">
+                    <thead>
+                    <tr>
+                        <th style="width: 100%"></th>
+                    </thead>
+
+                    <td>{{sh02.displayMessage111}}</td>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default btn-success" ng-click="sh02.YesSubmitSH02(sh02.row);"
+                        data-dismiss="modal">YES
+                </button>
+
+                <button type="button" class="btn btn-default btn-success" data-dismiss="modal">No</button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+</div>
+
+
+apis from old screen code:
+    var REST_SERVICE_URI_8 = './Maker/submitScrTwo';
+    var REST_SERVICE_URI_9 = './Maker/getSavedDataTwo';
+    var REST_SERVICE_URI_10 = './Maker/getDataTwo';
+    var REST_SERVICE_URI_11 = './Maker/getPreDataTwo';
+    var REST_SERVICE_URI_12 = './Maker/getCountCheck';
