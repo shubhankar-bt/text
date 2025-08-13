@@ -942,6 +942,292 @@ export default UserManagement;
 
 
 
+--------------------------------++++++++++
+
+
+import { useState, useEffect } from 'react';
+import {
+  Box, Tab, Tabs, Typography, TextField, Button, Grid, Card, CardContent, CardActions,
+  Divider, CircularProgress, Autocomplete, Avatar, CardHeader, Dialog, DialogActions,
+  DialogContent, DialogContentText, DialogTitle
+} from '@mui/material';
+import { PersonAdd as PersonAddIcon, ManageAccounts as ManageAccountsIcon, GroupAdd as GroupAddIcon } from '@mui/icons-material';
+
+// Import your custom hooks
+import useApi from '../../../common/hooks/useApi'; // <- Correct the path to your useApi hook
+import useCustomSnackbar from '../../../common/hooks/useCustomSnackbar'; // <- Correct the path to your snackbar hook
+
+import {
+  getRoleList, getCircleList, createUser, checkUserDetails, updateUser, deleteUser
+} from './userManagementService';
+import UserModifyDialog from './UserModifyDialog';
+
+// Helper to get user data from localStorage
+const getLoginUser = () => {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : { userId: 'DEFAULT_USER', capacity: '61', circleCode: '021', quarterEndDate: '2025-09-30' };
+};
+
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: { xs: 1, sm: 3 } }}>{children}</Box>}
+    </div>
+  );
+}
+
+const UserManagement = () => {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [loginUser] = useState(getLoginUser());
+  const [roleList, setRoleList] =useState([]);
+  const [circleList, setCircleList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // States for User Creation
+  const [newUser, setNewUser] = useState({ userId: '', userName: '', role: '', circleCode: '' });
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  // States for User Modification
+  const [userIdToModify, setUserIdToModify] = useState('');
+  const [fetchedUserDetails, setFetchedUserDetails] = useState(null);
+  const [isModifyDialogOpen, setIsModifyDialogOpen] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
+
+  // Initialize hooks
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const roles = await getRoleList(loginUser.capacity, callApi);
+      const circles = await getCircleList(callApi);
+      setRoleList(roles);
+      setCircleList(circles);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [loginUser.capacity, callApi]);
+
+  useEffect(() => {
+    if (loginUser.capacity === '52') {
+        const prefilledCircle = circleList.find(c => c.circleCode === loginUser.circleCode);
+        if (prefilledCircle) {
+             setNewUser(prev => ({ ...prev, circleCode: prefilledCircle }));
+        }
+        setIsCircleDisabled(true);
+    }
+  }, [loginUser.capacity, loginUser.circleCode, circleList]);
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+    setFetchedUserDetails(null);
+    setUserIdToModify('');
+  };
+  
+  const handleCreateUser = async () => {
+     if (!newUser.userId || !newUser.userName || !newUser.role || !newUser.circleCode) {
+        return snackbar("All fields are Mandatory.", "error");
+    }
+    setIsLoading(true);
+    try {
+        const payload = {
+            ...newUser,
+            role: newUser.role.capacity,
+            circleCode: newUser.circleCode.circleCode
+        };
+        const result = await createUser(payload, loginUser, callApi);
+        if (result == 1) {
+             snackbar("User Creation request has submitted successfully.", "success");
+             setNewUser({ userId: '', userName: '', role: '', circleCode: loginUser.capacity === '52' ? newUser.circleCode : '' });
+        } else if (result == 0) {
+            snackbar("User already exists and acceptance pending with FRT Checker.", "warning");
+        } else if (result == 2) {
+            snackbar("User already exists.", "error");
+        } else {
+            snackbar("User creation failed.", "error");
+        }
+    } catch(e) {
+        snackbar("An error occurred during user creation.", "error");
+    }
+    setIsLoading(false);
+  };
+
+  const handleCheckDetails = async () => { /* ... (no changes here) ... */ };
+  const handleUpdateUser = async (updatedData) => { /* ... (no changes here) ... */ };
+  
+  const handleDeleteUser = async () => {
+      setConfirmDeleteDialogOpen(false); // Close dialog first
+      if (!fetchedUserDetails) return;
+      setIsLoading(true);
+      try {
+          const result = await deleteUser(fetchedUserDetails, loginUser, callApi);
+          if (result == 1) {
+              snackbar("User Deleted Successfully.", "success");
+              setFetchedUserDetails(null);
+              setUserIdToModify('');
+          } else {
+              snackbar("User has not been deleted.", "error");
+          }
+      } catch (e) {
+          snackbar("An error occurred while deleting the user.", "error");
+      }
+      setIsLoading(false);
+  };
+
+  const handleNewUserAutocompleteChange = (field, value) => {
+    setNewUser(prev => ({...prev, [field]: value}));
+    if (field === 'role') {
+        if (value && parseInt(value.capacity, 10) > 60) {
+            setIsCircleDisabled(true);
+            const frtCircle = { circleCode: '100', circleName: 'FRT/GITC Users' };
+            setNewUser(prev => ({ ...prev, circleCode: frtCircle }));
+        } else if (loginUser.capacity !== '52') {
+            setIsCircleDisabled(false);
+            if (prev.circleCode?.circleCode === '100') {
+                 setNewUser(prev => ({ ...prev, circleCode: null }));
+            }
+        }
+    }
+  };
+
+  return (
+    <Box sx={{ width: '100%', typography: 'body1' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+          <Tab icon={<PersonAddIcon />} iconPosition="start" label="Create User" />
+          <Tab icon={<ManageAccountsIcon />} iconPosition="start" label="Modify User" />
+        </Tabs>
+      </Box>
+
+      {/* --- CREATE USER PANEL (REDESIGNED) --- */}
+      <TabPanel value={tabIndex} index={0}>
+        <Grid container spacing={4} alignItems="center">
+            {/* Decorative Panel */}
+            <Grid item xs={12} md={5}>
+                <Card sx={{ minHeight: '100%', display: { xs: 'none', md: 'flex' }, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(145deg, #e3f2fd, #bbdefb)' }}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                        <GroupAddIcon sx={{ fontSize: 80, color: 'primary.main' }} />
+                        <Typography variant="h5" component="div" gutterBottom sx={{ mt: 2 }}>
+                            New User Registration
+                        </Typography>
+                        <Typography color="text.secondary">
+                            Fill in the details on the right to create a new user account. Ensure all information is accurate before submission.
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+
+            {/* Form Panel */}
+            <Grid item xs={12} md={7}>
+                <Card variant="outlined">
+                     <CardHeader title="User Creation Form" />
+                     <Divider/>
+                    <CardContent>
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="User ID" value={newUser.userId} onChange={(e) => setNewUser({...newUser, userId: e.target.value})} fullWidth required inputProps={{ maxLength: 7 }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField label="User Name" value={newUser.userName} onChange={(e) => setNewUser({...newUser, userName: e.target.value})} fullWidth required inputProps={{ maxLength: 60 }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Autocomplete
+                                    options={roleList}
+                                    getOptionLabel={(option) => option.role || ""}
+                                    value={newUser.role || null}
+                                    isOptionEqualToValue={(option, value) => option.capacity === value.capacity}
+                                    onChange={(event, newValue) => handleNewUserAutocompleteChange('role', newValue)}
+                                    renderInput={(params) => <TextField {...params} label="User Role" required />}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <Autocomplete
+                                    options={circleList}
+                                    getOptionLabel={(option) => `${option.circleCode} - ${option.circleName}` || ""}
+                                    value={newUser.circleCode || null}
+                                    isOptionEqualToValue={(option, value) => option.circleCode === value.circleCode}
+                                    onChange={(event, newValue) => handleNewUserAutocompleteChange('circleCode', newValue)}
+                                    disabled={isCircleDisabled}
+                                    renderInput={(params) => <TextField {...params} label="User Circle" required />}
+                                />
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                    <Divider/>
+                    <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                        <Button variant="contained" onClick={handleCreateUser} disabled={isLoading} endIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <PersonAddIcon />}>
+                            Create User
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Grid>
+        </Grid>
+      </TabPanel>
+
+      {/* --- MODIFY USER PANEL (REFINED) --- */}
+      <TabPanel value={tabIndex} index={1}>
+        {/* ... (Search bar remains the same) ... */}
+
+        {fetchedUserDetails && (
+             <Card sx={{ mt: 4 }} variant="outlined">
+                <CardHeader
+                    avatar={<Avatar sx={{ bgcolor: 'primary.main' }}><ManageAccountsIcon /></Avatar>}
+                    title={<Typography variant="h6">{fetchedUserDetails.userName}</Typography>}
+                    subheader={`User ID: ${fetchedUserDetails.userId}`}
+                />
+                <Divider />
+                <CardContent>
+                    <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}><Typography color="text.secondary">Status:</Typography><Typography variant="body1" fontWeight="medium">{fetchedUserDetails.userStatus}</Typography></Grid>
+                        <Grid item xs={12} sm={6}><Typography color="text.secondary">Role:</Typography><Typography variant="body1" fontWeight="medium">{roleList.find(r => r.capacity == fetchedUserDetails.role)?.role || 'N/A'}</Typography></Grid>
+                        <Grid item xs={12} sm={6}><Typography color="text.secondary">Circle:</Typography><Typography variant="body1" fontWeight="medium">{circleList.find(c => c.circleCode == fetchedUserDetails.circleCode)?.circleName || 'N/A'}</Typography></Grid>
+                    </Grid>
+                </CardContent>
+                <Divider />
+                <CardActions sx={{justifyContent: 'flex-end', p: 2, gap: 1}}>
+                    <Button variant="outlined" color="error" onClick={() => setConfirmDeleteDialogOpen(true)} disabled={isLoading}>Delete User</Button>
+                    <Button variant="contained" onClick={() => setIsModifyDialogOpen(true)} disabled={isLoading}>Update User</Button>
+                </CardActions>
+            </Card>
+        )}
+      </TabPanel>
+
+      {/* Reusable Dialog for Update */}
+      {fetchedUserDetails && <UserModifyDialog 
+        open={isModifyDialogOpen}
+        onClose={() => setIsModifyDialogOpen(false)}
+        userDetails={fetchedUserDetails}
+        roleList={roleList}
+        circleList={circleList}
+        onUpdate={handleUpdateUser}
+      />}
+
+      {/* Confirmation Dialog for Delete */}
+      <Dialog
+        open={confirmDeleteDialogOpen}
+        onClose={() => setConfirmDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this user? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteUser} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default UserManagement;
+
 
 
 
