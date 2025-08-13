@@ -531,3 +531,489 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------
+
+
+
+
+
+
+import { useState, useEffect } from 'react';
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, TextField,
+  Typography, FormControl, Select, MenuItem, Divider, IconButton
+} from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
+
+const UserModifyDialog = ({ open, onClose, userDetails, roleList, circleList, onUpdate }) => {
+  const [user, setUser] = useState({});
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  useEffect(() => {
+    // When the dialog opens, initialize its state with the user's current details
+    if (userDetails) {
+      const currentUserRole = roleList.find(r => r.capacity === userDetails.role) || null;
+      const currentUserCircle = circleList.find(c => c.circleCode === userDetails.circleCode) || null;
+
+      setUser({
+        ...userDetails,
+        role: currentUserRole,
+        circleCode: currentUserCircle,
+      });
+
+      // Set the initial state of the circle dropdown
+      if (currentUserRole && parseInt(currentUserRole.capacity, 10) > 60) {
+        setIsCircleDisabled(true);
+      } else {
+        setIsCircleDisabled(false);
+      }
+    }
+  }, [open, userDetails, roleList, circleList]);
+
+  // Generic handler to update the dialog's state
+  const handleFieldChange = (field, value) => {
+    const updatedUser = { ...user, [field]: value };
+    setUser(updatedUser);
+
+    // If the role changes, check if the circle field should be disabled
+    if (field === 'role') {
+      if (value && parseInt(value.capacity, 10) > 60) {
+        setIsCircleDisabled(true);
+        // Automatically set circle for FRT/GITC users
+        updatedUser.circleCode = { circleCode: '100', circleName: 'FRT/GITC Users' };
+      } else {
+        setIsCircleDisabled(false);
+      }
+      setUser(updatedUser);
+    }
+  };
+
+  const handleSaveChanges = () => {
+    // Before passing the data up, format it to match the payload structure
+    const payload = {
+      ...user,
+      role: user.role.capacity,
+      circleCode: user.circleCode.circleCode,
+    };
+    onUpdate(payload);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        Update User Details
+        <IconButton onClick={onClose}><CloseIcon /></IconButton>
+      </DialogTitle>
+      <Divider />
+      <DialogContent>
+        <Grid container spacing={3} sx={{ mt: 1 }}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <Typography>User ID</Typography>
+              <TextField variant="outlined" value={user.userId || ''} disabled />
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <Typography>User Name</Typography>
+              <TextField variant="outlined" value={user.userName || ''} onChange={(e) => handleFieldChange('userName', e.target.value)} />
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required>
+              <Typography>User Role</Typography>
+              <Select
+                variant="outlined"
+                value={user.role ? user.role.capacity : ''}
+                onChange={(e) => {
+                  const selectedRole = roleList.find(r => r.capacity === e.target.value);
+                  handleFieldChange('role', selectedRole);
+                }}
+              >
+                {roleList.map((r) => (
+                  <MenuItem key={r.capacity} value={r.capacity}>{r.role}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required>
+              <Typography>User Circle</Typography>
+              <Select
+                variant="outlined"
+                value={user.circleCode ? user.circleCode.circleCode : ''}
+                onChange={(e) => {
+                  const selectedCircle = circleList.find(c => c.circleCode === e.target.value);
+                  handleFieldChange('circleCode', selectedCircle);
+                }}
+                disabled={isCircleDisabled}
+              >
+                {circleList.map((c) => (
+                  <MenuItem key={c.circleCode} value={c.circleCode}>{`${c.circleCode} - ${c.circleName}`}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <Typography>User Status</Typography>
+              <TextField variant="outlined" value={user.userStatus || ''} disabled />
+            </FormControl>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      <Divider />
+      <DialogActions sx={{ p: 2 }}>
+        <Button onClick={onClose} variant="outlined">Cancel</Button>
+        <Button onClick={handleSaveChanges} variant="contained" color="primary">Update User</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default UserModifyDialog;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect } from 'react';
+import {
+  Box, Tab, Tabs, Typography, TextField, Button, Grid, Card, CardContent,
+  CardActions, Divider, CircularProgress, Avatar, CardHeader, Dialog,
+  DialogActions, DialogContent, DialogContentText, DialogTitle, FormControl,
+  Select, MenuItem,
+} from '@mui/material';
+import {
+  PersonAdd as PersonAddIcon, ManageAccounts as ManageAccountsIcon,
+  GroupAdd as GroupAddIcon, RestartAlt as ResetIcon,
+} from '@mui/icons-material';
+
+// --- Import your services, hooks, and the new dialog ---
+import {
+  getRoleList, getCircleList, createUser, checkUserDetails, updateUser, deleteUser
+} from './Services/userManagementService'; // Adjust path if needed
+import useApi from '../hooks/useApi'; // Adjust path if needed
+import useCustomSnackbar from '../hooks/useCustomSnackbar'; // Adjust path if needed
+import UserModifyDialog from './Components/UserModifyDialog'; // Adjust path if needed
+
+const getLoginUser = () => {
+  const user = localStorage.getItem('user');
+  return user ? JSON.parse(user) : {};
+};
+
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: { xs: 1, sm: 3 } }}>{children}</Box>}
+    </div>
+  );
+}
+
+const UserManagement = () => {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [loginUser] = useState(getLoginUser());
+  const [roleList, setRoleList] = useState([]);
+  const [circleList, setCircleList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+
+  // States for User Creation
+  const [newUser, setNewUser] = useState({ userId: '', userName: '', role: null, circleCode: null });
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  // States for User Modification
+  const [userIdToModify, setUserIdToModify] = useState('');
+  const [fetchedUserDetails, setFetchedUserDetails] = useState(null);
+  const [isModifyDialogOpen, setIsModifyDialogOpen] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const roles = await getRoleList(loginUser.capacity, callApi);
+      const circles = await getCircleList(callApi);
+      setRoleList(roles);
+      setCircleList(circles);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [loginUser.capacity, callApi]);
+
+  useEffect(() => {
+    if (loginUser.capacity === '52') {
+      const prefilledCircle = circleList.find(c => c.circleCode === loginUser.circleCode);
+      if (prefilledCircle) {
+        setNewUser(prev => ({ ...prev, circleCode: prefilledCircle }));
+      }
+      setIsCircleDisabled(true);
+    }
+  }, [loginUser.capacity, loginUser.circleCode, circleList]);
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+    handleResetSearch();
+  };
+  
+  const handleResetSearch = () => {
+    setFetchedUserDetails(null);
+    setUserIdToModify('');
+  };
+  
+  // --- FIX: This function now correctly handles Select component changes ---
+  const handleNewUserChange = (field, selectedValue) => {
+    // Find the full object from the list based on the selected value
+    const list = field === 'role' ? roleList : circleList;
+    const key = field === 'role' ? 'capacity' : 'circleCode';
+    const selectedObject = list.find(item => item[key] === selectedValue);
+
+    const updatedUser = { ...newUser, [field]: selectedObject };
+    setNewUser(updatedUser);
+
+    // Logic to disable/enable circle based on role selection
+    if (field === 'role') {
+      if (selectedObject && parseInt(selectedObject.capacity, 10) > 60) {
+        setIsCircleDisabled(true);
+        const frtCircle = { circleCode: '100', circleName: 'FRT/GITC Users' };
+        updatedUser.circleCode = frtCircle;
+      } else if (loginUser.capacity !== '52') {
+        setIsCircleDisabled(false);
+        // If the role is changed back, clear the circle selection
+        if (newUser.circleCode?.circleCode === '100') {
+           updatedUser.circleCode = null;
+        }
+      }
+      setNewUser(updatedUser);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUser.userId || !newUser.userName || !newUser.role || !newUser.circleCode) {
+      return snackbar('All fields are Mandatory.', 'error');
+    }
+    setIsLoading(true);
+    try {
+      // FIX: Ensure the payload sends the primitive values (IDs) to the API
+      const payload = {
+        userId: newUser.userId,
+        userName: newUser.userName,
+        role: newUser.role.capacity,
+        circleCode: newUser.circleCode.circleCode,
+      };
+      const result = await createUser(payload, loginUser, callApi);
+      if (result == 1) {
+        snackbar('User Creation request has submitted successfully.', 'success');
+        setNewUser({ userId: '', userName: '', role: null, circleCode: loginUser.capacity === '52' ? newUser.circleCode : null });
+      } else if (result == 0) {
+        snackbar('User already exists and acceptance pending with FRT Checker.', 'warning');
+      } else if (result == 2) {
+        snackbar('User already exists.', 'error');
+      } else {
+        snackbar('User creation failed.', 'error');
+      }
+    } catch (e) {
+      snackbar('An error occurred during user creation.', 'error');
+    }
+    setIsLoading(false);
+  };
+  
+  const handleDeleteUser = async () => { /* ... (no changes here) ... */ };
+  const handleCheckDetails = async () => { /* ... (no changes here) ... */ };
+  const handleUpdateUser = async (updatedData) => { /* ... (no changes here) ... */ };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+          <Tab icon={<PersonAddIcon />} iconPosition="start" label="Create User" />
+          <Tab icon={<ManageAccountsIcon />} iconPosition="start" label="Modify User" />
+        </Tabs>
+      </Box>
+
+      {/* --- CREATE USER PANEL (BUGFIXED) --- */}
+      <TabPanel value={tabIndex} index={0}>
+        <Grid container spacing={4} alignItems="center">
+          <Grid item xs={12} md={5}>
+            {/* ... Decorative Panel ... */}
+          </Grid>
+          <Grid item xs={12} md={7}>
+            <Card variant="outlined">
+              <CardHeader title="User Creation" />
+              <Divider sx={{ mb: 2 }} />
+              <CardContent>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <Typography sx={{ mb: 1 }}>User ID</Typography>
+                      <TextField variant="outlined" value={newUser.userId} onChange={(e) => setNewUser({ ...newUser, userId: e.target.value })} inputProps={{ maxLength: 7 }} required/>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <Typography sx={{ mb: 1 }}>User Name</Typography>
+                      <TextField variant="outlined" value={newUser.userName} onChange={(e) => setNewUser({ ...newUser, userName: e.target.value })} inputProps={{ maxLength: 50 }} required/>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth required>
+                      <Typography sx={{ mb: 1 }}>User Role</Typography>
+                      {/* FIX: The value prop now correctly points to the capacity ID within the state object */}
+                      <Select
+                        variant="outlined"
+                        value={newUser.role ? newUser.role.capacity : ''}
+                        onChange={(e) => handleNewUserChange('role', e.target.value)}
+                      >
+                        {roleList.map((r) => (
+                          <MenuItem key={r.capacity} value={r.capacity}>{r.role}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth required>
+                      <Typography sx={{ mb: 1 }}>User Circle</Typography>
+                      {/* FIX: The value prop now correctly points to the circleCode ID within the state object */}
+                      <Select
+                        variant="outlined"
+                        value={newUser.circleCode ? newUser.circleCode.circleCode : ''}
+                        onChange={(e) => handleNewUserChange('circleCode', e.target.value)}
+                        disabled={isCircleDisabled}
+                      >
+                        {circleList.map((c) => (
+                          <MenuItem key={c.circleCode} value={c.circleCode}>{`${c.circleCode} - ${c.circleName}`}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </CardContent>
+              <Divider sx={{ my: 2 }} />
+              <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                <Button variant="contained" onClick={handleCreateUser} disabled={isLoading} endIcon={isLoading ? <CircularProgress size={20} /> : <PersonAddIcon />}>
+                  Create User
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        </Grid>
+      </TabPanel>
+
+      {/* --- MODIFY USER PANEL (ENHANCED) --- */}
+      <TabPanel value={tabIndex} index={1}>
+        <Typography variant="h6" gutterBottom>Find and Modify an Existing User</Typography>
+        <Grid container spacing={2} alignItems="flex-end" sx={{ mt: 1 }}>
+          <Grid item xs={12} sm={5} md={4}>
+            {/* FIX: Enhanced User ID input field */}
+            <FormControl fullWidth>
+              <Typography sx={{ mb: 1 }}>Enter User ID</Typography>
+              <TextField variant="outlined" value={userIdToModify} onChange={(e) => setUserIdToModify(e.target.value)} inputProps={{ maxLength: 7 }} />
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={7} md={8} sx={{ display: 'flex', gap: 2 }}>
+            <Button variant="contained" onClick={handleCheckDetails} disabled={isLoading}>
+              {isLoading ? <CircularProgress size={24} /> : 'Check Details'}
+            </Button>
+            {/* FIX: Conditional Reset button */}
+            {fetchedUserDetails && (
+              <Button variant="outlined" onClick={handleResetSearch} startIcon={<ResetIcon />}>
+                Reset
+              </Button>
+            )}
+          </Grid>
+        </Grid>
+
+        {fetchedUserDetails && (
+          <Card sx={{ mt: 4 }} variant="outlined">
+            <CardHeader
+              avatar={<Avatar sx={{ bgcolor: 'primary.main' }}><ManageAccountsIcon /></Avatar>}
+              title={<Typography variant="h6">{fetchedUserDetails.userName}</Typography>}
+              subheader={`User ID: ${fetchedUserDetails.userId}`}
+            />
+            <Divider />
+            {/* FIX: De-congested card content */}
+            <CardContent>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <Typography color="text.secondary">Status</Typography>
+                  <Typography variant="body1" fontWeight={500}>{fetchedUserDetails.userStatus}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography color="text.secondary">Role</Typography>
+                  <Typography variant="body1" fontWeight={500}>{roleList.find((r) => r.capacity == fetchedUserDetails.role)?.role || 'N/A'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography color="text.secondary">Circle</Typography>
+                  <Typography variant="body1" fontWeight={500}>{circleList.find((c) => c.circleCode == fetchedUserDetails.circleCode)?.circleName || 'N/A'}</Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+            <Divider />
+            <CardActions sx={{ justifyContent: 'flex-end', p: 2, gap: 1 }}>
+              <Button variant="outlined" color="error" onClick={() => setConfirmDeleteDialogOpen(true)} disabled={isLoading}>Delete User</Button>
+              <Button variant="contained" onClick={() => setIsModifyDialogOpen(true)} disabled={isLoading}>Update User</Button>
+            </CardActions>
+          </Card>
+        )}
+      </TabPanel>
+
+      {/* --- Dialogs --- */}
+      {fetchedUserDetails && (
+        <UserModifyDialog
+          open={isModifyDialogOpen}
+          onClose={() => setIsModifyDialogOpen(false)}
+          userDetails={fetchedUserDetails}
+          roleList={roleList}
+          circleList={circleList}
+          onUpdate={handleUpdateUser}
+        />
+      )}
+      <Dialog open={confirmDeleteDialogOpen} onClose={() => setConfirmDeleteDialogOpen(false)}>
+        {/* ... Delete Confirmation Dialog ... */}
+      </Dialog>
+    </Box>
+  );
+};
+
+export default UserManagement;
+
+
+
