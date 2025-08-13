@@ -621,4 +621,328 @@ export default UserManagement;
 
 
 
+------------ 
+
+/**
+ * @file userManagementService.js
+ * @description This file contains all the API calls related to user management.
+ * It now accepts a 'callApi' function to make it compatible with your custom API hook.
+ */
+
+/**
+ * Fetches the list of user roles available to the logged-in user.
+ * Corrected to use POST method with a JSON payload for consistency.
+ * @param {string} userCapacity - The capacity/role of the logged-in user.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<Array>} A list of role objects.
+ */
+export const getRoleList = async (userCapacity, callApi) => {
+  try {
+    const payload = { role: userCapacity }; [span_0](start_span)//[span_0](end_span)
+    const responseData = await callApi('./UserManage/RoleUsList', payload, 'POST'); [span_1](start_span)//[span_1](end_span)
+    return responseData || [];
+  } catch (error) {
+    console.error('Error while getting role list:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetches the list of user circles.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<Array>} A list of circle objects.
+ */
+export const getCircleList = async (callApi) => {
+  try {
+    const sessionUser = JSON.parse(localStorage.getItem('user')) || {};
+    const params = { user: sessionUser }; [span_2](start_span)//[span_2](end_span)
+    const responseData = await callApi('./UserManage/circleCodeUsList', params, 'POST'); [span_3](start_span)//[span_3](end_span)
+    return responseData || [];
+  } catch (error) {
+    console.error('Error while getting circle code list:', error);
+    return [];
+  }
+};
+
+/**
+ * Sends a request to create a new user.
+ * @param {object} userData - The data for the new user.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<object>} The API response.
+ */
+export const createUser = async (userData, sessionUser, callApi) => {
+  const payload = {
+    ...userData,
+    [span_4](start_span)createdby: sessionUser.userId, //[span_4](end_span)
+    [span_5](start_span)quarterEndDate: sessionUser.quarterEndDate, //[span_5](end_span)
+  };
+  return await callApi('./UserManage/createUser', payload, 'POST'); [span_6](start_span)//[span_6](end_span)
+};
+
+/**
+ * Fetches the details of a specific user for modification.
+ * @param {string} userId - The ID of the user to fetch.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<object>} The user's details.
+ */
+export const checkUserDetails = async (userId, sessionUser, callApi) => {
+  const params = {
+    [span_7](start_span)userId: userId, //[span_7](end_span)
+    [span_8](start_span)role: sessionUser.capacity, //[span_8](end_span)
+    [span_9](start_span)circle: sessionUser.circleCode, //[span_9](end_span)
+  };
+  return await callApi('./UserManage/checkUserDetails', params, 'POST'); [span_10](start_span)//[span_10](end_span)
+};
+
+/**
+ * Sends a request to update an existing user's details.
+ * @param {object} userData - The updated user data.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<object>} The API response.
+ */
+export const updateUser = async (userData, sessionUser, callApi) => {
+  const payload = {
+    ...userData,
+    [span_11](start_span)updatedBy: sessionUser.userId, //[span_11](end_span)
+    [span_12](start_span)circleCodeuser: sessionUser.circleCode, //[span_12](end_span)
+  };
+  return await callApi('./UserManage/updateUserDetails', payload, 'POST'); [span_13](start_span)//[span_13](end_span)
+};
+
+/**
+ * Sends a request to delete a user.
+ * @param {object} userData - The data of the user to be deleted.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @param {function} callApi - The API calling function from your custom hook.
+ * @returns {Promise<object>} The API response.
+ */
+export const deleteUser = async (userData, sessionUser, callApi) => {
+  const payload = {
+    ...userData,
+    [span_14](start_span)deletedBy: sessionUser.userId, //[span_14](end_span)
+    [span_15](start_span)circleCodeuser: sessionUser.circleCode, //[span_15](end_span)
+  };
+  return await callApi('./UserManage/deleteUser', payload, 'POST'); [span_16](start_span)//[span_16](end_span)
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect } from 'react';
+import {
+  Box, Tab, Tabs, Typography, TextField, Button, Grid, FormControl, InputLabel,
+  Select, MenuItem, Card, CardContent, CardActions, Divider, Alert, CircularProgress
+} from '@mui/material';
+// Import your custom hook
+import useApi from '../../../common/hooks/useApi'; // <- Correct the path to your useApi hook
+import {
+  getRoleList, getCircleList, createUser, checkUserDetails, updateUser, deleteUser
+} from './userManagementService';
+import UserModifyDialog from './UserModifyDialog';
+
+// Helper to get user data from localStorage, similar to the reference.
+const getLoginUser = () => {
+    const user = localStorage.getItem('user');
+    // Using a fallback for demonstration purposes
+    return user ? JSON.parse(user) : { userId: 'DEFAULT_USER', capacity: '61', circleCode: '021', quarterEndDate: '2025-09-30' };
+};
+
+
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+const UserManagement = () => {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [loginUser] = useState(getLoginUser());
+  const [roleList, setRoleList] = useState([]);
+  const [circleList, setCircleList] = useState([]);
+  const [feedback, setFeedback] = useState({ message: '', severity: 'info' });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // States for User Creation
+  const [newUser, setNewUser] = useState({ userId: '', userName: '', role: '', circleCode: '' });
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  // States for User Modification
+  const [userIdToModify, setUserIdToModify] = useState('');
+  const [fetchedUserDetails, setFetchedUserDetails] = useState(null);
+  const [isModifyDialogOpen, setIsModifyDialogOpen] = useState(false);
+
+  // Get the callApi function from your custom hook
+  const { callApi } = useApi();
+
+  // Initial data fetch for dropdowns
+  useEffect(() => {
+    const fetchData = async () => {
+      // Pass callApi to the service functions
+      setRoleList(await getRoleList(loginUser.capacity, callApi));
+      setCircleList(await getCircleList(callApi));
+    };
+    fetchData();
+    // Add callApi to the dependency array
+  }, [loginUser.capacity, callApi]);
+
+  // Pre-fill circle code for Circle Checker
+  useEffect(() => {
+    [span_17](start_span)if (loginUser.capacity === '52') { //[span_17](end_span)
+        setNewUser(prev => ({ ...prev, circleCode: loginUser.circleCode }));
+        setIsCircleDisabled(true);
+    }
+  }, [loginUser.capacity, loginUser.circleCode]);
+
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+    setFeedback({ message: '', severity: 'info' });
+    setFetchedUserDetails(null);
+  };
+
+  const showFeedback = (message, severity = 'error') => {
+    setFeedback({ message, severity });
+    setTimeout(() => setFeedback({ message: '', severity: 'info' }), 6000);
+  };
+  
+  // --- USER CREATION LOGIC ---
+  const handleNewUserChange = (field, value) => {
+    setNewUser(prev => ({ ...prev, [field]: value }));
+    if (field === 'role') {
+        const selectedRole = roleList.find(r => r.capacity === value);
+        [span_18](start_span)if (selectedRole && parseInt(selectedRole.capacity, 10) > 60) { //[span_18](end_span)
+            setIsCircleDisabled(true);
+            setNewUser(prev => ({ ...prev, circleCode: '100' })); [span_19](start_span)//[span_19](end_span)
+        } else {
+             [span_20](start_span)if (loginUser.capacity !== '52') { //[span_20](end_span)
+                setIsCircleDisabled(false);
+                setNewUser(prev => ({ ...prev, circleCode: '' })); [span_21](start_span)//[span_21](end_span)
+            }
+        }
+    }
+  };
+
+  const handleCreateUser = async () => {
+     [span_22](start_span)if (!newUser.userId || !newUser.userName || !newUser.role || !newUser.circleCode) { //[span_22](end_span)
+        return showFeedback("All fields are Mandatory.");
+    }
+    setIsLoading(true);
+    try {
+        // Pass callApi to the service function
+        const result = await createUser(newUser, loginUser, callApi);
+        [span_23](start_span)if (result == 1) { //[span_23](end_span)
+             showFeedback("User Creation request has submitted Successfully and pending with FRT Checker", "success"); [span_24](start_span)//[span_24](end_span)
+             setNewUser({ userId: '', userName: '', role: '', circleCode: loginUser.capacity === '52' ? loginUser.circleCode : '' }); [span_25](start_span)//[span_25](end_span)
+        [span_26](start_span)} else if (result == 0) { //[span_26](end_span)
+            showFeedback("User already exists and acceptance pending with FRT Checker", "warning"); [span_27](start_span)//[span_27](end_span)
+        [span_28](start_span)} else if (result == 2) { //[span_28](end_span)
+            showFeedback("User already exists", "error"); [span_29](start_span)//[span_29](end_span)
+        } else {
+            showFeedback("User creation failed.", "error");
+        }
+    } catch(e) {
+        showFeedback("An error occurred during user creation.");
+    }
+    setIsLoading(false);
+  };
+
+  // --- USER MODIFICATION LOGIC ---
+  const handleCheckDetails = async () => {
+    if (!userIdToModify) {
+        return showFeedback("Please enter a User ID to check.");
+    }
+    setIsLoading(true);
+    setFetchedUserDetails(null);
+    try {
+        // Pass callApi to the service function
+        const data = await checkUserDetails(userIdToModify, loginUser, callApi);
+        [span_30](start_span)if (data.isUserExist === "2") { //[span_30](end_span)
+            showFeedback("User doesn't exists"); [span_31](start_span)//[span_31](end_span)
+        [span_32](start_span)} else if (data.isUserExist === "-1") { //[span_32](end_span)
+            showFeedback("User doesn't exists / User does not belong to your circle"); [span_33](start_span)//[span_33](end_span)
+        } else {
+            data.userStatus = data.status === 'A' ? 'Active' : data.status === 'P' ? 'Approval Pending' : 'Unknown'; [span_34](start_span)//[span_34](end_span)
+            setFetchedUserDetails(data);
+            setFeedback({ message: '', severity: 'info' });
+        }
+    } catch(e) {
+        showFeedback("Failed to fetch user details.");
+    }
+    setIsLoading(false);
+  };
+  
+  const handleUpdateUser = async (updatedData) => {
+    setIsLoading(true);
+    try {
+        // Pass callApi to the service function
+        const result = await updateUser(updatedData, loginUser, callApi);
+        [span_35](start_span)if (result == 1) { //[span_35](end_span)
+            showFeedback("User Updated Successfully.", "success"); [span_36](start_span)//[span_36](end_span)
+            handleCheckDetails(); // Refresh details
+        } else {
+            showFeedback("User has not been Updated.", "error"); [span_37](start_span)//[span_37](end_span)
+        }
+    } catch(e) {
+        showFeedback("An error occurred while updating the user.");
+    }
+    setIsLoading(false);
+  };
+  
+  const handleDeleteUser = async () => {
+      if (!fetchedUserDetails) return;
+      if (!window.confirm(`Are you sure you want to delete user ${fetchedUserDetails.userName}?`)) return;
+
+      setIsLoading(true);
+      try {
+          // Pass callApi to the service function
+          const result = await deleteUser(fetchedUserDetails, loginUser, callApi);
+          [span_38](start_span)if (result == 1) { //[span_38](end_span)
+              showFeedback("User Deleted Successfully.", "success"); [span_39](start_span)//[span_39](end_span)
+              setFetchedUserDetails(null);
+              setUserIdToModify('');
+          } else {
+              showFeedback("User has not been deleted.", "error"); [span_40](start_span)//[span_40](end_span)
+          }
+      } catch (e) {
+          showFeedback("An error occurred while deleting the user.");
+      }
+      setIsLoading(false);
+  };
+
+  // The rest of the JSX remains the same...
+  return (
+    <Box sx={{ width: '100%', typography: 'body1' }}>
+      {/* ...Tabs and TabPanels... */}
+    </Box>
+  );
+};
+
+export default UserManagement;
+
+
+
+
+
+
+
+
+
+
+
 
