@@ -1,0 +1,2701 @@
+Old UserCreation.Jsp :
+
+<style type="text/css">
+.submitted.ng-invalid
+	{
+	border:1px red solid;
+	}
+	</style>
+
+ <div class="wrapper">
+
+
+<div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+		<div class="container">
+			<div class="row tim-row">
+				<div class="col-md-8 col-md-offset-2">
+					<div class="brand">
+						<h3 style="color: white;">User Creation</h3>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		
+	</div>
+
+
+<form name="a">
+<div class="row">
+			
+			
+		<script type="text/javascript">
+		$(".positive-integer").numeric({ decimal: false, negative: false }, function() { alert("Positive integers only"); this.value = ""; this.focus(); });
+		</script>	
+				
+	<div class="main main-raised">
+		<div class="section">
+		<div class="container" > 
+	<section class="content-header">
+<h1>
+			 User Creation
+				</h1>
+</section>
+
+<div class="col-sm-4">
+	<div class="form-group label-floating">
+		<label >User ID</label>
+		<!-- <input type="email" class="form-control"> -->
+				<input type="text" ng-model="user.rowUserData.userId" maxlength="7" id="userId"  name="userId"  class="form-control positive-integer" required>
+	
+	</div>
+</div>
+
+
+<div class="col-sm-4">
+	<div class="form-group label-floating">
+		<label >User Name</label>
+		<!-- <input type="email" class="form-control"> -->
+				<input type="text" ng-model="user.rowUserData.userName" maxlength="60" id="userName" ng-class="{'submitted':a.userName.$error.pattern}"  ng-pattern="/^[a-zA-Z0-9\s]*$/"  placeholder="" name="userName" class="form-control" required>
+	
+	</div>
+</div>
+<div class="col-sm-4">
+	<div class="form-group label-floating">
+		<label >User Role</label>
+				   
+	
+	 <select name="role" class="form-control" ng-model="user.rowUserData.role" ng-change="user.roleValueOnSelection();" value="{{user1.capacity}}" id="role"  name="role" required>
+                <!-- <option ng-if="!user1.capacity" value="">--SELECT--</option>   -->
+                 <option  ng-repeat="user1 in user.listOfRoleUs"  value="{{user1.capacity}}">{{user1.role}} </option></select> 
+	</div>
+</div>
+
+
+
+
+
+ 
+<div data-ng-if="capacityyy=='52'">
+<div class="col-sm-4" >
+	<div class="form-group label-floating">
+		<label >User Circle</label>
+		
+	
+	  <input type="text" ng-model="user.rowUserData.circleCode"  id="circleCode"  name="circleCode"  class="form-control" readonly="true" required>
+	</div>
+</div>
+</div>
+   
+
+<div data-ng-if="capacityyy!='52'">
+<div class="col-sm-4" id="circleCodeHide">
+	<div class="form-group label-floating">
+		<label >User Circle</label>
+		
+	
+	 <select name="circleCode" class="form-control" ng-model="user.rowUserData.circleCode"  id="circleCode" name="circleCode" required>
+	   			<option ng-if="!user1.circleCode" value="">--SELECT--</option>  
+                 <option  ng-repeat="user1 in user.listOfCircleCodeUs" value="{{user1.circleCode}}">{{user1.circleCode}}-{{user1.circleName}}</option>
+                 </select> 
+	
+	</div>
+</div>
+</div>
+
+ 
+ 
+ <div class="col-md-12">
+ <div class=" box-footer row">
+<button class="btn btn-success btn-round" ng-disabled="a.userName.$error.pattern" ng-click="user.createUser(rowUserData);">Create User</button>
+
+
+</div>
+
+</div>
+ </div>
+
+
+</div>
+</div>
+</div>
+</form>
+
+
+
+</div>
+
+<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C" ;>
+				<!--<button type="button" class="close" data-dismiss="modal">�</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				<table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer"
+					   style="width: 100%">
+					<thead>
+					<tr>
+						<th style="width: 100%"></th>
+					</thead>
+
+					<td>{{user.displayMessage}}</td>
+				</table>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+
+
+
+
+
+
+
+UserModification.jsp : 
+
+<style type="text/css">
+.submitted.ng-invalid
+	{
+	border:1px red solid;
+	}
+	</style>
+
+ <div class="wrapper">
+
+
+<div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+		<div class="container">
+			<div class="row tim-row">
+				<div class="col-md-8 col-md-offset-2">
+					<div class="brand">
+						<h3 style="color: white;">User Modification</h3>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		
+	</div>
+
+
+
+<div class="row">
+			
+			
+		<script type="text/javascript">
+		$(".positive-integer").numeric({ decimal: false, negative: false }, function() { alert("Positive integers only"); this.value = ""; this.focus(); });
+		</script>	
+				
+	<div class="main main-raised">
+		<div class="section">
+		<div class="container" > 
+	<section class="content-header">
+<h1>
+			 User Modification
+				</h1>
+</section>
+
+
+
+
+<form data-ng-submit="user.checkUserDetails();" >
+               
+               
+      <div class="col-sm-4">
+	     <div class="form-group label-floating" >
+		  <label class="control-label">User ID</label>
+		  				<input type="text" ng-model="user.rowUserData.userId" maxlength="7" id="userId"  name="userId"  ng-disabled="brcode=='1'" class="form-control positive-integer" required>
+		  
+	      </div>
+      </div>
+               
+       <button type="submit" class="btn btn-primary btn-round" >Check Details</button>
+               
+  </form>
+
+<form name="a">
+ <div class="form-group">
+
+<div class="col-sm-4">
+	<div class="form-group label-floating" id="userNameDiv">
+		<label class="control-label">User Name</label>
+		<!-- <input type="email" class="form-control"> -->
+								<input type="text" ng-model="user.rowUserData.userName" maxlength="60" id="userName" ng-disabled="fields=='1'" placeholder="" name="userName" class="form-control" required ng-class="{'submitted':a.userName.$error.pattern}"  ng-pattern="/^[a-zA-Z0-9\s]*$/">
+				
+	
+	</div>
+</div>
+
+
+<div class="col-sm-4">
+	<div class="form-group label-floating" id="roleDiv">
+		<label class="control-label">User Role</label>
+				    <select name="role" class="form-control" ng-model="user.rowUserData.role" ng-change="user.roleValueOnSelection();" ng-blur="user.checkrole();" value="{{user1.capacity}}" id="role"  name="role" required ng-disabled="fields=='1'">
+                 <option  ng-repeat="user1 in user.listOfRoleUs"  value="{{user1.capacity}}">{{user1.role}} </option></select> 
+	
+	</div>
+</div>
+
+
+<div class="col-sm-4">
+	<div class="form-group label-floating" id="statusDiv">
+		<label class="control-label">User Status</label>
+				<input type="text" ng-model="user.rowUserData.userStatus"  id="userStatus"  name="userStatus" class="form-control" required readonly="true" ng-disabled="fields=='1'">
+	
+	</div>
+</div>
+
+
+
+
+
+
+
+ 
+<div data-ng-if="capacityyy=='52'">
+<div class="col-sm-4" >
+	<div class="form-group label-floating" id="circleCodeDiv">
+		<label class="control-label">User Circle</label>
+		
+	
+	  <input type="text" ng-model="user.rowUserData.circleCode"  id="circleCode"  name="circleCode"  class="form-control" ng-disabled="fields=='1'" readonly="true" required>
+	</div>
+</div>
+</div>
+   
+
+<div data-ng-if="capacityyy!='52'">
+<div class="col-sm-4" id="circleCodeHide">
+	<div class="form-group label-floating" id="circleCodeDiv">
+		<label class="control-label">User Circle</label>
+		
+	
+	 <select name="circleCode" class="form-control" ng-model="user.rowUserData.circleCode"  ng-disabled="fields=='1'" id="circleCode" ng-blur="user.checkcircleCode();" name="circleCode" required>
+	   				<option ng-if="!user1.circleCode" value="">--SELECT--</option>     
+                 <option  ng-repeat="user1 in user.listOfCircleCodeUs" value="{{user1.circleCode}}">{{user1.circleCode}}-{{user1.circleName}}</option>
+                 </select> 
+	
+	</div>
+</div>
+</div>
+
+ 
+ 
+ 
+ 
+ 
+ 
+ <div class="col-md-12">
+ <div class=" box-footer row">
+ <button type="submit"  ng-disabled="up=='1' || a.userName.$error.pattern" class="btn btn-success btn-round pull-centre" ng-click="user.updateUser(rowUserData);" >Update User</button>
+  <button type="submit"  ng-disabled="up=='1'" class="btn btn-danger btn-round pull-centre" ng-click="user.deleteUser(rowUserData);">Delete User</button>
+ 
+                 <input type="button" value="Reset" class="btn btn-info btn-round pull-centre" ng-click="user.resett();"/>
+ 
+
+</div>
+
+</div>
+ 
+ 
+ </div>
+ </form>
+ 
+ 
+ 
+ </div>
+
+
+</div>
+</div>
+</div>
+
+
+
+
+</div>
+
+<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">  
+    <div class="modal-dialog">  
+      
+      <!-- Modal content-->  
+      <div class="modal-content">  
+        <div class="modal-header" style="background-color: #E74C3C";>  
+          <!--<button type="button" class="close" data-dismiss="modal">�</button> -->  
+          <h4 class="modal-title" style="color: white;">Attention!</h4>  
+        </div>  
+        <div class="modal-body" id="popup">  
+        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
+		<thead>
+		<tr>
+		<th style="width: 100%"></th>
+		</thead>
+		
+		<td>{{user.displayMessage}}</td>
+		</table>
+       	</div>
+		<div class="modal-footer">  
+          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" ng-click="user.resett();" >Continue</button>  
+        </div>  
+
+
+ 		 </div>
+	</div>
+	
+	
+	
+</div>
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+Old JS Controller : 
+
+app
+    .controller(
+        'UserManageController',
+        function ($scope, $rootScope, $http, $window, $sessionStorage,
+                  $state, $location, loginFactory, Idle, Keepalive,
+                  $modal, ModalService, userManageFactory,
+                  adminReportFactory) {
+            $scope.up = 1;
+            $scope.fields = 1;
+            $scope.chec = 0;
+            $scope.brcode = 0;
+            var user = this;
+            $scope.started = false;
+            $scope.sessionUser = $rootScope.globals.currentUser;
+            // $scope.sessionUser=JSON.parse(window.sessionStorage.getItem("user"));
+            /*---------------------------------------------------------------------- User Creation  start */
+
+            var capacityyy = $scope.sessionUser.capacity;
+            $scope.capacityyy = $scope.sessionUser.capacity;
+            var circleCode = $scope.sessionUser.circleCode;
+
+            if (capacityyy == "52") {
+                user.rowUserData = {};
+                user.rowUserData.circleCode = circleCode;
+            }
+
+            user.hideCircleCodediv = function () {
+
+                $('#circleCodeHide').hide();
+
+                user.rowUserData.circleCode = '100';
+            };
+
+            user.showCircleCodediv = function () {
+
+                $('#circleCodeHide').show();
+
+            };
+
+            var circle = $scope.sessionUser.circleCode;
+
+            var params = {
+                'user': $scope.sessionUser
+            };
+            user.listOfCircleCodeUs = {};
+            userManageFactory
+                .getCircleCodeUs(params)
+                .then(
+                    function (data) {
+                        console.log("data" + data);
+                        user.listOfCircleCodeUs = data;
+
+                    },
+                    function (errResponse) {
+                        console
+                            .error('Error while getting circle code');
+                    }
+                );
+
+            var role = $scope.sessionUser.capacity;
+
+            user.listOfRoleUs = {};
+            userManageFactory.getRoleUs(role).then(function (data) {
+                console.log("data" + data);
+                user.listOfRoleUs = data;
+            }, function (errResponse) {
+                console.error('Error while getting role');
+            });
+
+            user.roleValueOnSelection = function () {
+
+                // var roleValueOnSelection={};
+                var roleValueOnSelection = user.rowUserData.role;
+                if (roleValueOnSelection > 60) {
+
+                    user.hideCircleCodediv();
+
+                } else if (roleValueOnSelection < 60) {
+
+                    user.showCircleCodediv();
+                    if ($scope.sessionUser.capacity == '61'
+                        || $scope.sessionUser.capacity == '71')
+                        user.rowUserData.circleCode = '';
+
+                }
+
+            };
+
+            user.createUser = function (rowUserData) {
+
+                var valid = true;
+                console.log(user.rowUserData.userId);
+                console.log(user.rowUserData.userName);
+                console.log(user.rowUserData.role);
+                console.log(user.rowUserData.circleCode);
+                if (user.rowUserData.userId == undefined
+                    || user.rowUserData.userName == undefined
+                    || user.rowUserData.role == undefined
+                    || user.rowUserData.circleCode == undefined
+                    || user.rowUserData.circleCode == ""
+                    || user.rowUserData.circleCode == null) {
+                    alert("All fields are Mandatory");
+                    valid = false;
+
+                } else if (user.rowUserData.userId != undefined
+                    || user.rowUserData.userName != undefined
+                    || user.rowUserData.role != undefined
+                    || user.rowUserData.circleCode != undefined) {
+                    valid = true;
+
+                }
+
+                var i = {};
+                i = user.rowUserData;
+                console.log("user data  " + JSON.stringify(i));
+                var circleCode = $scope.sessionUser.circleCode;
+                var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                var createdby = $scope.sessionUser.userId;
+                var row1 = {
+                    'createdby': createdby,
+                    'quarterEndDate': quarterEndDate
+                };
+                var copy = angular.extend({}, i, row1);
+
+                if (valid == true) {
+                    userManageFactory
+                        .createUser(copy)
+                        .then(
+                            function (data) {
+
+                                console.log('data ' + data);
+
+                                if (data == 0) {
+                                    user.displayMessage = "User already exists and acceptance pending with FRT Checker";
+                                    if (user.displayMessage) {
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+
+                                if (data == 2) {
+                                    user.displayMessage = "User already exists";
+                                    if (user.displayMessage) {
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+
+                                if (data == 1) {
+                                    user.displayMessage = "User Creation request has submitted Successfully and pending with FRT Checker";
+                                    if (user.displayMessage) {
+                                        user.rowUserData.userId = '';
+                                        user.rowUserData.role = '';
+                                        user.rowUserData.userName = '';
+                                        if ($scope.sessionUser.capacity == '61'
+                                            || $scope.sessionUser.capacity == '71')
+                                            user.rowUserData.circleCode = '';
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+
+                            },
+
+                            function (errResponse) {
+                                console
+                                    .error('Error while login');
+                            });
+                }
+            };
+
+            user.updateUser = function () {
+                // console.log(app.);
+                console.log(user.rowUserData.userStatus);
+                if (user.rowUserData.userName == null
+                    || user.rowUserData.role == null
+                    || user.rowUserData.userStatus == null
+                    || user.rowUserData.circleCode == null) {
+                    alert('Please fill the mandatory fields');
+                } else {
+                    var i = {};
+                    i = user.rowUserData;
+                    console.log(i);
+                    var circleCode = $scope.sessionUser.circleCode;
+                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                    var row1 = {
+                        'circleCodeuser': circleCode,
+                        'updatedBy': $scope.sessionUser.userId
+                    };
+                    var copy = angular.extend({}, i, row1);
+
+                    userManageFactory
+                        .updateUser(copy)
+                        .then(
+                            function (data) {
+
+                                console.log('data ' + data);
+                                console
+                                    .log('$scope.user.roleId'
+                                        + $scope.user.roleId);
+                                if (data == 0) {
+                                    $scope.user.displayMessage = "User has not been Updated";
+                                    if ($scope.user.displayMessage) {
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+                                if (data == 1) {
+                                    $scope.user.displayMessage = "User Updated Successfully";
+                                    if ($scope.user.displayMessage) {
+
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+
+                                if (data == 1) {
+                                    $scope.usrr = {};
+                                    $scope.usrr.pk = "1";
+                                }
+                            },
+                            function (errResponse) {
+                                console
+                                    .error('Error while login');
+                            });
+                }
+            };
+
+            user.resett = function () {
+
+                user.rowUserData.userId = "";
+                user.rowUserData.userName = "";
+
+                user.rowUserData.circleCode = "";
+                user.rowUserData.role = "";
+                user.rowUserData.userStatus = "";
+
+                $scope.up = 1;
+                $scope.fields = 1;
+                $scope.brcode = 0;
+
+            };
+
+            user.deleteUser = function () {
+
+                var i = {};
+                i = user.rowUserData;
+                console.log(i);
+                var circleCode = $scope.sessionUser.circleCode;
+                var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                var row1 = {
+                    'circleCodeuser': circleCode,
+                    'deletedBy': $scope.sessionUser.userId
+                };
+                var copy = angular.extend({}, i, row1);
+
+                userManageFactory
+                    .deleteUser(copy)
+
+                    .then(
+                        function (data) {
+
+                            if (data == 0) {
+                                $scope.user.displayMessage = "User has not been deleted";
+                                if ($scope.user.displayMessage) {
+                                    $('#myModal1').modal({
+                                        backdrop: 'static',
+                                        keyboard: false,
+                                        modal: true
+                                    });
+                                    $('#myModal1')
+                                        .on(
+                                            'shown.bs.modal',
+                                            function () {
+                                                $(
+                                                    '#myModal1')
+                                                    .trigger(
+                                                        'focus');
+                                            });
+                                }
+                            }
+                            if (data == 1) {
+                                $scope.user.displayMessage = "User Deleted Successfully";
+                                if ($scope.user.displayMessage) {
+
+                                    $('#myModal1').modal({
+                                        backdrop: 'static',
+                                        keyboard: false,
+                                        modal: true
+                                    });
+
+                                }
+                            }
+
+                            console.log(data);
+
+                        });
+
+            };
+
+            user.checkcircleCode = function () {
+                if (user.rowUserData.circleCode == undefined) {
+                    $('#circleCodeDiv').addClass('is-focused');
+
+                }
+
+            };
+
+            user.checkrole = function () {
+                if (user.rowUserData.role == undefined) {
+                    $('#roleDiv').addClass('is-focused');
+
+                }
+
+            };
+
+            user.checkUserDetails = function () {
+                // alert("hiii");
+
+                $scope.usrrr = {};
+                $scope.usrrr.pk = "";
+                $scope.cc = {};
+                $scope.cc.pk = "";
+
+                if (user.rowUserData.userId != "") {
+
+                    console.log(user.rowUserData.userId);
+
+                    var params = {
+                        'role': $scope.sessionUser.capacity,
+                        'circle': $scope.sessionUser.circleCode,
+                        'userId': user.rowUserData.userId
+                    };
+
+                    userManageFactory
+                        .checkUserDetails(params)
+
+                        .then(
+                            function (data) {
+
+                                console.log(data);
+                                user.rowUserData = data;
+                                console.log("ccccc");
+                                console
+                                    .log(user.rowUserData.circleCode);
+
+                                if (user.rowUserData.role > "60") {
+                                    $('#circleCodeHide').hide();
+                                    user.rowUserData.circleCode = '100';
+                                }
+                                if (user.rowUserData.role < "60") {
+                                    $('#circleCodeHide').show();
+                                }
+
+                                if (user.rowUserData.isUserExist == "2") {
+                                    $scope.user.displayMessage = "User doesn't exists";
+                                    if ($scope.user.displayMessage) {
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                        $('#myModal1')
+                                            .on(
+                                                'shown.bs.modal',
+                                                function () {
+                                                    $(
+                                                        '#myModal1')
+                                                        .trigger(
+                                                            'focus');
+                                                });
+                                    }
+                                }
+
+                                if (user.rowUserData.isUserExist == "-1") {
+                                    $scope.user.displayMessage = "User doesn't exists / User does not belong to your circle";
+                                    if ($scope.user.displayMessage) {
+                                        $('#myModal1')
+                                            .modal(
+                                                {
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+
+                                    }
+                                }
+
+                                console.log(data);
+                                user.rowUserData = data;
+                                // console.log("con Js::
+                                // "+app.rowUserData);
+                                // / console.log("con Js
+                                // userStatus::
+                                // "+app.rowUserData.userStatus);
+                                // / console.log("con Js role ::
+                                // "+app.rowUserData.role);
+                                // / console.log("con Js
+                                // userName::
+                                // "+app.rowUserData.userName);
+                                // / console.log("con Js
+                                // capacity ::
+                                // "+app.rowUserData.capacity);
+                                if (user.rowUserData.status == "A") {
+
+                                    user.rowUserData.userStatus = "Active";
+
+                                }
+                                if (user.rowUserData.status == "P") {
+
+                                    user.rowUserData.userStatus = "Approval Pending";
+
+                                }
+                                $('#userNameDiv').addClass(
+                                    'is-focused');
+                                // $('#passwordDiv').addClass('is-focused');
+                                $('#circleCodeDiv').addClass(
+                                    'is-focused');
+                                $('#roleDiv').addClass(
+                                    'is-focused');
+                                $('#statusDiv').addClass(
+                                    'is-focused');
+
+                                $scope.up = 0;
+                                $scope.fields = 0;
+                                $scope.brcode = 1;
+
+                                if ($scope.user.isUserExist == "-1") {
+                                    $scope.usrrr = {};
+                                    $scope.usrrr.pk = "1";
+
+                                    $scope.up = 1;
+                                    $scope.fields = 1;
+
+                                }
+
+                            },
+                            function (errResponse) {
+                                console
+                                    .error('Error while login');
+                            });
+                }
+            }
+
+        });
+
+
+
+
+Api endpoints from factory : 
+
+    var REST_SERVICE_URI_5 = './UserManage/createUser';
+
+    var REST_SERVICE_URI_8 = './UserManage/circleCodeUsList';
+    var REST_SERVICE_URI_9 = './UserManage/RoleUsList';
+    var REST_SERVICE_URI_10 = './UserManage/getUserInfo';
+    var REST_SERVICE_URI_11 = './UserManage/DeleteUser';
+    var REST_SERVICE_URI_12 = './UserManage/confirmCreateUser';
+    var REST_SERVICE_URI = './UserManage/updateUserDetails';
+    var REST_SERVICE_URI_1 = './UserManage/checkUserDetails';
+    var REST_SERVICE_URI_2 = './UserManage/deleteUser';
+
+
+CircleCodeUSList api sample response: 
+
+[
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": "021",
+        "role": null,
+        "capacity": null,
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": "INTERNATIONAL BANKING GROUP"
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": "026",
+        "role": null,
+        "capacity": null,
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": "Domestic Offices"
+    }
+]
+
+
+RoleUSList Api sample response :
+[
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "--SELECT--",
+        "capacity": "",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE MAKER",
+        "capacity": "51",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE CHECKER",
+        "capacity": "52",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE APPROVER",
+        "capacity": "53",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    }
+]
+
+
+Fyi user creation and modification can be done by two users, circle checker and frt maker - for frt maker roleUsList api response is like below -
+[
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "--SELECT--",
+        "capacity": "",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE MAKER",
+        "capacity": "51",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE CHECKER",
+        "capacity": "52",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "CIRCLE APPROVER",
+        "capacity": "53",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "FRT MAKER",
+        "capacity": "61",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "FRT CHECKER",
+        "capacity": "62",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "FRT AUDITOR",
+        "capacity": "63",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "GITC MAKER",
+        "capacity": "71",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    },
+    {
+        "userId": null,
+        "password": null,
+        "userName": null,
+        "circleCode": null,
+        "role": "GITC CHECKER",
+        "capacity": "72",
+        "status": null,
+        "isUserExist": null,
+        "quarterEndDate": null,
+        "previousQuarterEndDate": null,
+        "previousYearEndDate": null,
+        "financialYear": null,
+        "quarter": null,
+        "createdby": null,
+        "createddate": null,
+        "userId1": null,
+        "userName1": null,
+        "circleCode1": null,
+        "role1": null,
+        "circleName": null
+    }
+]
+
+
+
+
+
+
+
+
+** Above are my old jsp and js controllers for user creation and modification page of my application, now i am migrating my Tranche project from angularJS to react JSX & MUI.
+Similar to this i have worked with ujser creation and modificvation in my bs application, both are almost similar but here in tranche api calls and pages are different for creation and modifications, Ui will be almost similart, For that reason i am attaching the BS user creation/modification code below for your reference, keep the ui samew
+like bs, if any modifciations you observe which will be more user convenient and make user experience you can do that. One suggestion from my end, in the old jsp code, user modofuication page while retriving user details, details are showing in text fields, i dont want this behaviour,
+change this like when data fetch it will show normally like new bs ui and after clikcing on any action button dialoog will open and all modifications will be made in the dialog.
+
+
+
+
+
+
+
+UserCreationAndModification.jsx :
+
+import { Box, Divider, Fab, Grid, LinearProgress, Stack, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { PersonAdd } from '@mui/icons-material';
+import UserDialog from './components/UserDialog';
+import useApi from '../../../common/hooks/useApi';
+import { getCircleList, getRoleList, getUsers } from './Services/commonUserManagentCalls';
+import LoadingOverlay from '../../../common/components/ui/loadingOverlay';
+import FilterComponent from './components/FilterComponent';
+import UserCard from './components/UserCard';
+import { filter } from 'lodash';
+
+const UserCreationModification = () => {
+  const [searchTerm, setSearchTerm] = useState({ id: '', name: '', role: '', circle: '', status: '' });
+  const [allUserList, setAllUserList] = useState([]);
+  const [circleList, setCircleList] = useState([]);
+  const [roleList, setRoleList] = useState([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState({});
+  const [requestType, setRequestType] = useState('');
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [circleDisable, setCircleDisable] = useState(false);
+  const [dispMessage, setDispMessage] = useState('Loading…');
+
+  const loginUser = JSON.parse(localStorage.getItem('user'));
+  const { callApi } = useApi();
+
+  useEffect(() => {
+    totalCalls().then(() => {
+      console.log('users fetched.');
+    });
+  }, []);
+
+  /**
+   * This code is responsible for filtering of all the existing users data based on user entered parameters.
+   *
+   *
+   */
+  const filteredItems = allUserList.filter(
+    (user) =>
+      user.USER_ID.toString().includes(searchTerm.id.toString().toLowerCase()) &&
+      user.CURR_USER_NAME.toString().toLowerCase().includes(searchTerm.name.toString().toLowerCase()) &&
+      user.CURR_ROLE_NAME.toString().toLowerCase().includes(searchTerm.role.toString().toLowerCase()) &&
+      user.CURR_CIRCLE_NAME.toString().toLowerCase().includes(searchTerm.circle.toString().toLowerCase()) &&
+      user.CURRENT_STATUS.toString().toLowerCase().includes(searchTerm.status.toString().toLowerCase()) &&
+      user.REQ_CREATED_BY !== loginUser.userId &&
+      user.REQ_TYPE !== 'C'
+  );
+
+  /**
+   * This is an asynchronous function responsible for calling all the functions to fetch the necessary data on load.
+   *
+   *
+   */
+  const totalCalls = async () => {
+    getCircleList(setCircleList, callApi);
+    getRoleList(setRoleList, callApi);
+    getUsers(setAllUserList, callApi, setDispMessage);
+  };
+
+  return (
+    <>
+      <FilterComponent
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        circleDisable={circleDisable}
+        setCircleDisable={setCircleDisable}
+        roleList={roleList}
+        circleList={circleList}
+      />
+      <Divider sx={{ mt: 3 }} />
+      <Box sx={{ mt: 3 }}>
+        <Grid container spacing={3} direction="row">
+          {allUserList.length > 0 ? (
+            <>
+              {filteredItems.length > 0 ? (
+                <>
+                  {filteredItems.map((user) => (
+                    <UserCard
+                      user={user}
+                      loggedInUser={loginUser}
+                      cardType="creationModification"
+                      onModifyClick={() => {
+                        setSelectedUser(user);
+                        setRequestType('modify');
+                        setDialogOpen(true);
+                      }}
+                    />
+                  ))}
+                </>
+              ) : (
+                <Grid item alignContent="center">
+                  <Typography>
+                    The user with selected parameters does not exist or it's request for creation is pending with
+                    another UCO user. (Clear Filter to view all users)
+                  </Typography>
+                </Grid>
+              )}
+              <Box height={80} width={360} />
+            </>
+          ) : (
+            <Stack item width={'100%'} sx={{ alignItems: 'center' }}>
+              <LinearProgress sx={{ width: '100%', mb: 1 }} />
+              <Typography>{dispMessage}</Typography>
+            </Stack>
+          )}
+        </Grid>
+        <Fab
+          color="primary"
+          variant="extended"
+          onClick={() => {
+            setSelectedUser({ USER_ID: '', NEW_USER_NAME: '', NEW_USER_CIRCLE: '', NEW_USER_ROLE: '' });
+            setRequestType('create');
+            setDialogOpen(true);
+          }}
+          sx={{
+            position: 'fixed',
+            borderRadius: 1,
+            fontSize: '15px',
+            bottom: (theme) => theme.spacing(6),
+            right: (theme) => theme.spacing(8),
+          }}
+        >
+          <PersonAdd sx={{ mr: 1 }} />
+          Create User
+        </Fab>
+
+        <UserDialog
+          open={dialogOpen}
+          close={setDialogOpen}
+          requestType={requestType}
+          userDetails={selectedUser}
+          circleList={circleList}
+          roleList={roleList}
+          allUsers={allUserList}
+          reFetchUsers={getUsers}
+          loading={setLoadOpen}
+          setter={setAllUserList}
+          setDispMessage={setDispMessage}
+        />
+
+        <LoadingOverlay loading={loadOpen} />
+      </Box>
+    </>
+  );
+};
+
+export default UserCreationModification;
+
+
+
+
+
+UserDialog.jsx :
+
+import {
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import propTypes from 'prop-types';
+import { useEffect, useState } from 'react';
+import {
+  AddCircleOutline,
+  BorderColor,
+  DeleteForever,
+  PersonOff,
+  DownloadDone,
+  Recommend,
+  Close,
+  DoNotDisturb,
+  Check,
+} from '@mui/icons-material';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import useApi from '../../../../common/hooks/useApi';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import ConfirmationDialog from '../../../../common/components/ui/dialogs/ConfirmationDialog';
+
+const emptyObj = { id: '', name: '', circle: '', role: '' };
+
+const UserDialog = (props) => {
+  const loginUser = JSON.parse(localStorage.getItem('user'));
+  const snackbar = useCustomSnackbar();
+  const [user, setUser] = useState(emptyObj);
+  const [tempUser, setTempUser] = useState(emptyObj);
+  const [title, setTitle] = useState('');
+  const { callApi } = useApi();
+  const theme = useTheme();
+  const [confimDeleteDialogUser, setConfimDeleteDialogUser] = useState(null);
+
+  useEffect(() => {
+    titleAssignment();
+    if (
+      props.requestType === 'modify' ||
+      (props.requestType === 'request action' && props.userDetails.REQ_TYPE !== 'M')
+    ) {
+      let newObj = {};
+      newObj.id = props.userDetails.USER_ID;
+      newObj.name = props.userDetails.CURR_USER_NAME;
+      newObj.circle = props.userDetails.CURR_CIRCLE === '100' ? '' : props.userDetails.CURR_CIRCLE;
+      newObj.role = props.userDetails.CURR_ROLE;
+      setUser({ ...newObj });
+    } else if (props.requestType === 'create') {
+      setUser(emptyObj);
+    } else if (
+      props.requestType === 'request modify' ||
+      (props.requestType === 'request action' && props.userDetails.REQ_TYPE === 'M')
+    ) {
+      let newObj = {};
+
+      newObj.id = props.userDetails.USER_ID;
+      newObj.name = props.userDetails.NEW_USER_NAME;
+      newObj.circle = props.userDetails.NEW_USER_CIRCLE === '100' ? '' : props.userDetails.NEW_USER_CIRCLE;
+      newObj.role = props.userDetails.NEW_USER_ROLE;
+      setUser({ ...newObj });
+      setTempUser({ ...newObj });
+    }
+  }, [props.open]);
+
+  /**
+   * This function is to handle the title assignment.
+   *
+   * @author: V1014064
+   */
+  const titleAssignment = () => {
+    if (props.requestType === 'request modify') {
+      setTitle('Modify Request');
+    } else if (props.requestType === 'modify') {
+      setTitle('Modify User');
+    } else if (props.requestType === 'create') {
+      setTitle('Create User');
+    } else if (props.requestType === 'request action') {
+      props.userDetails.REQ_TYPE === 'E'
+        ? setTitle('Enable Request')
+        : props.userDetails.REQ_TYPE === 'DL'
+        ? setTitle('Delete Request')
+        : props.userDetails.REQ_TYPE === 'M'
+        ? setTitle('Modify Request')
+        : props.userDetails.REQ_TYPE === 'U'
+        ? setTitle('Unstale Request')
+        : props.userDetails.REQ_TYPE === 'C'
+        ? setTitle('Create Request')
+        : props.userDetails.REQ_TYPE === 'D'
+        ? setTitle('Disable Request')
+        : setTitle('');
+    }
+  };
+
+  /**
+   * This function is to handle the filters change.
+   *
+   * @author: V1014064
+   *
+   * @param type: defines the type of text field.
+   * @param value: containes the user entered value.
+   */
+  const handleChange = (type, value) => {
+    let regex;
+    const newTerm = { ...user };
+    if (type === 'id') {
+      regex = /^\d*$/;
+      if (!regex.test(value)) return;
+      if (!Number.isNaN(parseInt(value)) && parseInt(value) * 1 === 0) {
+        snackbar('User Id cannot be starteed with 0.', 'error');
+        return;
+      }
+      newTerm[type] = (Number.isNaN(parseInt(value) * 1) ? '' : parseInt(value) * 1).toString();
+      setUser(newTerm);
+      return;
+    } else if (type === 'name') {
+      regex = /^[a-zA-Z\s]*$/;
+      if (!regex.test(value)) return;
+    }
+    if (
+      (type === 'role' && value !== '51' && value !== '52' && value !== '53') ||
+      (user.role !== '51' && user.role !== '52' && user.role !== '53' && user.role !== '' && type !== 'role')
+    ) {
+      newTerm.circle = '';
+    }
+    newTerm[type] = value;
+    setUser(newTerm);
+  };
+
+  /**
+   * This function is to close the modal and reset all the state variables.
+   *
+   * @author: V1014064
+   *
+   */
+  const dialogClose = () => {
+    setUser(emptyObj);
+    setTempUser(emptyObj);
+    setTitle('');
+    props.close(false);
+  };
+
+  /**
+   * This function is an api call to store all the details and the type of request in the database.
+   *
+   * @param flag: Contains a string to denote the type of request to be made.
+   *
+   * @author: V1014064
+   */
+  const generateRequest = async (flag) => {
+    let payload;
+    let startMessage =
+      flag === 'C'
+        ? 'Create '
+        : flag === 'M'
+        ? 'Modify '
+        : flag === 'DL'
+        ? 'Delete '
+        : flag === 'D'
+        ? 'Disable '
+        : flag === 'E'
+        ? 'Enable '
+        : 'Unstale';
+    let message = startMessage + ' request for user id ' + user.id;
+    let circle = user.role === '51' || user.role === '52' || user.role === '53' ? user.circle : '100';
+
+    try {
+      if (
+        user.id === '' ||
+        user.name.trim() === '' ||
+        ((user.circle === '' || user.circle === '100') &&
+          (user.role === '51' || user.role === '52' || user.role === '53')) ||
+        user.role === ''
+      ) {
+        snackbar('Kindly fill all the data.', 'error');
+        props.loading(false);
+        return;
+      }
+      if (user.id.length !== 7) {
+        snackbar('Kindly make sure the entered User id is 7 digits.', 'error');
+        props.loading(false);
+        return;
+      }
+
+      if (props.requestType === 'create') {
+        for (const samp of props.allUsers) {
+          if (user.id === samp.USER_ID) {
+            snackbar('User with this id already exists.', 'error');
+            props.loading(false);
+            return;
+          }
+        }
+      }
+
+      if (props.requestType === 'modify' && flag === 'M') {
+        if (
+          props.userDetails.CURR_USER_NAME === user.name &&
+          props.userDetails.CURR_CIRCLE === circle &&
+          props.userDetails.CURR_ROLE === user.role
+        ) {
+          snackbar('Kindly make a change before Updating the user.', 'error');
+          props.loading(false);
+          return;
+        }
+      }
+
+      if (flag === 'C') {
+        payload = {
+          data: {
+            USER_ID: user.id,
+            NEW_USER_NAME: user.name,
+            NEW_USER_ROLE: user.role,
+            NEW_USER_CIRCLE: circle,
+          },
+          flag: flag,
+          userId: loginUser.userId,
+        };
+      } else if (flag === 'M') {
+        let mapToSend = { ...props.userDetails };
+        mapToSend.NEW_USER_NAME = user.name;
+        mapToSend.NEW_USER_ROLE = user.role;
+        mapToSend.NEW_USER_CIRCLE = circle;
+        payload = {
+          data: mapToSend,
+          flag: flag,
+          userId: loginUser.userId,
+        };
+      } else {
+        payload = {
+          data: { USER_ID: user.id },
+          flag: flag,
+          userId: loginUser.userId,
+        };
+      }
+
+      const responseData = await callApi('/Users/generateRequest', payload, 'POST');
+      if (responseData === true) {
+        dialogClose();
+        snackbar(message + ' generated successfully.', flag === 'DL' ? 'warning' : 'success');
+        await props.reFetchUsers(props.setter, callApi, props.setDispMessage);
+      } else {
+        flag === 'C' ? snackbar('Error Disabling User.', 'error') : snackbar(message + ' generation failed.', 'error');
+      }
+      props.loading(false);
+    } catch (error) {
+      console.error('An error occured when generating request, Kindly try again after some time.', error);
+      snackbar('An error occured, Kindly try again after some time.', 'error');
+      props.loading(false);
+    }
+  };
+
+  /**
+   * This is an asynchronous function responsible for updating the request of the user.
+   *
+   * @author: V1014064
+   */
+  const modifyRequest = async () => {
+    if (
+      user.id === '' ||
+      user.name.trim() === '' ||
+      ((user.circle === '' || user.circle === '100') &&
+        (user.role === '51' || user.role === '52' || user.role === '53')) ||
+      user.role === ''
+    ) {
+      snackbar('Kindly fill all the data.', 'error');
+      props.loading(false);
+      return;
+    }
+
+    if (tempUser.name === user.name && tempUser.circle === user.circle && tempUser.role === user.role) {
+      snackbar('Kindly make a change before Updating the request.', 'error');
+      props.loading(false);
+      return;
+    }
+
+    let circle = user.role === '51' || user.role === '52' || user.role === '53' ? user.circle : '100';
+
+    let mapToSend = { ...props.userDetails };
+
+    mapToSend.NEW_USER_NAME = user.name;
+    mapToSend.NEW_USER_ROLE = user.role;
+    mapToSend.NEW_USER_CIRCLE = circle;
+
+    let payload = {
+      data: mapToSend,
+      userId: loginUser.userId,
+    };
+    try {
+      const responseData = await callApi('/Users/updateRequest', payload, 'POST');
+      if (responseData === true) {
+        dialogClose();
+        snackbar('Request modified succcessfully for user id ' + user.id + '.', 'success');
+        await props.reFetchUsers(props.setter, callApi, props.setDispMessage);
+      } else {
+        snackbar('Request modification falied for user id ' + user.id + '.', 'error');
+      }
+      props.loading(false);
+    } catch (error) {
+      console.error('An error occured when modifying request, Kindly try again after some time.', error);
+      snackbar('An error occured, Kindly try again after some time.', 'error');
+      props.loading(false);
+    }
+  };
+
+  /**
+   * This is an asynchronous function responsible for Deleting the request of another user.
+   *
+   * @author: V1014064
+   */
+  const rejectRequest = async () => {
+    let payload = {
+      data: props.userDetails,
+      userId: loginUser.userId,
+      flag: 'DL',
+    };
+    try {
+      const responseData = await callApi('/Users/rejectRequest', payload, 'POST');
+      if (responseData === true) {
+        dialogClose();
+        snackbar('Request rejected succcessfully for user id ' + user.id + '.', 'error');
+        await props.reFetchUsers(props.setter, callApi, props.setDispMessage);
+      } else {
+        snackbar('Request rejection falied for user id ' + user.id + '.', 'error');
+      }
+      props.loading(false);
+    } catch (error) {
+      console.error('An error occured when rejecting request, Kindly try again after some time.', error);
+      snackbar('An error occured, Kindly try again after some time.', 'error');
+      props.loading(false);
+    }
+  };
+
+  /**
+   * This is an asynchronous function responsible for accepting the request of another user.
+   *
+   * @author: V1014064
+   */
+  const acceptRequest = async () => {
+    let payload = {
+      data: props.userDetails,
+      userId: loginUser.userId,
+    };
+    try {
+      const responseData = await callApi('/Users/approveRequest', payload, 'POST');
+      if (responseData === true) {
+        dialogClose();
+        snackbar('Request approved succcessfully for user id ' + user.id + '.', 'success');
+        await props.reFetchUsers(props.setter, callApi, props.setDispMessage);
+      } else {
+        snackbar('Request approval falied for user id ' + user.id + '.', 'error');
+      }
+      props.loading(false);
+    } catch (error) {
+      console.error('An error occured when accepting request, Kindly try again after some time.', error);
+      snackbar('An error occured, Kindly try again after some time.', 'error');
+      props.loading(false);
+    }
+  };
+
+  return (
+    <>
+      {props.open && (
+        <Dialog open={props.open} onClose={dialogClose} fullWidth maxWidth="md" sx={{ overflow: 'auto' }}>
+          <DialogTitle>
+            <Grid sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Grid>{title}</Grid>
+              <Grid>
+                <IconButton onClick={dialogClose} size="small">
+                  <Close />
+                </IconButton>
+              </Grid>
+            </Grid>
+          </DialogTitle>
+          <Divider sx={{ backgroundColor: 'common.black' }} />
+          <DialogContent>
+            <Box>
+              {(props.requestType === 'request modify' ||
+                (props.requestType === 'request action' && props.userDetails.REQ_TYPE === 'M')) && (
+                <>
+                  <Typography>Previous Details</Typography>
+                  <Grid container spacing={2} sx={{ mt: 2 }}>
+                    <Grid item>
+                      <FormControl>
+                        <Typography>User ID</Typography>
+                        <TextField
+                          variant="outlined"
+                          sx={{ flex: 1 }}
+                          value={props.userDetails.USER_ID}
+                          inputProps={{ maxLength: 7 }}
+                          disabled
+                        />
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item>
+                      <FormControl>
+                        <Typography>User Name</Typography>
+                        <TextField
+                          variant="outlined"
+                          sx={{ flex: 1 }}
+                          disabled
+                          value={props.userDetails.CURR_USER_NAME}
+                          inputProps={{ maxLength: 50 }}
+                        />
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item>
+                      <FormControl sx={{ m: 1, minWidth: 200 }}>
+                        <Typography>User Role</Typography>
+                        <Select
+                          variant="outlined"
+                          value={props.userDetails.CURR_ROLE}
+                          sx={{ flex: 1 }}
+                          labelId="user-role-label"
+                          disabled
+                          MenuProps={{ PaperProps: { sx: { maxHeight: 500 } } }}
+                        >
+                          <MenuItem value="">---Role---</MenuItem>
+                          {props.roleList.map((role) => (
+                            <MenuItem value={role.ROLE_ID}>{role.ROLE_NAME}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    {(props.userDetails.CURR_ROLE === '' ||
+                      props.userDetails.CURR_ROLE === '51' ||
+                      props.userDetails.CURR_ROLE === '52' ||
+                      props.userDetails.CURR_ROLE === '53') && (
+                      <Grid item>
+                        <FormControl sx={{ m: 1, minWidth: 320 }}>
+                          <Typography>User Circle</Typography>
+                          <Select
+                            variant="outlined"
+                            value={props.userDetails.CURR_CIRCLE}
+                            sx={{ flex: 1 }}
+                            labelId="user-circle-label"
+                            disabled
+                            MenuProps={{ PaperProps: { sx: { maxHeight: 400 } } }}
+                          >
+                            <MenuItem value="">---Circle---</MenuItem>
+                            {props.circleList.map((circle) => (
+                              <MenuItem value={circle.CIRCLE_ID}>{circle.CIRCLE_NAME}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    )}
+                  </Grid>
+
+                  <Divider sx={{ backgroundColor: 'common.black', my: 2 }} />
+
+                  <Typography>Updated Details</Typography>
+                </>
+              )}
+              <Grid container spacing={2} sx={{ mt: 2 }}>
+                <Grid item>
+                  <FormControl>
+                    <Typography>User ID</Typography>
+                    <TextField
+                      variant="outlined"
+                      sx={{ flex: 1 }}
+                      value={user.id}
+                      inputProps={{ maxLength: 7 }}
+                      disabled={
+                        props.requestType === 'modify' ||
+                        props.requestType === 'request modify' ||
+                        props.requestType === 'request action'
+                      }
+                      onChange={(e) => {
+                        handleChange('id', e.target.value);
+                      }}
+                    />
+                  </FormControl>
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={2} alignItems="center">
+                <Grid item>
+                  <FormControl>
+                    <Typography>User Name</Typography>
+                    <TextField
+                      variant="outlined"
+                      sx={{ flex: 1 }}
+                      value={user.name}
+                      inputProps={{ maxLength: 50 }}
+                      disabled={props.requestType === 'request action'}
+                      onChange={(e) => {
+                        handleChange('name', e.target.value);
+                      }}
+                    />
+                  </FormControl>
+                </Grid>
+
+                <Grid item>
+                  <FormControl sx={{ m: 1, minWidth: 200 }}>
+                    <Typography>User Role</Typography>
+                    <Select
+                      variant="outlined"
+                      value={user.role}
+                      sx={{ flex: 1 }}
+                      labelId="user-role-label"
+                      disabled={props.requestType === 'request action'}
+                      onChange={(e) => {
+                        handleChange('role', e.target.value);
+                      }}
+                      MenuProps={{ PaperProps: { sx: { maxHeight: 500 } } }}
+                    >
+                      <MenuItem value="">---Role---</MenuItem>
+                      {props.roleList.map((role) => (
+                        <MenuItem value={role.ROLE_ID}>{role.ROLE_NAME}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {(user.role === '' || user.role === '51' || user.role === '52' || user.role === '53') && (
+                  <Grid item>
+                    <FormControl sx={{ m: 1, minWidth: 320 }}>
+                      <Typography>User Circle</Typography>
+                      <Select
+                        variant="outlined"
+                        value={user.circle}
+                        sx={{ flex: 1 }}
+                        labelId="user-circle-label"
+                        disabled={props.requestType === 'request action'}
+                        onChange={(e) => {
+                          handleChange('circle', e.target.value);
+                        }}
+                        MenuProps={{ PaperProps: { sx: { maxHeight: 400 } } }}
+                      >
+                        <MenuItem value="">---Circle---</MenuItem>
+                        {props.circleList.map((circle) => (
+                          <MenuItem value={circle.CIRCLE_ID}>{circle.CIRCLE_NAME}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                )}
+              </Grid>
+
+              <br />
+
+              {props.requestType === 'modify' && (
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item>
+                    <CustomButton
+                      sx={{ flex: 1 }}
+                      buttonType="custom"
+                      label={
+                        props.userDetails.CURRENT_STATUS === 'P'
+                          ? 'ENABLE USER'
+                          : props.userDetails.CURRENT_STATUS === 'S'
+                          ? 'UNSTALE USER'
+                          : 'DISABLE USER'
+                      }
+                      onClickHandler={() => {
+                        props.loading(true);
+                        generateRequest(
+                          props.userDetails.CURRENT_STATUS === 'P'
+                            ? 'E'
+                            : props.userDetails.CURRENT_STATUS === 'S'
+                            ? 'U'
+                            : 'D'
+                        );
+                      }}
+                      customButtonProps={{
+                        bgColor:
+                          props.userDetails.CURRENT_STATUS === 'P'
+                            ? theme.palette.success.deep
+                            : props.userDetails.CURRENT_STATUS === 'S'
+                            ? theme.palette.primary.main
+                            : theme.palette.error.main,
+                        hoverColor:
+                          props.userDetails.CURRENT_STATUS === 'P'
+                            ? theme.palette.success.dark
+                            : props.userDetails.CURRENT_STATUS === 'S'
+                            ? theme.palette.primary.dark
+                            : theme.palette.error.dark,
+                        icon:
+                          props.userDetails.CURRENT_STATUS === 'P' ? (
+                            <DownloadDone />
+                          ) : props.userDetails.CURRENT_STATUS === 'S' ? (
+                            <Recommend />
+                          ) : (
+                            <PersonOff />
+                          ),
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <>
+              {props.requestType === 'create' ? (
+                <Grid container sx={{ mb: 2, mr: 2 }} spacing={2} alignItems="center" justifyContent="center">
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="CREATE USER"
+                      onClickHandler={() => {
+                        props.loading(true);
+                        generateRequest('C');
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.success.deep,
+                        hoverColor: theme.palette.success.dark,
+                        icon: <AddCircleOutline sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              ) : props.requestType === 'modify' ? (
+                <Grid container sx={{ mb: 2, mr: 2 }} spacing={2} alignItems="center" justifyContent="center">
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="DELETE USER"
+                      onClickHandler={() => {
+                        dialogClose();
+                        setConfimDeleteDialogUser(props.userDetails);
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.error.main,
+                        hoverColor: theme.palette.error.dark,
+                        icon: <DeleteForever sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="UPDATE USER"
+                      onClickHandler={() => {
+                        props.loading(true);
+                        generateRequest('M');
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.success.deep,
+                        hoverColor: theme.palette.success.dark,
+                        icon: <BorderColor sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              ) : props.requestType === 'request modify' ? (
+                <Grid container sx={{ mb: 2, mr: 2 }} spacing={2} alignItems="center" justifyContent="center">
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="UPDATE REQUEST"
+                      onClickHandler={() => {
+                        props.loading(true);
+                        modifyRequest();
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.primary.main,
+                        hoverColor: theme.palette.primary.dark,
+                        icon: <BorderColor sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              ) : props.requestType === 'request action' ? (
+                <Grid container sx={{ mb: 2, mr: 2 }} spacing={2} alignItems="center" justifyContent="center">
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="REJECT REQUEST"
+                      onClickHandler={() => {
+                        props.loading(true);
+                        rejectRequest();
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.error.main,
+                        hoverColor: theme.palette.error.dark,
+                        icon: <DoNotDisturb sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                  <Grid item>
+                    <CustomButton
+                      buttonType="custom"
+                      label="ACCEPT REQUEST"
+                      onClickHandler={() => {
+                        props.loading(true);
+                        acceptRequest();
+                      }}
+                      customButtonProps={{
+                        bgColor: theme.palette.success.deep,
+                        hoverColor: theme.palette.success.dark,
+                        icon: <Check sx={{ fontSize: 18 }} />,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              ) : (
+                <></>
+              )}
+            </>
+          </DialogActions>
+        </Dialog>
+      )}
+      <ConfirmationDialog
+        dialogTitle="Confirm Delete"
+        primaryButtonText="Delete"
+        dialogContent={'Are you sure you want to delete the request?'}
+        open={confimDeleteDialogUser != null}
+        onClose={() => setConfimDeleteDialogUser(null)}
+        onButtonClick={() => {
+          props.loading(true);
+          generateRequest('DL');
+          setConfimDeleteDialogUser(null);
+        }}
+      />
+    </>
+  );
+};
+
+UserDialog.propTypes = {
+  requestType: propTypes.string,
+  userDetails: propTypes.object,
+  open: propTypes.bool,
+  close: propTypes.func,
+  circleList: propTypes.array,
+  roleList: propTypes.array,
+  allUsers: propTypes.array,
+  reFetchUsers: propTypes.func,
+  loading: propTypes.func,
+  setter: propTypes.func,
+  setDispMessage: propTypes.func,
+};
+
+export default UserDialog;
+
+
+UserCard.jsx :
+
+
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
+  Divider,
+  Grid,
+  Stack,
+  Tooltip,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import { Delete, Edit, RemoveRedEye } from '@mui/icons-material';
+
+const bgColors = {
+  enable: '#A8E6CF',
+  delete: '#FFABAB',
+  modify: '#ADD8E6',
+  unstale: '#FFF9C4',
+  create: '#E1BEE7',
+  disable: '#D3D3D3',
+};
+
+function getDynamicColor(requestType) {
+  return bgColors[
+    requestType === 'E'
+      ? 'enable'
+      : requestType === 'DL'
+      ? 'delete'
+      : requestType === 'M'
+      ? 'modify'
+      : requestType === 'U'
+      ? 'unstale'
+      : requestType === 'C'
+      ? 'create'
+      : requestType === 'D'
+      ? 'disable'
+      : ''
+  ];
+}
+
+function stringAvatar(user, isStaticColor) {
+  const name =
+    user.CURR_USER_NAME.charAt(0).toUpperCase() +
+    ' ' +
+    (user.CURR_USER_NAME.includes(' ')
+      ? user.CURR_USER_NAME.split(' ')[1].charAt(0).toUpperCase() !== undefined
+        ? user.CURR_USER_NAME.split(' ')[1].charAt(0).toUpperCase()
+        : user.CURR_USER_NAME.split(' ')[1].charAt(1).toUpperCase()
+      : user.CURR_USER_NAME?.charAt(1).toUpperCase());
+  let a = name.split(' ')[0][0];
+  let b = name.split(' ')[1][0];
+  return {
+    sx: {
+      color: '#000',
+      bgcolor: isStaticColor ? 'primary.light' : getDynamicColor(user.REQ_TYPE),
+    },
+    children: `${a + b}`,
+  };
+}
+
+// cardType = 'creationModification' | 'myRequest' | 'pendingRequest'
+
+export default function UserCard({
+  user,
+  loggedInUser,
+  onModifyClick,
+  onDeleteClick,
+  onViewClick,
+  cardType = 'creationModification',
+  isStaticColor = true,
+}) {
+  const theme = useTheme();
+  const shoudShowUserCard = () => {
+    switch (cardType) {
+      case 'creationModification':
+        return !(user.REQ_ID !== -1 && user.REQ_TYPE === 'C');
+      case 'myRequest':
+        return user.REQ_ID !== -1 && user.REQ_CREATED_BY === loggedInUser.userId;
+      case 'pendingRequest':
+        return user.REQ_ID !== -1 && user.REQ_CREATED_BY !== loggedInUser.userId;
+      default:
+        return false;
+    }
+  };
+  return (
+    shoudShowUserCard() && (
+      <Grid item key={user.USER_ID} size={{ sm: 6, md: 4, xl: 3 }}>
+        <Card sx={{ width: '100%' }}>
+          <CardContent>
+            <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'}>
+              <Stack direction={'row'} spacing={2} alignItems={'center'}>
+                <Avatar
+                  variant="rounded"
+                  sx={{
+                    alignItems: 'center',
+                    width: 100,
+                    height: 100,
+                    mt: 2,
+                    textAlign: 'center',
+                  }}
+                  {...stringAvatar(user, isStaticColor)}
+                />
+                <Stack>
+                  <Typography fontSize={12} color="text.secondary">
+                    User ID
+                  </Typography>
+                  <Typography fontSize={18} fontWeight={'bold'}>
+                    {user.USER_ID}
+                  </Typography>
+                </Stack>
+              </Stack>
+              {cardType !== 'creationModification' && (
+                <Card
+                  variant="outlined"
+                  sx={{ px: 1, py: 0.4, borderRadius: 3 }}
+                  style={{ backgroundColor: getDynamicColor(user.REQ_TYPE) }}
+                >
+                  <Typography fontSize={12} color="black">
+                    {user.REQ_TYPE === 'E'
+                      ? 'Enable Request'
+                      : user.REQ_TYPE === 'DL'
+                      ? 'Delete Request'
+                      : user.REQ_TYPE === 'M'
+                      ? 'Modify Request'
+                      : user.REQ_TYPE === 'U'
+                      ? 'Unstale Request'
+                      : user.REQ_TYPE === 'C'
+                      ? 'Create Request'
+                      : user.REQ_TYPE === 'D'
+                      ? 'Disable Request'
+                      : ''}
+                  </Typography>
+                </Card>
+              )}
+            </Stack>
+            <Divider sx={{ my: 1 }} />
+            <Grid>
+              <Box sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <Typography sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'inline-block' }}>
+                  Name:&nbsp;
+                </Typography>
+                <Tooltip title={user.CURR_USER_NAME}>
+                  <Typography sx={{ display: 'inline-block' }}>{user.CURR_USER_NAME}</Typography>
+                </Tooltip>
+              </Box>
+              <Box sx={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <Typography sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'inline-block' }}>
+                  Circle:&nbsp;
+                </Typography>
+                <Tooltip title={user.CURR_CIRCLE_NAME}>
+                  <Typography sx={{ display: 'inline-block' }}>{user.CURR_CIRCLE_NAME}</Typography>
+                </Tooltip>
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'inline-block' }}>
+                  Role:&nbsp;
+                </Typography>
+                <Typography sx={{ display: 'inline-block' }}>{user.CURR_ROLE_NAME}</Typography>
+              </Box>
+            </Grid>
+          </CardContent>
+          <Divider sx={{ my: 1 }} />
+          <CardActions sx={{ display: 'flex', justifyContent: 'end', alignItems: 'center', mt: 2 }}>
+            {cardType === 'creationModification' &&
+              (user.REQ_ID === -1 ? (
+                <Button
+                  onClick={onModifyClick}
+                  startIcon={<Edit />}
+                  variant="outlined"
+                  disabled={user.REQ_ID !== -1}
+                  sx={{ width: '100%' }}
+                >
+                  Modify User
+                </Button>
+              ) : (
+                <Tooltip title={'There is already one Request Pending for user, Please Take action on that first.'}>
+                  <Button variant="outlined" sx={{ width: '100%' }}>
+                    Request pending...
+                  </Button>
+                </Tooltip>
+              ))}
+            {cardType === 'myRequest' && (
+              <>
+                {user.REQ_TYPE === 'M' && (
+                  <Button onClick={onModifyClick} startIcon={<Edit />} variant="outlined" sx={{ width: '100%' }}>
+                    Modify
+                  </Button>
+                )}
+                <Button
+                  variant="outlined"
+                  sx={{ width: '100%', color: 'error.light' }}
+                  onClick={onDeleteClick}
+                  startIcon={<Delete />}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+            {cardType === 'pendingRequest' && (
+              <>
+                <Button onClick={onViewClick} startIcon={<RemoveRedEye />} variant="outlined" sx={{ width: '100%' }}>
+                  View Request
+                </Button>
+              </>
+            )}
+          </CardActions>
+        </Card>
+      </Grid>
+    )
+  );
+}
+
+
+FilterComponent :
+
+import { FilterListAlt } from '@mui/icons-material';
+import { Button, Card, MenuItem, Select, Stack, Typography } from '@mui/material';
+import propTypes from 'prop-types';
+import FormInput from '../../../../common/components/ui/FormInput';
+
+const FilterComponent = (props) => {
+  /**
+   * This function is to handle the filters change.
+   *
+   * @param type : defines the type of text field.
+   * @param value : containes the user entered value.
+   */
+  const handleChange = (type, value) => {
+    if (type === 'button') {
+      props.setSearchTerm({ id: '', name: '', role: '', circle: '', status: '' });
+      props.setCircleDisable(false);
+    } else {
+      let regex;
+      if (type === 'id') {
+        regex = /^\d*$/;
+        if (!regex.test(value)) return;
+      }
+      if (type === 'name') {
+        regex = /^[a-zA-Z\s]*$/;
+        if (!regex.test(value)) return;
+      }
+
+      const newTerm = { ...props.searchTerm };
+      if (
+        (type === 'role' && value !== 'CIRCLE MAKER' && value !== 'CIRCLE CHECKER' && value !== 'CIRCLE APPROVER') ||
+        (props.searchTerm.role !== 'CIRCLE MAKER' &&
+          props.searchTerm.role !== 'CIRCLE CHECKER' &&
+          props.searchTerm.role !== 'CIRCLE APPROVER' &&
+          props.searchTerm.role !== '' &&
+          type !== 'role')
+      ) {
+        props.setCircleDisable(true);
+        newTerm.circle = '';
+      } else {
+        props.setCircleDisable(false);
+      }
+
+      newTerm[type] = value;
+      props.setSearchTerm(newTerm);
+    }
+  };
+
+  return (
+    <Stack component={Card} p={2} direction={'row'} justifyContent={'space-between'} alignItems={'end'}>
+      <Stack direction={'row'} spacing={2} justifyContent={'start'}>
+        <Stack>
+          <Typography color="text.secondary" gutterBottom>
+            User ID
+          </Typography>
+          <FormInput
+            value={props.searchTerm.id}
+            onChange={(e) => {
+              handleChange('id', e.target.value);
+            }}
+            slotProps={{
+              htmlInput: {
+                maxLength: 7,
+              },
+            }}
+            debounceDuration={1000}
+            inputType={'alphaNumeric'}
+          />
+        </Stack>
+
+        <Stack>
+          <Typography color="text.secondary" gutterBottom>
+            User Name
+          </Typography>
+          <FormInput
+            value={props.searchTerm.name}
+            onChange={(e) => {
+              handleChange('name', e.target.value);
+            }}
+            slotProps={{
+              htmlInput: {
+                maxLength: 7,
+              },
+            }}
+            debounceDuration={1000}
+            inputType={'alphaNumeric'}
+          />
+        </Stack>
+
+        <Stack>
+          <Typography color="text.secondary" gutterBottom>
+            User Role
+          </Typography>
+          <Select
+            variant="outlined"
+            value={props.searchTerm.role}
+            sx={{ minWidth: 220 }}
+            onChange={(e) => {
+              handleChange('role', e.target.value);
+            }}
+            MenuProps={{ PaperProps: { sx: { maxHeight: 500 } } }}
+          >
+            <MenuItem value="">---Role---</MenuItem>
+            {props.roleList.map((roles) => (
+              <MenuItem value={roles.ROLE_NAME}>{roles.ROLE_NAME}</MenuItem>
+            ))}
+          </Select>
+        </Stack>
+
+        <Stack>
+          <Typography color="text.secondary" gutterBottom>
+            User Circle
+          </Typography>
+          <Select
+            variant="outlined"
+            value={props.searchTerm.circle}
+            disabled={props.circleDisable}
+            sx={{ minWidth: 220 }}
+            onChange={(e) => {
+              handleChange('circle', e.target.value);
+            }}
+            MenuProps={{ PaperProps: { sx: { maxHeight: 500 } } }}
+          >
+            <MenuItem value="">---Circle---</MenuItem>
+            {props.circleList.map((circle) => (
+              <MenuItem value={circle.CIRCLE_NAME}>{circle.CIRCLE_NAME}</MenuItem>
+            ))}
+          </Select>
+        </Stack>
+
+        <Stack>
+          <Typography color="text.secondary" gutterBottom>
+            User Status
+          </Typography>
+          <Select
+            variant="outlined"
+            value={props.searchTerm.status}
+            sx={{ minWidth: 220 }}
+            onChange={(e) => {
+              handleChange('status', e.target.value);
+            }}
+            MenuProps={{ PaperProps: { sx: { maxHeight: 500, maxWidth: 175 } } }}
+          >
+            <MenuItem value="">---Status---</MenuItem>
+            <MenuItem value="A">Active Users</MenuItem>
+            <MenuItem value="P">Disabled Users</MenuItem>
+            <MenuItem value="S">Stale Users</MenuItem>
+          </Select>
+        </Stack>
+      </Stack>
+
+      <Button
+        variant={'outlined'}
+        startIcon={<FilterListAlt />}
+        onClick={() => {
+          handleChange('button');
+        }}
+      >
+        Clear Filter
+      </Button>
+    </Stack>
+  );
+};
+
+FilterComponent.propTypes = {
+  searchTerm: propTypes.object,
+  setSearchTerm: propTypes.func,
+  circleDisable: propTypes.bool,
+  setCircleDisable: propTypes.func,
+  roleList: propTypes.array,
+  circleList: propTypes.array,
+};
+
+export default FilterComponent;
+
+N.B: (NOt sure filter is needed in tranche or not)
+
+
+commonUserManagemenetCalls.js
+/**
+ * This is an asynchronous function responsible for fetching all the user data.
+ *
+ * @author : V1014064
+ */
+const getUsers = async (setter, callApi, message) => {
+  try {
+    const responseData = await callApi('/Users/getAllUsers', { role: '41' }, 'POST');
+    if (responseData) {
+      setter(responseData);
+      if (responseData.length === 0) message('No users present.');
+      else message('');
+    }
+  } catch (error) {
+    console.error('error :: ', error);
+  }
+};
+
+/**
+ * This is an asynchronous function responsible for fetching all the user data.
+ *
+ * @author : V1014064
+ */
+const getCircleList = async (setter, callApi) => {
+  try {
+    const responseData = await callApi('/Users/getCircles', { role: '41' }, 'POST');
+    if (responseData) {
+      var filtered = responseData.filter(function (samp) {
+        return samp.CIRCLE_ID !== '100';
+      });
+      setter(filtered);
+    }
+  } catch (error) {
+    console.error('error :: ', error);
+  }
+};
+
+/**
+ * This is an asynchronous function responsible for fetching all the user data.
+ *
+ * @author : V1014064
+ */
+const getRoleList = async (setter, callApi) => {
+  try {
+    const responseData = await callApi('/Users/getUserRoles', { role: '41' }, 'POST');
+    if (responseData) {
+      setter(responseData);
+    }
+  } catch (error) {
+    console.error('error :: ', error);
+  }
+};
+
+
+export { getUsers, getRoleList, getCircleList };
+
+
+
+These are all code of bs user/creation/modification .
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
