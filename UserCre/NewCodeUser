@@ -1,0 +1,624 @@
+/**
+ * @file userManagementService.js
+ * @description This file contains all the API calls related to user management for the Tranche application.
+ */
+
+// A helper function to simulate the callApi hook from the reference code
+const callApi = async (endpoint, payload, method = 'POST') => {
+  // In a real application, this would be your actual fetch/axios call
+  console.log(`Calling API: ${endpoint} with method ${method}`, payload);
+  // This is a placeholder for your actual API call logic
+  // You would replace this with a fetch or axios call to your backend.
+  // Example:
+  // const response = await fetch(endpoint, {
+  //   method: method,
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify(payload)
+  // });
+  // if (!response.ok) throw new Error('Network response was not ok');
+  // return response.json();
+
+  // Returning mock data based on endpoint for demonstration
+  if (endpoint.includes('RoleUsList')) {
+    return [
+        { role: "CIRCLE MAKER", capacity: "51" },
+        { role: "CIRCLE CHECKER", capacity: "52" },
+        { role: "FRT MAKER", capacity: "61" }
+    ];
+  }
+  if (endpoint.includes('circleCodeUsList')) {
+    return [
+        { circleCode: "021", circleName: "INTERNATIONAL BANKING GROUP" },
+        { circleCode: "026", circleName: "Domestic Offices" }
+    ];
+  }
+  return { success: true, message: 'API call successful' }; // Default mock response
+};
+
+
+/**
+ * Fetches the list of user roles available to the logged-in user.
+ * @param {string} userCapacity - The capacity/role of the logged-in user.
+ * @returns {Promise<Array>} A list of role objects.
+ */
+export const getRoleList = async (userCapacity) => {
+  try {
+    [span_0](start_span)// The endpoint REST_SERVICE_URI_9 is called with the logged-in user's role.[span_0](end_span)
+    const responseData = await callApi(`./UserManage/RoleUsList?role=${userCapacity}`, null, 'GET');
+    return responseData || [];
+  } catch (error) {
+    console.error('Error while getting role list:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetches the list of user circles.
+ * @returns {Promise<Array>} A list of circle objects.
+ */
+export const getCircleList = async () => {
+  try {
+    // The endpoint REST_SERVICE_URI_8 is used to fetch circle codes.
+    const responseData = await callApi('./UserManage/circleCodeUsList', {}, 'POST');
+    return responseData || []; [span_1](start_span)//[span_1](end_span)
+  } catch (error) {
+    console.error('Error while getting circle code list:', error); [span_2](start_span)//[span_2](end_span)
+    return [];
+  }
+};
+
+/**
+ * Sends a request to create a new user.
+ * [span_3](start_span)The payload is constructed by extending the user data with session details.[span_3](end_span)
+ * @param {object} userData - The data for the new user.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @returns {Promise<object>} The API response.
+ */
+export const createUser = async (userData, sessionUser) => {
+  const payload = {
+    ...userData,
+    [span_4](start_span)createdby: sessionUser.userId, //[span_4](end_span)
+    quarterEndDate: sessionUser.quarterEndDate,
+  };
+  // The endpoint REST_SERVICE_URI_5 is used for creating a user.
+  return await callApi('./UserManage/createUser', payload, 'POST');
+};
+
+/**
+ * Fetches the details of a specific user for modification.
+ * @param {string} userId - The ID of the user to fetch.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @returns {Promise<object>} The user's details.
+ */
+export const checkUserDetails = async (userId, sessionUser) => {
+  const params = {
+    userId: userId,
+    [span_5](start_span)role: sessionUser.capacity, //[span_5](end_span)
+    [span_6](start_span)circle: sessionUser.circleCode, //[span_6](end_span)
+  };
+  [span_7](start_span)// The endpoint REST_SERVICE_URI_1 is used for checking user details.[span_7](end_span)
+  return await callApi('./UserManage/checkUserDetails', params, 'POST');
+};
+
+/**
+ * Sends a request to update an existing user's details.
+ * [span_8](start_span)The payload combines user data with session details for auditing.[span_8](end_span)
+ * @param {object} userData - The updated user data.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @returns {Promise<object>} The API response.
+ */
+export const updateUser = async (userData, sessionUser) => {
+  const payload = {
+    ...userData,
+    [span_9](start_span)updatedBy: sessionUser.userId, //[span_9](end_span)
+    [span_10](start_span)circleCodeuser: sessionUser.circleCode, //[span_10](end_span)
+  };
+  // The endpoint for updating is './UserManage/updateUserDetails'.
+  return await callApi('./UserManage/updateUserDetails', payload, 'POST');
+};
+
+/**
+ * Sends a request to delete a user.
+ * [span_11](start_span)The payload is extended with session details for auditing.[span_11](end_span)
+ * @param {object} userData - The data of the user to be deleted.
+ * @param {object} sessionUser - The logged-in user's session data.
+ * @returns {Promise<object>} The API response.
+ */
+export const deleteUser = async (userData, sessionUser) => {
+  const payload = {
+    ...userData,
+    [span_12](start_span)deletedBy: sessionUser.userId, //[span_12](end_span)
+    [span_13](start_span)circleCodeuser: sessionUser.circleCode, //[span_13](end_span)
+  };
+  // The endpoint REST_SERVICE_URI_2 is used for deleting a user.
+  return await callApi('./UserManage/deleteUser', payload, 'POST');
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions, Grid, TextField,
+  FormControl, InputLabel, Select, MenuItem, Button, Box
+} from '@mui/material';
+import { useState, useEffect } from 'react';
+import propTypes from 'prop-types';
+
+const UserModifyDialog = ({ open, onClose, userDetails, roleList, circleList, onUpdate }) => {
+  const [user, setUser] = useState({});
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  useEffect(() => {
+    if (userDetails) {
+      const initialUser = {
+        ...userDetails,
+        [span_14](start_span)// The role from the backend is the capacity value.[span_14](end_span)
+        role: userDetails.role?.toString() || '',
+        circleCode: userDetails.circleCode?.toString() || ''
+      };
+      setUser(initialUser);
+      // Check initial role to set circle field disabled status
+      handleRoleChange(initialUser.role, true);
+    }
+  }, [userDetails, open]);
+
+  const handleChange = (field, value) => {
+    setUser(prev => ({ ...prev, [field]: value }));
+    if (field === 'role') {
+      handleRoleChange(value);
+    }
+  };
+
+  /**
+   * Handles the logic for enabling/disabling the circle dropdown based on role.
+   * [span_15](start_span)If role capacity is greater than 60, the circle is hidden/disabled and set to '100'.[span_15](end_span)
+   * [span_16](start_span)If less than 60, it's shown.[span_16](end_span)
+   */
+  const handleRoleChange = (roleValue, isInitial = false) => {
+    const roleCapacity = parseInt(roleValue, 10);
+    if (roleCapacity > 60) {
+      setIsCircleDisabled(true);
+      if (!isInitial) {
+        setUser(prev => ({ ...prev, circleCode: '100' }));
+      }
+    } else {
+      setIsCircleDisabled(false);
+    }
+  };
+
+  const handleSave = () => {
+    onUpdate(user);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <DialogTitle>Modify User Details</DialogTitle>
+      <DialogContent>
+        <Box component="form" noValidate autoComplete="off" sx={{ mt: 2 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="User ID"
+                value={user.userId || ''}
+                fullWidth
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="User Name"
+                value={user.userName || ''}
+                onChange={(e) => handleChange('userName', e.target.value)}
+                fullWidth
+                required
+                [span_17](start_span)inputProps={{ maxLength: 60 }} //[span_17](end_span)
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>User Role</InputLabel>
+                <Select
+                  value={user.role || ''}
+                  label="User Role"
+                  onChange={(e) => handleChange('role', e.target.value)}
+                >
+                  {roleList.map((role) => (
+                    <MenuItem key={role.capacity} value={role.capacity}>
+                      {role.role}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>User Circle</InputLabel>
+                <Select
+                  value={user.circleCode || ''}
+                  label="User Circle"
+                  onChange={(e) => handleChange('circleCode', e.target.value)}
+                  [span_18](start_span)disabled={isCircleDisabled} //[span_18](end_span)
+                >
+                  {circleList.map((circle) => (
+                    <MenuItem key={circle.circleCode} value={circle.circleCode}>
+                      {`${circle.circleCode} - ${circle.circleName}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="User Status"
+                value={user.userStatus || ''}
+                fullWidth
+                disabled
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ p: '16px 24px' }}>
+        <Button onClick={onClose} variant="outlined">Cancel</Button>
+        <Button onClick={handleSave} variant="contained" color="primary">Update User</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+UserModifyDialog.propTypes = {
+  open: propTypes.bool.isRequired,
+  onClose: propTypes.func.isRequired,
+  onUpdate: propTypes.func.isRequired,
+  userDetails: propTypes.object,
+  roleList: propTypes.array,
+  circleList: propTypes.array,
+};
+
+export default UserModifyDialog;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect } from 'react';
+import {
+  Box, Tab, Tabs, Typography, TextField, Button, Grid, FormControl, InputLabel,
+  Select, MenuItem, Card, CardContent, CardActions, Divider, Alert, CircularProgress
+} from '@mui/material';
+import {
+  getRoleList, getCircleList, createUser, checkUserDetails, updateUser, deleteUser
+} from './userManagementService'; // Assuming the service file is in the same folder
+import UserModifyDialog from './UserModifyDialog'; // Assuming the dialog file is in the same folder
+
+[span_19](start_span)// Helper to get user data from localStorage, similar to the reference.[span_19](end_span)
+const getLoginUser = () => {
+    // In a real app, you might get this from context or a global state manager.
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : { userId: 'DEFAULT_USER', capacity: '61', circleCode: '021', quarterEndDate: '2025-09-30' };
+};
+
+
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div role="tabpanel" hidden={value !== index} {...other}>
+      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
+const UserManagement = () => {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [loginUser] = useState(getLoginUser());
+  const [roleList, setRoleList] = useState([]);
+  const [circleList, setCircleList] = useState([]);
+  const [feedback, setFeedback] = useState({ message: '', severity: 'info' });
+  const [isLoading, setIsLoading] = useState(false);
+
+  // States for User Creation
+  const [newUser, setNewUser] = useState({ userId: '', userName: '', role: '', circleCode: '' });
+  const [isCircleDisabled, setIsCircleDisabled] = useState(false);
+
+  // States for User Modification
+  const [userIdToModify, setUserIdToModify] = useState('');
+  const [fetchedUserDetails, setFetchedUserDetails] = useState(null);
+  const [isModifyDialogOpen, setIsModifyDialogOpen] = useState(false);
+
+  // Initial data fetch for dropdowns
+  useEffect(() => {
+    const fetchData = async () => {
+      [span_20](start_span)// The capacity of the logged-in user determines the roles they can assign.[span_20](end_span)
+      setRoleList(await getRoleList(loginUser.capacity));
+      setCircleList(await getCircleList());
+    };
+    fetchData();
+  }, [loginUser.capacity]);
+
+  [span_21](start_span)// If the logged-in user is a Circle Checker, pre-fill and disable circle code.[span_21](end_span)
+  useEffect(() => {
+    if (loginUser.capacity === '52') {
+        setNewUser(prev => ({ ...prev, circleCode: loginUser.circleCode }));
+        setIsCircleDisabled(true); // Also disable it for creation form
+    }
+  }, [loginUser.capacity, loginUser.circleCode]);
+
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+    setFeedback({ message: '', severity: 'info' }); // Clear feedback on tab switch
+    setFetchedUserDetails(null); // Clear modification details on tab switch
+  };
+
+  const showFeedback = (message, severity = 'error') => {
+    setFeedback({ message, severity });
+    setTimeout(() => setFeedback({ message: '', severity: 'info' }), 6000);
+  };
+  
+  // --- USER CREATION LOGIC ---
+  const handleNewUserChange = (field, value) => {
+    setNewUser(prev => ({ ...prev, [field]: value }));
+    [span_22](start_span)// Logic to handle circle dropdown based on selected role[span_22](end_span)
+    if (field === 'role') {
+        const selectedRole = roleList.find(r => r.capacity === value);
+        if (selectedRole && parseInt(selectedRole.capacity, 10) > 60) {
+            setIsCircleDisabled(true);
+            setNewUser(prev => ({ ...prev, circleCode: '100' })); [span_23](start_span)//[span_23](end_span)
+        } else {
+            [span_24](start_span)// For FRT/GITC makers, circleCode is not pre-filled.[span_24](end_span)
+             if (loginUser.capacity !== '52') {
+                setIsCircleDisabled(false);
+                setNewUser(prev => ({ ...prev, circleCode: '' }));
+            }
+        }
+    }
+  };
+
+  const handleCreateUser = async () => {
+     [span_25](start_span)if (!newUser.userId || !newUser.userName || !newUser.role || !newUser.circleCode) { //[span_25](end_span)
+        return showFeedback("All fields are mandatory.");
+    }
+    setIsLoading(true);
+    try {
+        const result = await createUser(newUser, loginUser); [span_26](start_span)//[span_26](end_span)
+        [span_27](start_span)[span_28](start_span)[span_29](start_span)// Handle different responses from the backend[span_27](end_span)[span_28](end_span)[span_29](end_span)
+        if (result.success) { // Assuming success maps to old 'data == 1'
+             showFeedback("User creation request submitted successfully and is pending with FRT Checker.", "success");
+             setNewUser({ userId: '', userName: '', role: '', circleCode: loginUser.capacity === '52' ? loginUser.circleCode : '' });
+        } else {
+            // Mocking other conditions
+            if (result.code === 0) showFeedback("User already exists and acceptance is pending with FRT Checker.", "warning");
+            else if (result.code === 2) showFeedback("User with this ID already exists.", "error");
+            else showFeedback("User creation failed.", "error");
+        }
+    } catch(e) {
+        showFeedback("An error occurred during user creation.");
+    }
+    setIsLoading(false);
+  };
+
+  // --- USER MODIFICATION LOGIC ---
+  const handleCheckDetails = async () => {
+    if (!userIdToModify) {
+        return showFeedback("Please enter a User ID to check.");
+    }
+    setIsLoading(true);
+    setFetchedUserDetails(null);
+    try {
+        const data = await checkUserDetails(userIdToModify, loginUser); [span_30](start_span)//[span_30](end_span)
+        if (data.isUserExist === "2" || data.isUserExist === "-1") {
+            const message = data.isUserExist === "2" ? "User doesn't exist." : "User doesn't exist or does not belong to your circle.";
+            showFeedback(message); [span_31](start_span)[span_32](start_span)//[span_31](end_span)[span_32](end_span)
+        } else {
+             [span_33](start_span)// Convert status 'A' to 'Active', 'P' to 'Approval Pending'[span_33](end_span)
+            data.userStatus = data.status === 'A' ? 'Active' : data.status === 'P' ? 'Approval Pending' : 'Unknown';
+            setFetchedUserDetails(data);
+            setFeedback({ message: '', severity: 'info' });
+        }
+    } catch(e) {
+        showFeedback("Failed to fetch user details.");
+    }
+    setIsLoading(false);
+  };
+  
+  const handleUpdateUser = async (updatedData) => {
+    setIsLoading(true);
+    try {
+        const result = await updateUser(updatedData, loginUser); [span_34](start_span)//[span_34](end_span)
+        [span_35](start_span)if (result.success) { // Assuming success maps to 'data == 1'[span_35](end_span)
+            showFeedback("User updated successfully.", "success");
+            handleCheckDetails(); // Refresh details
+        } else {
+            showFeedback("User has not been updated.", "error"); [span_36](start_span)//[span_36](end_span)
+        }
+    } catch(e) {
+        showFeedback("An error occurred while updating the user.");
+    }
+    setIsLoading(false);
+  };
+  
+  const handleDeleteUser = async () => {
+      if (!fetchedUserDetails) return;
+      if (!window.confirm(`Are you sure you want to delete user ${fetchedUserDetails.userName}?`)) return;
+
+      setIsLoading(true);
+      try {
+          const result = await deleteUser(fetchedUserDetails, loginUser);
+          [span_37](start_span)if (result.success) { // Assuming success maps to 'data == 1'[span_37](end_span)
+              showFeedback("User deleted successfully.", "success");
+              setFetchedUserDetails(null);
+              setUserIdToModify('');
+          } else {
+              showFeedback("User has not been deleted.", "error"); [span_38](start_span)//[span_38](end_span)
+          }
+      } catch (e) {
+          showFeedback("An error occurred while deleting the user.");
+      }
+      setIsLoading(false);
+  };
+
+
+  return (
+    <Box sx={{ width: '100%', typography: 'body1' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={tabIndex} onChange={handleTabChange}>
+          <Tab label="Create User" />
+          <Tab label="Modify User" />
+        </Tabs>
+      </Box>
+
+      {/* --- CREATE USER PANEL --- */}
+      <TabPanel value={tabIndex} index={0}>
+        <Typography variant="h6" gutterBottom>Create a New User</Typography>
+        <Grid container spacing={3} sx={{mt: 1}}>
+           <Grid item xs={12} sm={6}>
+              <TextField label="User ID" value={newUser.userId} onChange={(e) => handleNewUserChange('userId', e.target.value)} fullWidth required inputProps={{ maxLength: 7 }} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField label="User Name" value={newUser.userName} onChange={(e) => handleNewUserChange('userName', e.target.value)} fullWidth required inputProps={{ maxLength: 60 }} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                  <InputLabel>User Role</InputLabel>
+                  <Select value={newUser.role} label="User Role" onChange={(e) => handleNewUserChange('role', e.target.value)}>
+                      {roleList.map(r => <MenuItem key={r.capacity} value={r.capacity}>{r.role}</MenuItem>)}
+                  </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+               <FormControl fullWidth required>
+                  <InputLabel>User Circle</InputLabel>
+                  <Select value={newUser.circleCode} label="User Circle" onChange={(e) => handleNewUserChange('circleCode', e.target.value)} disabled={isCircleDisabled}>
+                      {circleList.map(c => <MenuItem key={c.circleCode} value={c.circleCode}>{`${c.circleCode} - ${c.circleName}`}</MenuItem>)}
+                  </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="contained" onClick={handleCreateUser} disabled={isLoading}>
+                    {isLoading ? <CircularProgress size={24} /> : 'Create User'}
+                </Button>
+            </Grid>
+        </Grid>
+      </TabPanel>
+
+      {/* --- MODIFY USER PANEL --- */}
+      <TabPanel value={tabIndex} index={1}>
+        <Typography variant="h6" gutterBottom>Find and Modify an Existing User</Typography>
+         <Grid container spacing={2} alignItems="center" sx={{mt: 1}}>
+            <Grid item xs={12} sm={4}>
+                <TextField label="Enter User ID" value={userIdToModify} onChange={(e) => setUserIdToModify(e.target.value)} fullWidth inputProps={{ maxLength: 7 }}/>
+            </Grid>
+             <Grid item xs={12} sm={4}>
+                <Button variant="contained" onClick={handleCheckDetails} disabled={isLoading}>
+                   {isLoading ? <CircularProgress size={24} /> : 'Check Details'}
+                </Button>
+            </Grid>
+        </Grid>
+        
+        {fetchedUserDetails && (
+             <Card sx={{ mt: 4 }}>
+                <CardContent>
+                    <Typography variant="h5" component="div" gutterBottom>
+                        {fetchedUserDetails.userName}
+                    </Typography>
+                    <Divider sx={{ my: 2 }} />
+                    <Grid container spacing={2}>
+                        <Grid item xs={6}><Typography color="text.secondary">User ID:</Typography><Typography>{fetchedUserDetails.userId}</Typography></Grid>
+                        <Grid item xs={6}><Typography color="text.secondary">Status:</Typography><Typography>{fetchedUserDetails.userStatus}</Typography></Grid>
+                        <Grid item xs={6}><Typography color="text.secondary">Role:</Typography><Typography>{roleList.find(r => r.capacity == fetchedUserDetails.role)?.role || 'N/A'}</Typography></Grid>
+                        <Grid item xs={6}><Typography color="text.secondary">Circle:</Typography><Typography>{circleList.find(c => c.circleCode == fetchedUserDetails.circleCode)?.circleName || 'N/A'}</Typography></Grid>
+                    </Grid>
+                </CardContent>
+                <CardActions sx={{justifyContent: 'flex-end', p: 2}}>
+                    <Button variant="outlined" color="error" onClick={handleDeleteUser} disabled={isLoading}>Delete User</Button>
+                    <Button variant="contained" onClick={() => setIsModifyDialogOpen(true)} disabled={isLoading}>Update User</Button>
+                </CardActions>
+            </Card>
+        )}
+      </TabPanel>
+
+      {feedback.message && <Alert severity={feedback.severity} sx={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1500 }}>{feedback.message}</Alert>}
+      
+      {fetchedUserDetails && <UserModifyDialog 
+        open={isModifyDialogOpen}
+        onClose={() => setIsModifyDialogOpen(false)}
+        userDetails={fetchedUserDetails}
+        roleList={roleList}
+        circleList={circleList}
+        onUpdate={handleUpdateUser}
+      />}
+    </Box>
+  );
+};
+
+export default UserManagement;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
