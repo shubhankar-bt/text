@@ -3267,3 +3267,110 @@ ng-if="sc09.isData ==false"
 </div>
 
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------------
+
+
+
+
+
+  // #region CORRECTED CALCULATION LOGIC
+  const computedRowData = useMemo(() => {
+    const result = {};
+
+    // First pass: Compute all individual, non-aggregate rows
+    rowDefinitions.forEach((row) => {
+      if (row.type === 'entry' && !sectionMap[row.id]) {
+        const b = values[row.id];
+        const sum = ['standard', 'subStandard', 'doubtful', 'loss'].reduce((a, f) => a + (parseFloat(b[f]) || 0), 0);
+        const adj = showAdjustment ? parseFloat(b.adjustment) || 0 : 0;
+  
+        const calculatedTotal = sum + adj;
+
+        let displayTotal = calculatedTotal;
+        let isMismatch = false;
+
+        // For A-1 facility rows, the displayed total comes from the validation data ('ysa')
+        // And the mismatch compares the calculatedTotal against this ysa value
+        if (row.id.startsWith('fac') && b.ysa) {
+          const ysa = parseFloat(b.ysa);
+     
+          if (!isNaN(ysa)) {
+            displayTotal = ysa;
+            isMismatch = Number(ysa.toFixed(2)) !== Number(calculatedTotal.toFixed(2));
+          }
+        }
+        result[row.id] = { ...b, total: displayTotal.toFixed(2), isMismatch };
+      }
+    });
+
+    // Second pass: Compute all aggregate rows (Total rows)
+    Object.keys(sectionMap).forEach((totalId) => {
+      const childIds = sectionMap[totalId];
+      
+      // Step 1: Aggregate the values for each column from the child rows.
+      const agg = childIds.reduce(
+        (acc, childId) => {
+          // Use already computed results for children, which can be either individual rows or other aggregate rows.
+          const r = result[childId]; 
+          if (r) {
+            acc.standard += parseFloat(r.standard) || 0;
+            acc.subStandard += parseFloat(r.subStandard) || 0;
+            acc.doubtful += parseFloat(r.doubtful) || 0;
+            acc.loss += parseFloat(r.loss) || 0;
+            if (showAdjustment) acc.adjustment += parseFloat(r.adjustment) || 0;
+            
+            // *** FIX: We no longer sum the child totals here. We calculate it fresh below. ***
+          }
+          return acc;
+        },
+        { standard: 0, subStandard: 0, doubtful: 0, loss: 0, adjustment: 0 }
+      );
+      
+      // Step 2: Calculate the total for THIS aggregate row by summing its OWN aggregated columns.
+      // This matches the logic from the old controller for secTotal and advA3.
+      const sumOfAggregatedColumns = 
+          agg.standard +
+          agg.subStandard +
+          agg.doubtful +
+          agg.loss +
+          (showAdjustment ? agg.adjustment : 0);
+
+      // Step 3: Determine the final display total.
+      // Special case for 'facTotal' (A-1): Its total is the sum of the YSA values from its children, not the sum of its own columns.
+      // This is because the cross-section validation compares against this YSA-derived total.
+      let finalTotal = sumOfAggregatedColumns;
+      if (totalId === 'facTotal') {
+        finalTotal = childIds.reduce((sum, childId) => sum + (parseFloat(result[childId]?.total) || 0), 0);
+      }
+
+      result[totalId] = {
+        standard: agg.standard.toFixed(2),
+        subStandard: agg.subStandard.toFixed(2),
+        doubtful: agg.doubtful.toFixed(2),
+        loss: agg.loss.toFixed(2),
+        adjustment: showAdjustment ? agg.adjustment.toFixed(2) : '',
+        total: finalTotal.toFixed(2), // Use the correctly calculated total
+        ysa: values[totalId].ysa,
+        isMismatch: false,
+      };
+    });
+
+    return result;
+  }, [values, showAdjustment]);
+  // #endregion
