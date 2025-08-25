@@ -389,3 +389,182 @@ export default function Schedule9Table({ showAdjustment = false }) {
     </Box>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------
+
+
+
+
+
+// ## FIX: Corrected logic to generate field names for the 'total' column of individual rows ##
+const getFieldName = (id, key) => {
+  let base = id.startsWith('fac') ? 'facility' : id.startsWith('sec') ? 'security' : 'sector';
+  const suffix =
+    {
+      standard: 'Standard',
+      subStandard: 'SubStandard',
+      doubtful: 'Doubtful',
+      loss: 'Loss',
+      adjustment: 'Adj',
+    }[key] || 'Total';
+
+  let idx;
+
+  if (id === 'inTotal') idx = 'a_Total';
+  else if (id === 'outTotal') idx = 'b_Total';
+  else if (id === 'advA3') idx = 'ab_Total';
+  else if (id.startsWith('in')) idx = `a${id.replace('in', '')}`;
+  else if (id.startsWith('out')) {
+    const num = id.replace('out', '');
+    if (num === '1') {
+      idx = 'b1';
+    } else {
+      idx = (parseInt(num, 10) - 1).toString();
+    }
+  } else if (id.endsWith('Total')) idx = 'Total';
+  else idx = id.replace(/\D/g, '');
+
+  // Logic to construct the final field name
+  let fieldName;
+  if (key === 'total') {
+    // Special names for grand totals and facility display totals
+    if (id === 'facTotal') return 'facility_Total_TotalDisplay';
+    if (id === 'secTotal') return 'security_Total_Total';
+    if (id === 'advA3') return 'sector_ab_Total_ab_Total';
+    if (id.startsWith('fac') && id !== 'facTotal') return `facility_Total_Display${id.replace(/\D/g, '')}`;
+
+    // Generic name for totals of individual rows (e.g., security_Total_2)
+    fieldName = `${base}_Total_${idx}`;
+  } else {
+    // Name for all other columns
+    fieldName = `${base}_${suffix}_${idx}`;
+  }
+
+  return fieldName;
+};
+
+
+
+
+
+
+
+
+
+// Inside your useEffect hook...
+const fields = ['standard', 'subStandard', 'doubtful', 'loss', 'total']; // <-- Add 'total' here
+if (showAdjustment) fields.push('adjustment');
+// ... rest of the logic
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ## FIX: Rewritten to use API-provided totals as the source of truth ##
+const computedRowData = useMemo(() => {
+    const result = {};
+
+    // First pass: Compute all individual, non-aggregate rows
+    rowDefinitions.forEach((row) => {
+      if (row.type === 'entry' && !sectionMap[row.id]) {
+        const b = values[row.id];
+        
+        // This is the sum of the component columns, used for validation
+        const calculatedTotal =
+          (parseFloat(b.standard) || 0) +
+          (parseFloat(b.subStandard) || 0) +
+          (parseFloat(b.doubtful) || 0) +
+          (parseFloat(b.loss) || 0) +
+          (showAdjustment ? parseFloat(b.adjustment) || 0 : 0);
+
+        let sourceOfTruthTotal;
+        let isMismatch = false;
+
+        // Determine the "source of truth" for the total column to be displayed
+        if (row.id.startsWith('fac')) {
+          // For facility rows, the truth is the 'ysa' value from the validation API
+          sourceOfTruthTotal = parseFloat(b.ysa) || 0;
+        } else {
+          // For all other rows, the truth is the 'total' value from the main report API
+          // If null/undefined from API, default to the calculated total for display
+          sourceOfTruthTotal = b.total != null ? parseFloat(b.total) : calculatedTotal;
+        }
+
+        // Check for mismatch by comparing the calculated sum with the source of truth
+        if (Number(sourceOfTruthTotal.toFixed(2)) !== Number(calculatedTotal.toFixed(2))) {
+          isMismatch = true;
+        }
+
+        // The 'total' in the result is always the source of truth, ensuring API values are shown
+        result[row.id] = { ...b, total: sourceOfTruthTotal.toFixed(2), isMismatch };
+      }
+    });
+
+    // Second pass: Compute all aggregate rows (This logic remains correct from the last fix)
+    Object.keys(sectionMap).forEach((totalId) => {
+      const childIds = sectionMap[totalId];
+      const agg = childIds.reduce(
+        (acc, childId) => {
+          const r = result[childId];
+          if (r) {
+            acc.standard += parseFloat(r.standard) || 0;
+            acc.subStandard += parseFloat(r.subStandard) || 0;
+            acc.doubtful += parseFloat(r.doubtful) || 0;
+            acc.loss += parseFloat(r.loss) || 0;
+            if (showAdjustment) acc.adjustment += parseFloat(r.adjustment) || 0;
+          }
+          return acc;
+        }, { standard: 0, subStandard: 0, doubtful: 0, loss: 0, adjustment: 0 }
+      );
+      const sumOfAggregatedColumns = agg.standard + agg.subStandard + agg.doubtful + agg.loss + (showAdjustment ? agg.adjustment : 0);
+      let finalTotal = sumOfAggregatedColumns;
+      if (totalId === 'facTotal') {
+        finalTotal = childIds.reduce((sum, childId) => sum + (parseFloat(result[childId]?.total) || 0), 0);
+      }
+      result[totalId] = {
+        standard: agg.standard.toFixed(2),
+        subStandard: agg.subStandard.toFixed(2),
+        doubtful: agg.doubtful.toFixed(2),
+        loss: agg.loss.toFixed(2),
+        adjustment: showAdjustment ? agg.adjustment.toFixed(2) : '',
+        total: finalTotal.toFixed(2),
+        ysa: values[totalId].ysa, isMismatch: false,
+      };
+    });
+
+    return result;
+  }, [values, showAdjustment]);
