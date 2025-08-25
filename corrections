@@ -141,3 +141,587 @@
 
 [ii] Covered by Bank/DICGC/ECGC/CGTSI/Govt Guarantee	this field's Total value is coming buyt not initialised in the table, similar there are other mismatches also. gom though with thr old jsp code and controller very carefully and rewrite the new code wherever needed.
 In the new ui, headings like the old one - A-1. Facility Wise Classification, A. 2 Security Wise Classifications ... this fields are in bold heding type but in new it is missing, recreate the new code very carefully. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------
+
+
+
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Table, TableBody, TableContainer, TableHead, TableRow, Paper, Alert, Box, Stack } from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '1rem',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: 'hsl(220, 20%, 35%)',
+    color: theme.palette.common.white,
+    fontWeight: 'bold',
+  },
+}));
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover,
+  },
+}));
+
+// Row definitions (no changes)
+const rowDefinitions = [
+  {
+    id: 'headerA1',
+    label: 'A-1. Facility Wise Classification',
+    type: 'section',
+  },
+  {
+    id: 'fac1',
+    label: '[i] Bills Purchased and Discounted less bills rediscounted $',
+    type: 'entry',
+  },
+  {
+    id: 'fac2',
+    label: '[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$',
+    type: 'entry',
+  },
+  {
+    id: 'fac3',
+    label: '[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan',
+    type: 'entry',
+  },
+  { id: 'facTotal', label: 'Total A-1', type: 'entry' },
+  {
+    id: 'headerA2',
+    label: 'A.2 Security Wise Classifications',
+    type: 'section',
+  },
+  { id: 'sec1', label: '[i] Secured by Tangible Assets', type: 'entry' },
+  {
+    id: 'sec2',
+    label: '[ii] Covered by Bank/DICGC/ECGC/CGTSI/Govt Guarantee',
+    type: 'entry',
+  },
+  { id: 'sec3', label: '[iii] Unsecured', type: 'entry' },
+  { id: 'secTotal', label: 'Total A-2', type: 'entry' },
+  { id: 'headerA3', label: 'A.3 Sector-Wise Classifications', type: 'section' },
+  { id: 'headerIn', label: 'a) In India', type: 'subsection' },
+  { id: 'in1', label: '[i] Priority', type: 'entry' },
+  { id: 'in2', label: '[ii] Public', type: 'entry' },
+  { id: 'in3', label: '[iii] Banks in India*', type: 'entry' },
+  { id: 'in4', label: '[iv] Others', type: 'entry' },
+  { id: 'inTotal', label: 'TOTAL IN INDIA (i+ii+iii+iv)', type: 'entry' },
+  {
+    id: 'headerOut',
+    label: 'b) Outside India (Excluding Foreign LCs and BGs)',
+    type: 'subsection',
+  },
+  { id: 'out1', label: '[i] Due from Banks', type: 'entry' },
+  { id: 'out5', label: '[ii] Due from Others', type: 'subsection' },
+  { id: 'out2', label: '[1] Bills Purchased and Discounted', type: 'entry' },
+  { id: 'out3', label: '[2] Syndicated Loans', type: 'entry' },
+  { id: 'out4', label: '[3] Others', type: 'entry' },
+  {
+    id: 'outTotal',
+    label: 'TOTAL IN OUTSIDE INDIA (i+ii.1+ii.2+ii.3)',
+    type: 'entry',
+  },
+  { id: 'advA3', label: 'Total advances A3 (a+b)', type: 'entry' },
+];
+
+// Columns (no changes)
+const columns = [
+  { key: 'standard', label: 'Standard', editable: true },
+  { key: 'subStandard', label: 'Sub-standard', editable: true },
+  { key: 'doubtful', label: 'Doubtful', editable: true },
+  { key: 'loss', label: 'Loss', editable: true },
+  { key: 'adjustment', label: 'Adjustment', editable: true, conditional: true },
+  { key: 'total', label: 'Total', editable: false },
+];
+// sectionMap and getFieldName (no changes)
+const sectionMap = {
+  facTotal: ['fac1', 'fac2', 'fac3'],
+  secTotal: ['sec1', 'sec2', 'sec3'],
+  inTotal: ['in1', 'in2', 'in3', 'in4'],
+  outTotal: ['out1', 'out2', 'out3', 'out4'],
+  advA3: ['inTotal', 'outTotal'],
+};
+
+const getFieldName = (id, key) => {
+  let base = id.startsWith('fac') ? 'facility' : id.startsWith('sec') ? 'security' : 'sector';
+  const suffix =
+    {
+      standard: 'Standard',
+      subStandard: 'SubStandard',
+      doubtful: 'Doubtful',
+      loss: 'Loss',
+      adjustment: 'Adj',
+    }[key] || 'Total';
+
+  let idx;
+
+  if (id === 'inTotal') idx = 'a_Total';
+  else if (id === 'outTotal') idx = 'b_Total';
+  else if (id === 'advA3') idx = 'ab_Total';
+  else if (id.startsWith('in')) idx = `a${id.replace('in', '')}`;
+  else if (id.startsWith('out')) {
+    const num = id.replace('out', '');
+    idx = num === '1' ? `b${num}` : num;
+  } else if (id.endsWith('Total')) idx = 'Total';
+  else idx = id.replace(/\D/g, '');
+
+  const fieldName = `${base}_${suffix}_${idx}`;
+  
+  // For 'Total' column, some names are different in the old code
+  if (key === 'total') {
+    if (id === 'facTotal') return 'facility_Total_TotalDisplay';
+    if (id === 'secTotal') return 'security_Total_Total';
+    if (id === 'advA3') return 'sector_ab_Total_ab_Total';
+    if (id.startsWith('fac') && id !== 'facTotal') return `facility_Total_Display${id.replace(/\D/g, '')}`;
+  }
+
+  return fieldName;
+};
+// buildSavePayload (no changes)
+const buildSavePayload = (
+  values,
+  userId,
+  circleCode,
+  quarterEndDate,
+  role,
+  reportName,
+  save,
+  status,
+  reportMasterId,
+  reportId,
+  areMocPending
+) => {
+  const payload = {
+    userId,
+    circleCode,
+    quarterEndDate,
+    role,
+    reportName,
+    save,
+    status,
+    reportMasterId,
+    reportId,
+    areMocPending,
+  };
+  Object.entries(values).forEach(([id, fields]) => {
+    Object.entries(fields).forEach(([key, val]) => {
+      if (['standard', 'subStandard', 'doubtful', 'loss', 'adjustment'].includes(key)) {
+        if (!(id.includes('header') || id === 'out5')) payload[getFieldName(id, key)] = val || '0';
+      }
+    });
+  });
+  return payload;
+};
+
+export default function Schedule9Table({ showAdjustment = false }) {
+  const { state } = useLocation();
+  const showSnackbar = useCustomSnackbar();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  const navigate = useNavigate();
+  const { callApi } = useApi();
+
+  const [values, setValues] = useState(
+    rowDefinitions.reduce((acc, { id }) => {
+      acc[id] = {
+        standard: '',
+        subStandard: '',
+        doubtful: '',
+        loss: '',
+        adjustment: '',
+        ysa: '', // 'YSA' will hold the server-provided validation total
+      };
+      return acc;
+    }, {})
+  );
+
+  // #region REFACTORED DATA FETCHING LOGIC
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const basePayload = {
+          circleCode: user.circleCode,
+          quarterEndDate: user.quarterEndDate,
+          role: user.capacity,
+        };
+
+        // Fetch both report data and validation data concurrently
+        const [reportData, validationData] = await Promise.all([
+          callApi('/Maker/getSC09ReportData', { ...basePayload, reportName: reportObject.name }, 'POST'),
+          callApi('/Maker/getSC09ValiadationData', basePayload, 'POST'),
+        ]);
+
+        // Process all data at once and set state
+        setValues(() => {
+          const newState = rowDefinitions.reduce((acc, { id }) => {
+            acc[id] = { standard: '', subStandard: '', doubtful: '', loss: '', adjustment: '', ysa: '' };
+            return acc;
+          }, {});
+
+          // Step 1: Populate with main report data from /getSC09ReportData
+          rowDefinitions.forEach(({ id, type }) => {
+            if (type !== 'entry') return;
+            const fields = ['standard', 'subStandard', 'doubtful', 'loss'];
+            if (showAdjustment) fields.push('adjustment');
+
+            fields.forEach((field) => {
+              const key = getFieldName(id, field);
+              if (reportData && reportData[key] != null) {
+                newState[id][field] = reportData[key];
+              }
+            });
+          });
+
+          // Step 2: Populate/overwrite with validation data from /getSC09ValiadationData
+          if (validationData) {
+            // Logic for Circle Maker
+            if (user.capacity === '51' || user.capacity === '52') {
+              const normalize = (s) => s.replace(/\s|[^a-zA-Z0-9]/g, '').toLowerCase();
+              ['fac1', 'fac2', 'fac3'].forEach((id) => {
+                const label = rowDefinitions.find((r) => r.id === id).label;
+                const key = Object.keys(validationData).find((k) => normalize(k) === normalize(label));
+                newState[id].ysa = validationData[key] || '0';
+              });
+            } 
+            // Logic for FRT
+            else if (user.capacity === '61' || user.capacity === '62') {
+              const getValues = (code) => (validationData[code] || '0~0').split('~');
+              const codeMap = {
+                fac1: '090101001051',
+                fac2: '090101001052',
+                fac3: '090101001053',
+              };
+              Object.keys(codeMap).forEach((id) => {
+                const [adj, total] = getValues(codeMap[id]);
+                newState[id].adjustment = adj; // Overwrite adjustment value
+                newState[id].ysa = total; // Set the YSA/validation total
+              });
+            }
+          }
+          return newState;
+        });
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          showSnackbar('Failed to fetch report data', 'error');
+        }
+      }
+    };
+    if (reportObject?.name) {
+        fetchData();
+    }
+  }, [showAdjustment, reportObject?.name]);
+  // #endregion
+
+  const handleChange = (id, field, val) => {
+    // Allow only valid numbers (including negative) with up to 2 decimal places
+    if (!/^-?\d*\.?\d{0,2}$/.test(val)) return;
+    setValues((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: val },
+    }));
+  };
+
+  // #region CORRECTED CALCULATION LOGIC
+  const computedRowData = useMemo(() => {
+    const result = {};
+
+    // First pass: Compute all individual, non-aggregate rows
+    rowDefinitions.forEach((row) => {
+      if (row.type === 'entry' && !sectionMap[row.id]) {
+        const b = values[row.id];
+        const sum = ['standard', 'subStandard', 'doubtful', 'loss'].reduce((a, f) => a + (parseFloat(b[f]) || 0), 0);
+        const adj = showAdjustment ? parseFloat(b.adjustment) || 0 : 0;
+  
+        const calculatedTotal = sum + adj;
+
+        let displayTotal = calculatedTotal;
+        let isMismatch = false;
+
+        // For A-1 facility rows, the displayed total comes from the validation data ('ysa')
+        // And the mismatch compares the calculatedTotal against this ysa value
+        if (row.id.startsWith('fac') && b.ysa) {
+          const ysa = parseFloat(b.ysa);
+     
+          if (!isNaN(ysa)) {
+            displayTotal = ysa;
+            isMismatch = Number(ysa.toFixed(2)) !== Number(calculatedTotal.toFixed(2));
+          }
+        }
+        result[row.id] = { ...b, total: displayTotal.toFixed(2), isMismatch };
+      }
+    });
+
+    // Second pass: Compute all aggregate rows (Total rows)
+    Object.keys(sectionMap).forEach((totalId) => {
+      const childIds = sectionMap[totalId];
+      
+      const agg = childIds.reduce(
+        (acc, childId) => {
+          const r = result[childId]; 
+          if (r) {
+            acc.standard += parseFloat(r.standard) || 0;
+            acc.subStandard += parseFloat(r.subStandard) || 0;
+            acc.doubtful += parseFloat(r.doubtful) || 0;
+            acc.loss += parseFloat(r.loss) || 0;
+            if (showAdjustment) acc.adjustment += parseFloat(r.adjustment) || 0;
+          }
+          return acc;
+        },
+        { standard: 0, subStandard: 0, doubtful: 0, loss: 0, adjustment: 0 }
+      );
+      
+      const sumOfAggregatedColumns = 
+          agg.standard +
+          agg.subStandard +
+          agg.doubtful +
+          agg.loss +
+          (showAdjustment ? agg.adjustment : 0);
+
+      let finalTotal = sumOfAggregatedColumns;
+      if (totalId === 'facTotal') {
+        finalTotal = childIds.reduce((sum, childId) => sum + (parseFloat(result[childId]?.total) || 0), 0);
+      }
+
+      result[totalId] = {
+        standard: agg.standard.toFixed(2),
+        subStandard: agg.subStandard.toFixed(2),
+        doubtful: agg.doubtful.toFixed(2),
+        loss: agg.loss.toFixed(2),
+        adjustment: showAdjustment ? agg.adjustment.toFixed(2) : '',
+        total: finalTotal.toFixed(2),
+        ysa: values[totalId].ysa,
+        isMismatch: false,
+      };
+    });
+
+    return result;
+  }, [values, showAdjustment]);
+  // #endregion
+
+  // totalMismatchFlags and validations (no changes)
+  const totalMismatchFlags = useMemo(() => {
+    if (!computedRowData.facTotal || !computedRowData.secTotal || !computedRowData.advA3) {
+      return {};
+    }
+    const a = computedRowData.facTotal;
+    const b = computedRowData.secTotal;
+    const c = computedRowData.advA3;
+    const mismatches = {};
+    const fieldsToCompare = ['standard', 'subStandard', 'doubtful', 'loss', 'total'];
+    if (showAdjustment) fieldsToCompare.push('adjustment');
+    fieldsToCompare.forEach((key) => {
+      const aVal = parseFloat(a[key] || 0).toFixed(2);
+      const bVal = parseFloat(b[key] || 0).toFixed(2);
+      const cVal = parseFloat(c[key] || 0).toFixed(2);
+      if (aVal !== bVal || bVal !== cVal) {
+        mismatches[key] = true;
+      }
+    });
+    return mismatches;
+  }, [computedRowData, showAdjustment]);
+
+  const validateForSubmit = useMemo(() => {
+    const errs = [];
+    if (!computedRowData.facTotal) return ['Calculating...'];
+
+    ['fac1', 'fac2', 'fac3'].forEach((id) => {
+      if (computedRowData[id]?.isMismatch) {
+        errs.push(`Total not matching for ${rowDefinitions.find((r) => r.id === id).label}`);
+      }
+    });
+
+    const aTot = computedRowData.facTotal;
+    const bTot = computedRowData.secTotal;
+    const cTot = computedRowData.advA3;
+  
+    const checkEquality = (key, label) => {
+      if (
+        parseFloat(aTot[key] || 0).toFixed(2) !== parseFloat(bTot[key] || 0).toFixed(2) ||
+        parseFloat(bTot[key] || 0).toFixed(2) !== parseFloat(cTot[key] || 0).toFixed(2)
+      ) {
+        errs.push(`Total values of A-1, A-2 and A-3 Differ for ${label}`);
+      }
+    };
+
+    checkEquality('standard', 'Standard');
+    checkEquality('subStandard', 'Sub-Standard');
+    checkEquality('doubtful', 'Doubtful');
+    checkEquality('loss', 'Loss');
+    if (showAdjustment) {
+      checkEquality('adjustment', 'Adjustment');
+    }
+    checkEquality('total', 'Grand Total');
+
+    return errs;
+  }, [computedRowData, showAdjustment]);
+
+  // Save and Submit handlers (no changes)
+  const onSave = async () => {
+    try {
+      const payload = buildSavePayload(
+        values, user.userId, user.circleCode, user.quarterEndDate, user.capacity,
+        reportObject.name, true, reportObject.status, reportObject.reportMasterId,
+        reportObject.reportId, reportObject.areMocPending
+      );
+      const response = await callApi('/Maker/SubmitSC09Report', payload, 'POST');
+      if (response && typeof response === 'string') {
+        const [_flag, newReportId, newStatus] = response.split('~');
+        setReportObject((prev) => ({ ...prev, reportId: newReportId, status: newStatus }));
+      }
+      if (response) showSnackbar('Saved Successfully!', 'success');
+      else showSnackbar('Not Saved', 'error');
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Not Saved', 'error');
+    }
+  };
+
+  const onSubmit = async () => {
+    try {
+      if (validateForSubmit.length) return;
+      const payload = buildSavePayload(
+        values, user.userId, user.circleCode, user.quarterEndDate, user.capacity,
+        reportObject.name, false, reportObject.status, reportObject.reportMasterId,
+        reportObject.reportId, reportObject.areMocPending
+      );
+      const response = await callApi('/Maker/SubmitSC09Report', payload, 'POST');
+      if (response && typeof response === 'string') {
+        const [_flag, newReportId, newStatus] = response.split('~');
+        setReportObject((prev) => ({ ...prev, reportId: newReportId, status: newStatus }));
+      }
+      if (response) {
+        showSnackbar('Report submitted successfully!', 'success');
+        setTimeout(() => navigate('../'), 1000);
+      } else showSnackbar('Failed to submit report!', 'error');
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Failed to submit report!', 'error');
+    }
+  };
+
+  return (
+    <Box>
+      <Stack direction={'row'} spacing={2} sx={{ mb: 2 }}>
+        <CustomButton label={'Save'} buttonType={'save'} onClickHandler={onSave} />
+        <CustomButton
+          label={'Submit'}
+          buttonType={'submit'}
+          onClickHandler={onSubmit}
+          disabled={!!validateForSubmit.length}
+        />
+      </Stack>
+
+      {validateForSubmit.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
+            {validateForSubmit.map((e, i) => (<li key={i}>{e}</li>))}
+          </ul>
+        </Alert>
+      )}
+
+      <TableContainer component={Paper} sx={{ width: '100%' }}>
+        <Table sx={{ tableLayout: 'fixed' }}>
+          <TableHead>
+            <TableRow>
+              <StyledTableCell sx={{ width: '30%' }}>
+                Classification of Advances (Excluding non-advances related items debited to Recalled Assets and interest
+                free Staff Advances)(A1 = A2 = A3)
+              </StyledTableCell>
+              {columns.map((col) =>
+                  (!col.conditional || showAdjustment) && (
+                    <StyledTableCell key={col.key} align="center">
+                      {col.label}
+                    </StyledTableCell>
+                  )
+              )}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rowDefinitions.map((row) => {
+              // Don't render if data isn't computed yet
+              const data = computedRowData[row.id];
+              if (!data && row.type === 'entry') return null;
+
+              if (row.type !== 'entry') {
+                return (
+                  <StyledTableRow key={row.id}>
+                    {/* ## FIX: WRAP LABEL IN <strong> TO ENSURE BOLD FONT-WEIGHT ## */}
+                    <StyledTableCell
+                      colSpan={columns.filter((c) => !c.conditional || showAdjustment).length + 1}
+                    >
+                      <strong>{row.label}</strong>
+                    </StyledTableCell>
+                  </StyledTableRow>
+                );
+              }
+
+              const isTotalRow = Boolean(sectionMap[row.id]);
+              return (
+                <StyledTableRow key={row.id}>
+                  <StyledTableCell>{row.label}</StyledTableCell>
+                  {columns.map((col) =>
+                      (!col.conditional || showAdjustment) && (
+                        <StyledTableCell key={col.key} align="right">
+                          <FormInput
+                            name={getFieldName(row.id, col.key)}
+                            value={data[col.key] ?? ''}
+                            onChange={(e) => handleChange(row.id, col.key, e.target.value)}
+                            readOnly={col.key === 'total' || !col.editable || isTotalRow}
+                            inputType="wholeAmountDecimal"
+                            sx={{
+                              ...(data.isMismatch && col.key === 'total' && { border: '1px solid red', borderRadius: 1 }),
+                              ...(['facTotal', 'secTotal', 'advA3'].includes(row.id) && totalMismatchFlags[col.key] && { border: '1px solid red', borderRadius: 1 })
+                            }}
+                          />
+                        </StyledTableCell>
+                      )
+                  )}
+                </StyledTableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+}
