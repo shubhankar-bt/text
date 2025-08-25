@@ -1,0 +1,3269 @@
+Hwew i have provided sc09 old jsp and controller and the new react jsx which i am migrating from old to new. I have almost completed recreating table with mui and react jsx but there are some calculation issues coming, go through
+with the new code and the old codes, understand the old logic very carefully and fix the calculation error in new code. 
+
+New REact JSX code : 
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Table, TableBody, TableContainer, TableHead, TableRow, Paper, Alert, Box, Stack } from '@mui/material';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import { styled } from '@mui/material/styles';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from '../../../../common/hooks/useCustomSnackbar';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import FormInput from '../../../../common/components/ui/FormInput';
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  fontSize: '1rem',
+  [`&.${tableCellClasses.head}`]: {
+    backgroundColor: 'hsl(220, 20%, 35%)',
+    color: theme.palette.common.white,
+    fontWeight: 'bold',
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(() => ({
+  '&:nth-of-type(odd)': {
+    // backgroundColor: theme.palette.action.hover,
+  },
+  // ...(error && {
+  //   [`& .${tableCellClasses.body}:last-child`]: {
+  //     border: '1px solid red',
+  //     borderRadius: '1px',
+  //   },
+  // }),
+}));
+
+// Row definitions (no changes)
+const rowDefinitions = [
+  {
+    id: 'headerA1',
+    label: 'A-1. Facility Wise Classification',
+    type: 'section',
+  },
+  {
+    id: 'fac1',
+    label: '[i] Bills Purchased and Discounted less bills rediscounted $',
+    type: 'entry',
+  },
+  {
+    id: 'fac2',
+    label: '[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$',
+    type: 'entry',
+  },
+  {
+    id: 'fac3',
+    label: '[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan',
+    type: 'entry',
+  },
+  { id: 'facTotal', label: 'Total A-1', type: 'entry' },
+  {
+    id: 'headerA2',
+    label: 'A.2 Security Wise Classifications',
+    type: 'section',
+  },
+  { id: 'sec1', label: '[i] Secured by Tangible Assets', type: 'entry' },
+  {
+    id: 'sec2',
+    label: '[ii] Covered by Bank/DICGC/ECGC/CGTSI/Govt Guarantee',
+    type: 'entry',
+  },
+  { id: 'sec3', label: '[iii] Unsecured', type: 'entry' },
+  { id: 'secTotal', label: 'Total A-2', type: 'entry' },
+  { id: 'headerA3', label: 'A.3 Sector-Wise Classifications', type: 'section' },
+  { id: 'headerIn', label: 'a) In India', type: 'subsection' },
+  { id: 'in1', label: '[i] Priority', type: 'entry' },
+  { id: 'in2', label: '[ii] Public', type: 'entry' },
+  { id: 'in3', label: '[iii] Banks in India*', type: 'entry' },
+  { id: 'in4', label: '[iv] Others', type: 'entry' },
+  { id: 'inTotal', label: 'TOTAL IN INDIA (i+ii+iii+iv)', type: 'entry' },
+  {
+    id: 'headerOut',
+    label: 'b) Outside India (Excluding Foreign LCs and BGs)',
+    type: 'subsection',
+  },
+  { id: 'out1', label: '[i] Due from Banks', type: 'entry' },
+  { id: 'out5', label: '[ii] Due from Others', type: 'subsection' },
+  { id: 'out2', label: '[1] Bills Purchased and Discounted', type: 'entry' },
+  { id: 'out3', label: '[2] Syndicated Loans', type: 'entry' },
+  { id: 'out4', label: '[3] Others', type: 'entry' },
+  {
+    id: 'outTotal',
+    label: 'TOTAL IN OUTSIDE INDIA (i+ii.1+ii.2+ii.3)',
+    type: 'entry',
+  },
+  { id: 'advA3', label: 'Total advances A3 (a+b)', type: 'entry' },
+];
+
+// Columns (no changes)
+const columns = [
+  { key: 'standard', label: 'Standard', editable: true },
+  { key: 'subStandard', label: 'Sub-standard', editable: true },
+  { key: 'doubtful', label: 'Doubtful', editable: true },
+  { key: 'loss', label: 'Loss', editable: true },
+  { key: 'adjustment', label: 'Adjustment', editable: true, conditional: true },
+  { key: 'total', label: 'Total', editable: false },
+];
+
+// sectionMap and getFieldName (no changes)
+const sectionMap = {
+  facTotal: ['fac1', 'fac2', 'fac3'],
+  secTotal: ['sec1', 'sec2', 'sec3'],
+  inTotal: ['in1', 'in2', 'in3', 'in4'],
+  outTotal: ['out1', 'out2', 'out3', 'out4'],
+  advA3: ['inTotal', 'outTotal'],
+};
+const getFieldName = (id, key) => {
+  let base = id.startsWith('fac') ? 'facility' : id.startsWith('sec') ? 'security' : 'sector';
+  const suffix =
+    {
+      standard: 'Standard',
+      subStandard: 'SubStandard',
+      doubtful: 'Doubtful',
+      loss: 'Loss',
+      adjustment: 'Adj',
+    }[key] || 'Total';
+
+  let idx;
+
+  if (id === 'inTotal') idx = 'a_Total';
+  else if (id === 'outTotal') idx = 'b_Total';
+  else if (id === 'advA3') idx = 'ab_Total';
+  else if (id.startsWith('in')) idx = `a${id.replace('in', '')}`;
+  else if (id.startsWith('out')) {
+    const num = id.replace('out', '');
+    idx = num === '1' ? `b${num}` : num;
+  } else if (id.endsWith('Total')) idx = 'Total';
+  else idx = id.replace(/\D/g, '');
+
+  const fieldName = `${base}_${suffix}_${idx}`;
+  // For 'Total' column, some names are different in the old code
+  if (key === 'total') {
+    if (id === 'facTotal') return 'facility_Total_TotalDisplay';
+    if (id === 'secTotal') return 'security_Total_Total';
+    if (id === 'advA3') return 'sector_ab_Total_ab_Total';
+    if (id.startsWith('fac') && id !== 'facTotal') return `facility_Total_Display${id.replace(/\D/g, '')}`;
+  }
+
+  return fieldName;
+};
+
+// buildSavePayload (no changes)
+const buildSavePayload = (
+  values,
+  userId,
+  circleCode,
+  quarterEndDate,
+  role,
+  reportName,
+  save,
+  status,
+  reportMasterId,
+  reportId,
+  areMocPending
+) => {
+  const payload = {
+    userId,
+    circleCode,
+    quarterEndDate,
+    role,
+    reportName,
+    save,
+    status,
+    reportMasterId,
+    reportId,
+    areMocPending,
+  };
+  Object.entries(values).forEach(([id, fields]) => {
+    Object.entries(fields).forEach(([key, val]) => {
+      if (['standard', 'subStandard', 'doubtful', 'loss', 'adjustment'].includes(key)) {
+        if (!(id.includes('header') || id === 'out5')) payload[getFieldName(id, key)] = val || '0';
+      }
+    });
+  });
+  return payload;
+};
+
+export default function Schedule9Table({ showAdjustment = false }) {
+  const { state } = useLocation();
+  const showSnackbar = useCustomSnackbar();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const [reportObject, setReportObject] = useState(state?.report || null);
+  const navigate = useNavigate();
+  const { callApi } = useApi();
+
+  const [values, setValues] = useState(
+    rowDefinitions.reduce((acc, { id }) => {
+      acc[id] = {
+        standard: '',
+        subStandard: '',
+        doubtful: '',
+        loss: '',
+        adjustment: '',
+        ysa: '', // 'YSA' will hold the server-provided validation total
+      };
+      return acc;
+    }, {})
+  );
+
+  // Data Fetching Logic (no changes)
+  useEffect(() => {
+    const fetchReport = async () => {
+      try {
+        const requestPayload = {
+          circleCode: user.circleCode,
+          quarterEndDate: user.quarterEndDate,
+          role: user.capacity,
+          reportName: reportObject.name,
+        };
+        const data = await callApi('/Maker/getSC09ReportData', requestPayload, 'POST');
+        setValues((prev) => {
+          const nv = { ...prev };
+          // const backendFieldMap = {
+          //   standard: 'Standard',
+          //   subStandard: 'SubStandard',
+          //   doubtful: 'Doubtful',
+          //   loss: 'Loss',
+          //   adjustment: 'Adj',
+          // };
+          rowDefinitions.forEach(({ id, type }) => {
+            if (type !== 'entry') return;
+            const fields = ['standard', 'subStandard', 'doubtful', 'loss'];
+            if (showAdjustment) fields.push('adjustment');
+            fields.forEach((field) => {
+              const key = getFieldName(id, field);
+              nv[id][field] = data[key] || '';
+            });
+          });
+          return nv;
+        });
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          showSnackbar('Failed to fetch data', 'error');
+        }
+      }
+    };
+    const fetchValidation = async () => {
+      try {
+        const requestPayload2 = {
+          circleCode: user.circleCode,
+          quarterEndDate: user.quarterEndDate,
+          role: user.capacity,
+        };
+        const data = await callApi('/Maker/getSC09ValiadationData', requestPayload2, 'POST');
+        setValues((prev) => {
+          const nv = { ...prev };
+          if (user.capacity === '51' || user.capacity === '52') {
+            const normalize = (s) => s.replace(/\s|[^a-zA-Z0-9]/g, '').toLowerCase();
+            ['fac1', 'fac2', 'fac3'].forEach((id) => {
+              const label = rowDefinitions.find((r) => r.id === id).label;
+              const key = Object.keys(data).find((k) => normalize(k) === normalize(label));
+              nv[id].ysa = data[key] || '0';
+            });
+            nv.facTotal.ysa = ['fac1', 'fac2', 'fac3']
+              .reduce((sum, id) => sum + (parseFloat(nv[id].ysa) || 0), 0)
+              .toFixed(2);
+          } else if (user.capacity === '61' || user.capacity === '62') {
+            //Newly added for FRT
+            const getValues = (code) => {
+              const val = data[code] || '0~0';
+              return val.split('~');
+            };
+            const codeMap = {
+              fac1: '090101001051',
+              fac2: '090101001052',
+              fac3: '090101001053',
+            };
+            Object.keys(codeMap).forEach((id) => {
+              const [adj, total] = getValues(codeMap[id]);
+              nv[id].adjustment = adj;
+              nv[id].ysa = total;
+            });
+            nv.facTotal.ysa = ['fac1', 'fac2', 'fac3']
+              .reduce((sum, id) => sum + (parseFloat(nv[id].ysa) || 0), 0)
+              .toFixed(2);
+          }
+          return nv;
+        });
+      } catch (error) {
+        if (error.code !== 'ERR_CANCELED') {
+          showSnackbar('Failed to load validation data', 'error');
+        }
+      }
+    };
+    fetchReport();
+    fetchValidation();
+  }, [showAdjustment]); // Added showAdjustment dependency
+
+  const handleChange = (id, field, val) => {
+    if (!/^-?\d*\.?\d{0,2}$/.test(val)) return;
+    setValues((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: val },
+    }));
+  };
+
+  // #region NEW CALCULATION LOGIC
+  const computedRowData = useMemo(() => {
+    const result = {};
+
+    // First pass: Compute all individual, non-aggregate rows
+    rowDefinitions.forEach((row) => {
+      if (row.type === 'entry' && !sectionMap[row.id]) {
+        const b = values[row.id];
+        const sum = ['standard', 'subStandard', 'doubtful', 'loss'].reduce((a, f) => a + (parseFloat(b[f]) || 0), 0);
+        const adj = showAdjustment ? parseFloat(b.adjustment) || 0 : 0;
+        const calculatedTotal = sum + adj;
+
+        let displayTotal = calculatedTotal;
+        let isMismatch = false;
+
+        // For A-1 facility rows, the displayed total comes from the validation data ('ysa')
+        // And the mismatch compares the calculatedTotal against this ysa value
+        if (row.id.startsWith('fac')) {
+          const ysa = parseFloat(b.ysa);
+          if (!isNaN(ysa)) {
+            displayTotal = ysa;
+            isMismatch = Number(ysa.toFixed(2)) !== Number(calculatedTotal.toFixed(2));
+          }
+        }
+        result[row.id] = { ...b, total: displayTotal.toFixed(2), isMismatch };
+      }
+    });
+
+    // Second pass: Compute all aggregate rows (Total rows)
+    Object.keys(sectionMap).forEach((totalId) => {
+      const childIds = sectionMap[totalId];
+      const agg = childIds.reduce(
+        (acc, childId) => {
+          const r = result[childId];
+          if (r) {
+            acc.standard += parseFloat(r.standard) || 0;
+            acc.subStandard += parseFloat(r.subStandard) || 0;
+            acc.doubtful += parseFloat(r.doubtful) || 0;
+            acc.loss += parseFloat(r.loss) || 0;
+            if (showAdjustment) acc.adjustment += parseFloat(r.adjustment) || 0;
+            acc.total += parseFloat(r.total) || 0;
+          }
+          return acc;
+        },
+        { standard: 0, subStandard: 0, doubtful: 0, loss: 0, adjustment: 0, total: 0 }
+      );
+      result[totalId] = {
+        standard: agg.standard.toFixed(2),
+        subStandard: agg.subStandard.toFixed(2),
+        doubtful: agg.doubtful.toFixed(2),
+        loss: agg.loss.toFixed(2),
+        adjustment: showAdjustment ? agg.adjustment.toFixed(2) : '',
+        total: agg.total.toFixed(2),
+        ysa: values[totalId].ysa,
+        isMismatch: false,
+      };
+    });
+
+    return result;
+  }, [values, showAdjustment]);
+  // #endregion
+
+  const totalMismatchFlags = useMemo(() => {
+    // Return empty flags if data isn't ready
+    if (!computedRowData.facTotal || !computedRowData.secTotal || !computedRowData.advA3) {
+      return {};
+    }
+
+    const a = computedRowData.facTotal;
+    const b = computedRowData.secTotal;
+    const c = computedRowData.advA3;
+
+    const mismatches = {};
+    const fieldsToCompare = ['standard', 'subStandard', 'doubtful', 'loss', 'total'];
+    if (showAdjustment) fieldsToCompare.push('adjustment');
+
+    fieldsToCompare.forEach((key) => {
+      const aVal = parseFloat(a[key] || 0).toFixed(2);
+      const bVal = parseFloat(b[key] || 0).toFixed(2);
+      const cVal = parseFloat(c[key] || 0).toFixed(2);
+      if (aVal !== bVal || bVal !== cVal) {
+        mismatches[key] = true;
+      }
+    });
+
+    return mismatches;
+  }, [computedRowData, showAdjustment]);
+
+  const validateForSubmit = useMemo(() => {
+    const errs = [];
+    if (!computedRowData.facTotal) return ['Calculating...'];
+
+    // Row-level mismatches in section A-1
+    ['fac1', 'fac2', 'fac3'].forEach((id) => {
+      if (computedRowData[id]?.isMismatch) {
+        errs.push(`Total not matching for ${rowDefinitions.find((r) => r.id === id).label}`);
+      }
+    });
+
+    // Section-level total mismatches
+    const aTot = computedRowData.facTotal;
+    const bTot = computedRowData.secTotal;
+    const cTot = computedRowData.advA3;
+
+    const checkEquality = (key, label) => {
+      if (
+        parseFloat(aTot[key] || 0).toFixed(2) !== parseFloat(bTot[key] || 0).toFixed(2) ||
+        parseFloat(bTot[key] || 0).toFixed(2) !== parseFloat(cTot[key] || 0).toFixed(2)
+      ) {
+        errs.push(`Total values of A-1, A-2 and A-3 Differ for ${label}`);
+      }
+    };
+
+    checkEquality('standard', 'Standard');
+    checkEquality('subStandard', 'Sub-Standard');
+    checkEquality('doubtful', 'Doubtful');
+    checkEquality('loss', 'Loss');
+    if (showAdjustment) {
+      checkEquality('adjustment', 'Adjustment');
+    }
+
+    return errs;
+  }, [computedRowData, showAdjustment]);
+
+  // Save and Submit handlers (no changes)
+  const onSave = async () => {
+    try {
+      const payload = buildSavePayload(
+        values,
+        user.userId,
+        user.circleCode,
+        user.quarterEndDate,
+        user.capacity,
+        reportObject.name,
+        true,
+        reportObject.status,
+        reportObject.reportMasterId,
+        reportObject.reportId,
+        reportObject.areMocPending
+      );
+      const response = await callApi('/Maker/SubmitSC09Report', payload, 'POST');
+      if (response && typeof response === 'string') {
+        const [_flag, newReportId, newStatus] = response.split('~');
+        setReportObject((prev) => ({ ...prev, reportId: newReportId, status: newStatus }));
+      }
+      if (response) showSnackbar('Saved Successfully!', 'success');
+      else showSnackbar('Not Saved', 'error');
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Not Saved', 'error');
+    }
+  };
+
+  const onSubmit = async () => {
+    try {
+      if (validateForSubmit.length) return;
+      const payload = buildSavePayload(
+        values,
+        user.userId,
+        user.circleCode,
+        user.quarterEndDate,
+        user.capacity,
+        reportObject.name,
+        false,
+        reportObject.status,
+        reportObject.reportMasterId,
+        reportObject.reportId,
+        reportObject.areMocPending
+      );
+      const response = await callApi('/Maker/SubmitSC09Report', payload, 'POST');
+      if (response && typeof response === 'string') {
+        const [_flag, newReportId, newStatus] = response.split('~');
+        setReportObject((prev) => ({ ...prev, reportId: newReportId, status: newStatus }));
+      }
+      if (response) {
+        showSnackbar('Report submitted successfully!', 'success');
+        setTimeout(() => {
+          navigate('../');
+        }, 1000);
+      } else showSnackbar('Failed to submit report!', 'error');
+    } catch (err) {
+      console.error(err);
+      showSnackbar('Failed to submit report!', 'error');
+    }
+  };
+
+  return (
+    <Box>
+      <Stack direction={'row'} spacing={2} sx={{ mb: 2 }}>
+        <CustomButton label={'Save'} buttonType={'save'} onClickHandler={onSave} />
+        <CustomButton
+          label={'Submit'}
+          buttonType={'submit'}
+          onClickHandler={onSubmit}
+          disabled={!!validateForSubmit.length}
+        />
+      </Stack>
+
+      {validateForSubmit.length > 0 && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
+            {validateForSubmit.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+
+      <TableContainer component={Paper} sx={{ width: '100%' }}>
+        <Table sx={{ tableLayout: 'fixed' }}>
+          <TableHead>
+            <TableRow>
+              <StyledTableCell sx={{ width: '30%' }}>
+                Classification of Advances (Excluding non-advances related items debited to Recalled Assets and interest
+                free Staff Advances)(A1 = A2 = A3)
+              </StyledTableCell>
+              {columns.map(
+                (col) =>
+                  (!col.conditional || showAdjustment) && (
+                    <StyledTableCell key={col.key} align="center">
+                      {col.label}
+                    </StyledTableCell>
+                  )
+              )}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rowDefinitions.map((row) => {
+              const data = computedRowData[row.id];
+              if (!data) return null; // Don't render if data isn't computed yet
+
+              if (row.type !== 'entry') {
+                return (
+                  <StyledTableRow key={row.id}>
+                    <StyledTableCell
+                      colSpan={columns.filter((c) => !c.conditional || showAdjustment).length + 2}
+                      sx={{ fontWeight: 'bold' }}
+                    >
+                      {row.label}
+                    </StyledTableCell>
+                  </StyledTableRow>
+                );
+              }
+
+              return (
+                <StyledTableRow key={row.id} error={data.isMismatch}>
+                  <StyledTableCell>{row.label}</StyledTableCell>
+                  {columns.map(
+                    (col) =>
+                      (!col.conditional || showAdjustment) && (
+                        <StyledTableCell key={col.key} align="right">
+                          <FormInput
+                            key={`${row.id}-${col.key}`}
+                            name={getFieldName(row.id, col.key)}
+                            value={data[col.key] ?? '0.00'}
+                            onChange={(e) => handleChange(row.id, col.key, e.target.value)}
+                            onBlur={() => {
+                              console.log('TEststttt :: ', data.isMismatch);
+                            }}
+                            //readOnly={col.key === 'total' || !col.editable || Boolean(sectionMap[row.id])}
+                            inputType="wholeAmountDecimal"
+                            sx={
+                              (data.isMismatch ? { border: '1px solid red', borderRadius: 1 } : undefined,
+                              ['facTotal', 'secTotal', 'advA3'].includes(row.id) && totalMismatchFlags[col.key]
+                                ? { border: '1px solid red', borderRadius: 1 }
+                                : undefined)
+                            }
+                            // sx={
+                            //   (data.isMismatch ? { border: '1px solid red', borderRadius: 1 } : undefined,
+                            //   ['facTotal', 'secTotal', 'advA3'].includes(row.id) &&
+                            //   col.key !== 'total' &&
+                            //   totalMismatchFlags[col.key]
+                            //     ? { border: '1px solid red', borderRadius: 1 }
+                            //     : undefined)
+                            // }
+                          />
+                        </StyledTableCell>
+                      )
+                  )}
+                </StyledTableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Old Code Controller : 
+
+app
+    .controller(
+        'pnl-sup-Controller',
+        function ($scope, $rootScope, $http, $window, $timeout, $sessionStorage,
+                  $state, $location, PNLReportFactory, Idle, Keepalive,
+                  $modal, ModalService, userFactory) {
+            console.log("inside pnl-sup-Controller");
+
+            $scope.sessionUser = $rootScope.globals.currentUser;
+            console.log("**************** "
+                + JSON.stringify($scope.sessionUser));
+            var plsup = this;
+            $scope.started = false;
+
+            var presentYear = ($scope.sessionUser.financialYear)
+                .substring(2, 4);
+            plsup.presentYear = parseInt(presentYear);
+            console.log("presentYear presentYear " + presentYear);
+
+            plsup.quarterEndDate = $scope.sessionUser.quarterEndDate;
+            plsup.previousDate = $scope.sessionUser.previousYearEndDate;
+
+            var year = parseInt(($scope.sessionUser.financialYear)
+                .substring(0, 4));
+            plsup.prestyear = year;
+            var quarter = $scope.sessionUser.quarter;
+            // alert(quarter);
+
+            var month = "";
+            var nyear = year;
+            switch (quarter) {
+                case "Q1":
+                    $scope.quarter = "Q1";
+                    month = "Jun";
+                    break;
+                case "Q2":
+                    $scope.quarter = "Q2";
+                    month = "Sep";
+                    break;
+                case "Q3":
+                    $scope.quarter = "Q3";
+                    month = "Dec";
+                    break;
+                case "Q4":
+                    $scope.quarter = "Q4";
+                    month = "Mar";
+                    nyear = (year + 1);
+                    break;
+            }
+
+            var fYear = "Apr " + year + " to " + month + " " + nyear;
+            console.log("fyera -------------- " + fYear);
+            plsup.fYear = fYear;
+
+
+            plsup.PreCheckAmount = function () {
+
+                $('#myModal55').modal({
+                    backdrop: 'static',
+                    keyboard: false,
+                    modal: true
+                });
+
+            };
+
+            var for07050;
+            var row = {
+                'circleCode': $scope.sessionUser.circleCode,
+                'quarterEndDate': $scope.sessionUser.quarterEndDate
+            };
+
+            PNLReportFactory.getPreRequisteHeaderAmount(row).then(
+                function (data) {
+
+                    plsup.getPreRequiAmount = data;
+                    // console.log(data);
+                    var a;
+
+                    for (var keyName in data) {
+                        var key = keyName;
+                        var value = data[keyName];
+                        if (key == "07050") {
+                            a = value;
+                        }
+
+                    }
+
+                    for07050 = a;
+
+
+                }, function (errResponse) {
+                    console.error('Error while getting PNL validation data');
+                });
+
+
+            var userInfo1 = {
+                'circleCode': $scope.sessionUser.circleCode,
+                'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                'previousQuarterEndDate': $scope.sessionUser.previousYearEndDate
+            };
+            // console.log(userInfo1.quarterEndDate+userInfo1.previousQuarterEndDate);
+            PNLReportFactory.getMakerReportScreenDetails(userInfo1)
+                .then(function (data) {
+                    console.log(data);
+                    // alert('data'+data);
+                    plsup.row = data;
+                }, function (errResponse) {
+                    console.error('Error while login');
+                });
+
+            // alert($scope.quarter);
+
+            $scope
+                .$watchCollection(
+                    'plsup.row',
+                    function (newValue, oldValue) {
+                        if (plsup.row != undefined) {
+                            plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffUptoMar)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffUptoApr) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffAftrApr))
+                                .toFixed(2);
+                            plsup.row.pl_Suppl_pl_Suppl_monthTotal = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Apr14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_May14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jun14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jul14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Aug14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Sep14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Oct14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Nov14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Dec14)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jan15)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Feb15) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Mar15))
+                                .toFixed(2);
+
+                            plsup.row.pl_Suppl_pl_Suppl_totalIncludedInc = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_interestDiscountAdvBills)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_commissionExchBrokerage)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_profitLossFixedAssets) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_otherIncome))
+                                .toFixed(2);
+                            plsup.row.pl_Suppl_pl_Suppl_totalIncludedExp = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_interestOnDeposits)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_paymentProvisionForEmp)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_rentTaxesLighting)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_printingStationary)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_advertisementPublicity)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_depreciation)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_auditorsFeesAllowances)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_lawCharges)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_postagesTelegramsTelephones)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_repairsMaintenance)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_insurance) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_otherExpenditure))
+                                .toFixed(2);
+
+                            if ($scope.quarter == "Q4") {
+                                plsup.row.pl_Suppl_pl_Suppl_monthAverage = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_monthTotal / 12))
+                                    .toFixed(2);
+                            } else if ($scope.quarter == "Q3") {
+                                plsup.row.pl_Suppl_pl_Suppl_monthAverage = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_monthTotal / 9))
+                                    .toFixed(2);
+                            } else if ($scope.quarter == "Q2") {
+                                plsup.row.pl_Suppl_pl_Suppl_monthAverage = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_monthTotal / 6))
+                                    .toFixed(2);
+                            } else if ($scope.quarter == "Q1") {
+                                plsup.row.pl_Suppl_pl_Suppl_monthAverage = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_monthTotal / 3))
+                                    .toFixed(2);
+                            }
+
+                            // ////PY
+
+                            plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff_PY = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffUptoMar_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffUptoApr_PY) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_recovWriteOffAftrApr_PY))
+                                .toFixed(2);
+                            plsup.row.pl_Suppl_pl_Suppl_monthTotal_PY = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Apr14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_May14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jun14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jul14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Aug14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Sep14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Oct14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Nov14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Dec14_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Jan15_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Feb15_PY) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_Mar15_PY))
+                                .toFixed(2);
+
+                            plsup.row.pl_Suppl_pl_Suppl_totalIncludedInc_PY = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_interestDiscountAdvBills_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_commissionExchBrokerage_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_profitLossFixedAssets_PY) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_otherIncome_PY))
+                                .toFixed(2);
+                            plsup.row.pl_Suppl_pl_Suppl_totalIncludedExp_PY = (plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_interestOnDeposits_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_paymentProvisionForEmp_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_rentTaxesLighting_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_printingStationary_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_advertisementPublicity_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_depreciation_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_auditorsFeesAllowances_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_lawCharges_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_postagesTelegramsTelephones_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_repairsMaintenance_PY)
+                                + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_insurance_PY) + plsup
+                                    .parseFloat(plsup.row.pl_Suppl_pl_Suppl_otherExpenditure_PY))
+                                .toFixed(2);
+
+                        }
+
+                    });
+
+            plsup.submitPLSUPReport = function (row, saved) {
+
+                // alert("value of dirty " +$scope.pnlForm.$dirty);
+
+                var validateArray = [];
+                var valid = true;
+                plsup.row.save = saved;
+                console.log("is for saving ? " + plsup.row.save);
+                console.log(row);
+                var i = {};
+                i = row;
+                console.log(i);
+                var circleCode = $scope.sessionUser.circleCode;
+                var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                var quarter = $scope.sessionUser.quarter;
+                console.log("testing quarter for PNL submit " + quarter);
+                var row1 = {
+                    'circleCode': circleCode,
+                    'quarterEndDate': quarterEndDate,
+                    'userId': $scope.sessionUser.userId,
+                    'presentQuarter': quarter,
+                    'reportName': $rootScope.reportObject.name,
+                    'reportId': $rootScope.reportObject.reportId,
+                    'reportMasterId': $rootScope.reportObject.reportMasterId,
+                    'status': $rootScope.reportObject.status,
+                    'areMocPending': $rootScope.reportObject.areMocPending
+
+                };
+                var copy = angular.extend({}, i, row1);
+
+
+                if (plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff == null
+                    || plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff == "") {
+                    plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff = (0.00)
+                        .toFixed(2);
+
+                }
+//ignoring validations while saving data
+                if (saved == false) {
+
+
+                    if (!(plsup.parseFloat(plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff).toFixed(2) == plsup.parseFloat(for07050).toFixed(2))) {
+                        validateArray
+                            .push('- TOTAL RECOVERY IN WRITTEN OFF ACCOUNTS(Sum total should tally with the amount shown in Profit and Loss account) should Match with PNL Comp Code (07050)');
+                        valid = false;
+                    }
+
+
+                }
+
+
+                $scope.validateArray = validateArray;
+
+                if (validateArray.length == 0) {
+
+                    if ($scope.pnlForm.$dirty == true) {
+
+                        PNLReportFactory
+                            .submitPLSUPReport(copy)
+                            .then(
+                                function (data) {
+
+                                    console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
+                                    var result = [];
+                                    result = data.split('~');
+
+                                    if (result[0] == 0) {
+
+                                        $rootScope.reportObject.reportId = result[1];
+                                        $rootScope.reportObject.status = result[2];
+                                        console.log("# reportId " + $rootScope.reportObject.reportId);
+                                        console.log("# status " + $rootScope.reportObject.status);
+
+
+                                        if (plsup.row.save == false) {
+                                            plsup.displayMessage = "Report Submitted Successfully";
+                                            if ($rootScope.reportObject.areMocPending == true) {
+                                                plsup.displayMessage = "Report was not submitted because of pending MOC.";
+                                            }
+                                            if (plsup.displayMessage) {
+
+                                                $('#myModal1')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal1')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+                                        if (plsup.row.save == true) {
+                                            plsup.displayMessage = "Report saved Successfully";
+                                            if (plsup.displayMessage) {
+
+                                                $('#myModal9')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal9')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal9')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+
+                                    }
+
+                                },
+                                function (errResponse) {
+                                    console
+                                        .error('Error while Submitting PNL');
+                                });
+
+                    }
+
+                    if ($scope.pnlForm.$dirty == false) {
+
+                        // alert("not submit");
+                        if (plsup.row.save == true) {
+                            plsup.displayMessage111 = "Would you like to save report without changing any data ?";
+                        }
+                        if (plsup.row.save == false) {
+                            plsup.displayMessage111 = "Would you like to submit report without changing any data ?";
+                        }
+
+                        if (plsup.displayMessage111) {
+
+                            $('#myModal3').modal({
+                                backdrop: 'static',
+                                keyboard: false,
+                                modal: true
+                            });
+                            $('#myModal3').on('shown.bs.modal', function () {
+                                $('#myModal3').trigger('focus');
+                            });
+                        }
+
+                    }
+
+
+                    plsup.YesSubmit = function (row) {
+                        // alert("in function yes submit");
+
+                        console.log("is for saving data ? " + plsup.row.save);
+                        var i = {};
+                        i = row;
+                        console.log(i);
+                        var circleCode = $scope.sessionUser.circleCode;
+                        var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                        var quarter = $scope.sessionUser.quarter;
+                        console.log("testing quarter for yes PNL submit " + quarter);
+                        var row1 = {
+                            'circleCode': circleCode,
+                            'quarterEndDate': quarterEndDate,
+                            'userId': $scope.sessionUser.userId,
+                            'presentQuarter': quarter,
+                            'reportName': $rootScope.reportObject.name,
+                            'reportId': $rootScope.reportObject.reportId,
+                            'reportMasterId': $rootScope.reportObject.reportMasterId,
+                            'status': $rootScope.reportObject.status,
+                            'areMocPending': $rootScope.reportObject.areMocPending
+
+                        };
+                        var copy = angular.extend({}, i, row1);
+
+                        PNLReportFactory
+                            .submitPLSUPReport(copy)
+                            .then(
+                                function (data) {
+                                    console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
+                                    var result = [];
+                                    result = data.split('~');
+
+                                    if (result[0] == 0) {
+                                        $rootScope.reportObject.reportId = result[1];
+                                        $rootScope.reportObject.status = result[2];
+                                        console.log("# reportId " + $rootScope.reportObject.reportId);
+                                        console.log("# status " + $rootScope.reportObject.status);
+
+
+                                        if (plsup.row.save == false) {
+                                            plsup.displayMessage = "Report Submitted Successfully";
+                                            if ($rootScope.reportObject.areMocPending == true) {
+                                                plsup.displayMessage = "Report was not submitted because of pending MOC.";
+                                            }
+                                            if (plsup.displayMessage) {
+
+                                                $('#myModal1').modal({
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                                $('#myModal1')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+                                        if (plsup.row.save == true) {
+                                            plsup.displayMessage = "Report saved Successfully";
+                                            if (plsup.displayMessage) {
+
+                                                $('#myModal9').modal({
+                                                    backdrop: 'static',
+                                                    keyboard: false,
+                                                    modal: true
+                                                });
+                                                $('#myModal9')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal9')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+
+
+                                    }
+
+                                }, function (errResponse) {
+                                    console.error('Error while Submitting PNL');
+                                });
+
+                    }
+
+
+                } else {
+                    $('#myModal2').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        modal: true
+                    });
+                }
+
+            };
+
+
+            plsup.validate = function (row) {
+                document.getElementsByName('pl_Suppl_pl_Suppl_totalRecovWriteOff')[0].style.border = '';
+
+
+                var name = document
+                    .getElementsByClassName("validateColor");
+
+                console.log("name+++++++" + name);
+
+                $("#xyz a:last").tab('show');
+
+                var i = {};
+                i = plsup.row;
+                console.log(i);
+                var circleCode = $scope.sessionUser.circleCode;
+                var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                var row1 = {
+                    'circleCode': circleCode,
+                    'quarterEndDate': quarterEndDate
+                };
+                var copy = angular.extend({}, i, row1);
+
+                var validateArray = [];
+
+                var validateData = {};
+                validateData.ErrorName = "";
+                validateData.BeanName = "";
+
+
+                if (plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff == null
+                    || plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff == "") {
+                    plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff = (0.00)
+                        .toFixed(2);
+
+                }
+
+
+                if (!(parseFloat(plsup.row.pl_Suppl_pl_Suppl_totalRecovWriteOff) == plsup
+                    .parseFloat(for07050).toFixed(2))) {
+                    validateArray
+                        .push({
+                            'ErrorName': "- TOTAL RECOVERY IN WRITTEN OFF ACCOUNTS(Sum total should tally with the amount shown in Profit and Loss account) should Match with PNL Comp Code (07050)",
+                            'BeanName': "pl_Suppl_pl_Suppl_totalRecovWriteOff"
+                        });
+                }
+
+
+                $scope.validateArray = validateArray;
+
+                if (validateArray.length == 0) {
+                    alert("No Errors, You can submit report");
+                } else {
+
+                    $scope.myvalue = true;
+
+                }
+
+            };
+
+            plsup.GoToValidate = function (value) {
+
+                var abc = document.getElementsByName(value)[0];
+
+                $("#xyz a:first").tab('show');
+                abc.focus();
+                abc.style.border = "2px solid red";
+
+            };
+
+
+            plsup.parseFloat = function (value) {
+                if (isNaN(value)) {
+                    value = 0;
+                }
+                return parseFloat(value * 1);
+            };
+
+            plsup.redirect = function () {
+                $timeout(function () {
+                    $state.go('frt_maker.worklist');
+                }, 500);
+            }
+
+        });
+
+
+sc09.row.facility_Total_3)) {
+                        validateArray
+                            .push('Total value Not Matching for [iii] Term Loans , Agricultural Term Loans, FCNRB Term Loan');
+                    }
+                    app
+                        .controller(
+                            'sc09Controller',
+                            function ($scope, $rootScope, $http, $window, $sessionStorage,
+                                      $timeout, $state, $location, sc09Factory, Idle,
+                                      Keepalive, $modal, ModalService, userFactory, refreshFactory) {
+                                console.log("inside sc09Controller");
+
+                                if ($rootScope.reportObject == undefined) {
+                                    refreshFactory.backToState();
+                                    return;
+                                }
+
+                                console.log("Report Status is " + $rootScope.reportObject.status);
+
+                                $scope.sessionUser = $rootScope.globals.currentUser;
+                                var sc09 = this;
+                                $scope.started = false;
+                                sc09.row = {};
+                                var arr = [];
+                                sc09.adjColmn = false;
+                                /*if ($scope.sessionUser.capacity == '61') {
+                                    sc09.adjColmn = true;
+                                }*/
+                                //if ($scope.sessionUser.capacity == '51')
+                                if (($scope.sessionUser.capacity == '51') || ($scope.sessionUser.capacity == '61')) {
+                                    sc09.row.facility_Adj_1 = 0;
+                                    sc09.row.facility_Adj_2 = 0;
+                                    sc09.row.facility_Adj_3 = 0;
+                                    sc09.row.facility_Adj_Total = 0;
+                                    sc09.row.security_Adj_1 = 0;
+                                    sc09.row.security_Adj_2 = 0;
+                                    sc09.row.security_Adj_3 = 0;
+                                    sc09.row.security_Adj_Total = 0;
+                                    sc09.row.sector_Adj_a1 = 0;
+                                    sc09.row.sector_Adj_a2 = 0;
+                                    sc09.row.sector_Adj_a3 = 0;
+                                    sc09.row.sector_Adj_a4 = 0;
+                                    sc09.row.sector_Adj_a_Total = 0;
+                                    sc09.row.sector_Adj_b1 = 0;
+
+                                    sc09.row.sector_Adj_1 = 0;
+                                    sc09.row.sector_Adj_2 = 0;
+                                    sc09.row.sector_Adj_3 = 0;
+                                    sc09.row.sector_Adj_b_Total = 0;
+                                    sc09.row.sector_Adj_ab_Total = 0;
+                                }
+
+
+                                var userInfo = {
+                                    'circleCode': $scope.sessionUser.circleCode,
+                                    'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                                    'role': $scope.sessionUser.capacity
+                                };
+                                var row = {
+                                    'circleCode': $scope.sessionUser.circleCode,
+                                    'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                                    'role': $scope.sessionUser.capacity
+                                };
+                                sc09Factory.getSC09ReportData(userInfo).then(
+                                    function (data) {
+                                        console.log(data);
+                                        sc09.row = data;
+                                        sc09Factory
+                                            .getSC09ValiadationData(row)
+                                            .then(
+                                                function (data) {
+
+                                                    console.log(data);
+                                                    var a, b, c;
+
+                                                    if ($scope.sessionUser.capacity == '51' || $scope.sessionUser.capacity == '52') {
+                                                        console.log("get validation data for sc09 with User Role " + $scope.sessionUser.capacity);
+                                                        for (var keyName in data) {
+                                                            var key = keyName;
+                                                            var value = data[keyName];
+                                                            if (key == "[i] Bills Purchased and Discounted less bills rediscounted $") {
+                                                                sc09.row.facility_Total_Display1 = (sc09
+                                                                    .parseFloat(value))
+                                                                    .toFixed(2);
+                                                                a = value;
+                                                            }
+                                                            if (key == "[ii]Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$") {
+                                                                sc09.row.facility_Total_Display2 = (sc09
+                                                                    .parseFloat(value))
+                                                                    .toFixed(2);
+                                                                b = value;
+                                                            }
+                                                            if (key == "[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan") {
+                                                                // sc09.row.facility_Total_3=value;
+                                                                // sc09.row.facility_Total_Display3=value;
+                                                                sc09.row.facility_Total_Display3 = (sc09
+                                                                    .parseFloat(value))
+                                                                    .toFixed(2);
+                                                                c = value;
+
+                                                            }
+                                                        }
+                                                    } else if ($scope.sessionUser.capacity == '61' || $scope.sessionUser.capacity == '62') {
+                                                        console.log("get validation data for sc09 with User Role  " + $scope.sessionUser.capacity);
+                                                        for (var keyName in data) {
+                                                            var key = keyName;
+                                                            var value = data[keyName];
+
+
+                                                            if (key == "090101001051") {
+                                                                var v = value.split("~");
+                                                                console.log("Adjustmnt column data row 1 is " + v[0] + " Total column data row 1 is " + v[1]);
+                                                                sc09.row.facility_Adj_1 = v[0];
+                                                                console.log("entered 090101001051 * " + (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2));
+
+
+                                                                sc09.row.facility_Total_Display1 = (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2);
+
+                                                                a = v[1];
+                                                            }
+                                                            if (key == "090101001052") {
+                                                                var v = value.split("~");
+                                                                console.log("Adjustmnt column data row 2 is " + v[0] + " Total column data row 2 is " + v[1]);
+                                                                sc09.row.facility_Adj_2 = v[0];
+                                                                console.log("entered 090101001052 * " + (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2));
+
+                                                                sc09.row.facility_Total_Display2 = (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2);
+                                                                b = v[1];
+                                                            }
+                                                            if (key == "090101001053") {
+                                                                var v = value.split("~");
+                                                                console.log("Adjustmnt column data row 3 is " + v[0] + " Total column data row 3 is " + v[1]);
+                                                                sc09.row.facility_Adj_3 = v[0];
+                                                                console.log("entered 090101001053 * " + (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2));
+
+                                                                sc09.row.facility_Total_Display3 = (sc09
+                                                                    .parseFloat(v[1]))
+                                                                    .toFixed(2);
+                                                                c = v[1];
+
+                                                            }
+                                                        }
+                                                    }
+
+
+                                                    sc09.row.facility_Total_TotalDisplay = (sc09
+                                                            .parseFloat(a)
+                                                        + sc09.parseFloat(b) + sc09
+                                                            .parseFloat(c)).toFixed(2);
+                                                    var row1 = ({
+                                                        'FirstTotal': a,
+                                                        'SecondTotal': b,
+                                                        'ThirdTotal': c
+                                                    });
+                                                    sc09.row = angular.extend({}, sc09.row,
+                                                        row1);
+
+                                                    console.log("VV " + sc09.row.facility_Total_Display1 + " # " + sc09.row.facility_Total_Display2 + " # " + sc09.row.facility_Total_Display3);
+                                                    //  alert("  # "+sc09.row.facility_Total_Display1+" # "+sc09.row.facility_Total_Display2+" # "+sc09.row.facility_Total_Display3);
+                                                    console.log("get val data for sc09 total " + sc09.row.facility_Total_TotalDisplay + " Total 1 " + sc09.row.FirstTotal + " Total 2 " + sc09.row.SecondTotal + " Total 3 " + sc09.row.ThirdTotal);
+                                                }, function (errResponse) {
+                                                    console.error('Error while login');
+                                                });
+                                    }, function (errResponse) {
+                                        console.error('Error while login');
+                                    });
+
+                                // var circleCode = $scope.sessionUser.circleCode;
+                                /* var row = {
+                                     'circleCode': $scope.sessionUser.circleCode,
+                                     'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                                     'role': $scope.sessionUser.capacity
+                                 };
+                    
+                                 sc09Factory
+                                     .getSC09ValiadationData(row)
+                                     .then(
+                                         function (data) {
+                    
+                                             console.log(data);
+                                             // alert('data'+data);
+                                             var a, b, c;
+                    
+                                             if ($scope.sessionUser.capacity == '51' || $scope.sessionUser.capacity == '52') {
+                                                 console.log("get validation data for sc09 with User Role " + $scope.sessionUser.capacity);
+                                                 for (var keyName in data) {
+                                                     var key = keyName;
+                                                     var value = data[keyName];
+                                                     if (key == "[i] Bills Purchased and Discounted less bills rediscounted $") {
+                                                         // sc09.row.facility_Total_1=value;
+                                                         // sc09.row.facility_Total_Display1=value;
+                                                         sc09.row.facility_Total_Display1 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                                                         a = value;
+                                                     }
+                                                     if (key == "[ii]Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$") {
+                                                         // sc09.row.facility_Total_2=value;
+                                                         // sc09.row.facility_Total_Display2=value;
+                                                         sc09.row.facility_Total_Display2 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                                                         b = value;
+                                                     }
+                                                     if (key == "[iii]  Term Loans , Agricultural Term Loans, FCNRB Term Loan") {
+                                                         // sc09.row.facility_Total_3=value;
+                                                         // sc09.row.facility_Total_Display3=value;
+                                                         sc09.row.facility_Total_Display3 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                                                         c = value;
+                    
+                                                     }
+                                                 }
+                                             }
+                                             else if($scope.sessionUser.capacity == '61' || $scope.sessionUser.capacity == '62') {
+                                                 console.log("get validation data for sc09 with User Role  " + $scope.sessionUser.capacity);
+                                                 for (var keyName in data) {
+                                                     var key = keyName;
+                                                     var value = data[keyName];
+                                                     if (key == "090101001051") {
+                                                         console.log("entered 090101001051 * "+(sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2));
+                    
+                    
+                                                         sc09.row.facility_Total_Display1 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                    
+                                                         a = value;
+                                                     }
+                                                     if (key == "090101001052") {
+                                                         console.log("entered 090101001052 * "+(sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2));
+                    
+                                                         sc09.row.facility_Total_Display2 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                                                         b = value;
+                                                     }
+                                                     if (key == "090101001053") {
+                                                         console.log("entered 090101001053 * "+(sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2));
+                    
+                                                         sc09.row.facility_Total_Display3 = (sc09
+                                                             .parseFloat(value))
+                                                             .toFixed(2);
+                                                         c = value;
+                    
+                                                     }
+                                                 }
+                                             }
+                    
+                    
+                                             sc09.row.facility_Total_TotalDisplay = (sc09
+                                                     .parseFloat(a)
+                                                 + sc09.parseFloat(b) + sc09
+                                                     .parseFloat(c)).toFixed(2);
+                                             // alert("a "+ a+"b "+ b+"c "+ c);
+                                             var row1 = ({
+                                                 'FirstTotal': a,
+                                                 'SecondTotal': b,
+                                                 'ThirdTotal': c
+                                             });
+                                             sc09.row = angular.extend({}, sc09.row,
+                                                 row1);
+                    
+                                             console.log("VV "+sc09.row.facility_Total_Display1+" # "+sc09.row.facility_Total_Display2+" # "+sc09.row.facility_Total_Display3);
+                                           //  alert("  # "+sc09.row.facility_Total_Display1+" # "+sc09.row.facility_Total_Display2+" # "+sc09.row.facility_Total_Display3);
+                                             console.log("get val data for sc09 total " + sc09.row.facility_Total_TotalDisplay + " Total 1 " + sc09.row.FirstTotal + " Total 2 " + sc09.row.SecondTotal + " Total 3 " + sc09.row.ThirdTotal);
+                                         }, function (errResponse) {
+                                             console.error('Error while login');
+                                         });*/
+
+                                //////////Start for providing View button to display submitted data at FRT level
+                                /* sc09.isData =false;
+                                sc09.viewSubmitData=function(v){
+                    
+                                    console.log("################### "+sc09.checkView);
+                                    if (sc09.checkView==false){
+                                        console.log("WE unchecked View****************************************");
+                                      //  $state.go('frt_maker.SC09');
+                                        $state.reload($state.current.name);
+                                    }
+                                    else{
+                                        var userInfo = {
+                                            'circleCode': $scope.sessionUser.circleCode,
+                                            'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                                            'role': $scope.sessionUser.capacity,
+                                            'viewFlag':v
+                                        };
+                                        var row = {
+                                            'circleCode': $scope.sessionUser.circleCode,
+                                            'quarterEndDate': $scope.sessionUser.quarterEndDate,
+                                            'role': $scope.sessionUser.capacity
+                                        };
+                                        sc09Factory.getSC09ReportData(userInfo).then(
+                                            function (data) {
+                                                console.log(data);
+                                                // alert('data'+data);
+                    
+                                                // console.log("************************ check ** submitted data length "+data);
+                                                ///  if (data.length>0){
+                                                sc09.row = data;
+                                                sc09.isData =true;
+                                                sc09Factory
+                                                    .getSC09ValiadationData(row)
+                                                    .then(
+                                                        function (data) {
+                                                            console.log(data);
+                                                            var a, b, c;
+                                                            for (var keyName in data) {
+                                                                var key = keyName;
+                                                                var value = data[keyName];
+                                                                if (key == "090101001051") {
+                                                                    sc09.row.facility_Total_Display1 = (sc09
+                                                                        .parseFloat(value))
+                                                                        .toFixed(2);
+                                                                    a = value;
+                                                                }
+                                                                if (key == "090101001052") {
+                                                                    sc09.row.facility_Total_Display2 = (sc09
+                                                                        .parseFloat(value))
+                                                                        .toFixed(2);
+                                                                    b = value;
+                                                                }
+                                                                if (key == "090101001053") {
+                                                                    sc09.row.facility_Total_Display3 = (sc09
+                                                                        .parseFloat(value))
+                                                                        .toFixed(2);
+                                                                    c = value;
+                                                                }
+                                                            }
+                                                            sc09.row.facility_Total_TotalDisplay = (sc09
+                                                                    .parseFloat(a)
+                                                                + sc09.parseFloat(b) + sc09
+                                                                    .parseFloat(c)).toFixed(2);
+                    
+                    
+                                                        }, function (errResponse) {
+                                                            console.error('Error while login');
+                                                        });
+                                                ///  }
+                    
+                                            }, function (errResponse) {
+                                                console.error('Error while login');
+                                            });
+                                    }
+                    
+                    
+                                }*/
+                                //////////END for providing View button to display submitted data at FRT level
+                                $scope
+                                    .$watchCollection(
+                                        'sc09.row',
+                                        function (newValue, oldValue) {
+
+                                            if (sc09.row != undefined) {
+                                                sc09.row.facility_Standard_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Standard_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Standard_3))
+                                                    .toFixed(2);
+                                                sc09.row.facility_SubStandard_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_2) + sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_3))
+                                                    .toFixed(2);
+                                                sc09.row.facility_Doubtful_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_3))
+                                                    .toFixed(2);
+                                                sc09.row.facility_Loss_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_Loss_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Loss_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Loss_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.facility_Adj_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_Adj_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Adj_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Adj_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.facility_Total_1 = (sc09
+                                                        .parseFloat(sc09.row.facility_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_1) + sc09
+                                                        .parseFloat(sc09.row.facility_Loss_1) + sc09.parseFloat(sc09.row.facility_Adj_1))
+                                                    .toFixed(2);
+                                                sc09.row.facility_Total_2 = (sc09
+                                                        .parseFloat(sc09.row.facility_Standard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Loss_2) + sc09.parseFloat(sc09.row.facility_Adj_2))
+                                                    .toFixed(2);
+                                                sc09.row.facility_Total_3 = (sc09
+                                                        .parseFloat(sc09.row.facility_Standard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_SubStandard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Doubtful_3) + sc09
+                                                        .parseFloat(sc09.row.facility_Loss_3) + sc09.parseFloat(sc09.row.facility_Adj_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.facility_Total_Total = (sc09
+                                                        .parseFloat(sc09.row.facility_Total_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.facility_Total_2) + sc09
+                                                        .parseFloat(sc09.row.facility_Total_3))
+                                                    .toFixed(2);
+
+                                                var abcd = document
+                                                    .getElementById("facility_Standard_Total");
+                                                abcd.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("security_Standard_Total");
+                                                def.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("sector_Standard_ab_Total");
+                                                def.style.border = "0px solid white";
+
+                                                var abc = document
+                                                    .getElementById("facility_SubStandard_Total");
+                                                abc.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("security_SubStandard_Total");
+                                                def.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("sector_SubStandard_ab_Total");
+                                                def.style.border = "0px solid white";
+
+                                                var abc = document
+                                                    .getElementById("facility_Doubtful_Total");
+                                                abc.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("security_Doubtful_Total");
+                                                def.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("sector_Doubtful_ab_Total");
+                                                def.style.border = "0px solid white";
+
+                                                var abc = document
+                                                    .getElementById("facility_Loss_Total");
+                                                abc.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("security_Loss_Total");
+                                                def.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("sector_Loss_ab_Total");
+                                                def.style.border = "0px solid white";
+
+
+                                                if (document.getElementById("facility_Adj_Total") != null) {
+                                                    var abc = document
+                                                        .getElementById("facility_Adj_Total");
+                                                    abc.style.border = "0px solid white";
+                                                }
+                                                if (document.getElementById("security_Adj_Total") != null) {
+                                                    var def = document
+                                                        .getElementById("security_Adj_Total");
+                                                    def.style.border = "0px solid white";
+                                                }
+                                                if (document.getElementById("sector_Adj_ab_Total") != null) {
+                                                    var ghi = document
+                                                        .getElementById("sector_Adj_ab_Total");
+                                                    ghi.style.border = "0px solid white";
+                                                }
+
+
+                                                var abc = document
+                                                    .getElementById("facility_Total_TotalDisplay");
+                                                abc.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("security_Total_Total");
+                                                def.style.border = "0px solid white";
+                                                var def = document
+                                                    .getElementById("sector_ab_Total_ab_Total");
+                                                def.style.border = "0px solid white";
+
+                                                var abc = document
+                                                    .getElementById("facility_Total_Display1");
+                                                abc.style.border = "0px solid white";
+                                                var abc = document
+                                                    .getElementById("facility_Total_Display2");
+                                                abc.style.border = "0px solid white";
+                                                var abc = document
+                                                    .getElementById("facility_Total_Display3");
+                                                abc.style.border = "0px solid white";
+                                                if (parseFloat(sc09.row.facility_Total_1) != parseFloat(sc09.row.facility_Total_Display1)) {
+                                                    // var abc=
+                                                    // document.getElementsByName(sc09.row.facility_Total_Display1);
+                                                    var abc = document
+                                                        .getElementById("facility_Total_Display1");
+                                                    abc.style.border = "1px solid red";
+
+                                                }
+
+                                                if (parseFloat(sc09.row.facility_Total_2) != parseFloat(sc09.row.facility_Total_Display2)) {
+                                                    // var abc=
+                                                    // document.getElementsByName(sc09.row.facility_Total_Display1);
+                                                    var abc = document
+                                                        .getElementById("facility_Total_Display2");
+                                                    abc.style.border = "1px solid red";
+
+                                                }
+
+                                                if (parseFloat(sc09.row.facility_Total_3) != parseFloat(sc09.row.facility_Total_Display3)) {
+                                                    // var abc=
+                                                    // document.getElementsByName(sc09.row.facility_Total_Display1);
+                                                    var abc = document
+                                                        .getElementById("facility_Total_Display3");
+                                                    abc.style.border = "1px solid red";
+
+                                                }
+
+                                                // ///security wise
+
+                                                sc09.row.security_Standard_Total = (sc09
+                                                        .parseFloat(sc09.row.security_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Standard_2) + sc09
+                                                        .parseFloat(sc09.row.security_Standard_3))
+                                                    .toFixed(2);
+                                                sc09.row.security_SubStandard_Total = (sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_2) + sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_3))
+                                                    .toFixed(2);
+                                                sc09.row.security_Doubtful_Total = (sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_3))
+                                                    .toFixed(2);
+                                                sc09.row.security_Loss_Total = (sc09
+                                                        .parseFloat(sc09.row.security_Loss_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Loss_2) + sc09
+                                                        .parseFloat(sc09.row.security_Loss_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.security_Adj_Total = (sc09
+                                                        .parseFloat(sc09.row.security_Adj_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Adj_2) + sc09
+                                                        .parseFloat(sc09.row.security_Adj_3))
+                                                    .toFixed(2);
+                                                sc09.row.security_Total_1 = (sc09
+                                                        .parseFloat(sc09.row.security_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_1) + sc09
+                                                        .parseFloat(sc09.row.security_Loss_1) + sc09.parseFloat(sc09.row.security_Adj_1))
+                                                    .toFixed(2);
+                                                sc09.row.security_Total_2 = (sc09
+                                                        .parseFloat(sc09.row.security_Standard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.security_Loss_2) + sc09.parseFloat(sc09.row.security_Adj_2))
+                                                    .toFixed(2);
+                                                sc09.row.security_Total_3 = (sc09
+                                                        .parseFloat(sc09.row.security_Standard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_SubStandard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Doubtful_3) + sc09
+                                                        .parseFloat(sc09.row.security_Loss_3) + sc09.parseFloat(sc09.row.security_Adj_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.security_Total_Total = (sc09
+                                                        .parseFloat(sc09.row.security_Total_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.security_Total_2) + sc09
+                                                        .parseFloat(sc09.row.security_Total_3))
+                                                    .toFixed(2);
+
+                                                // //////////sector wise
+
+                                                // a
+
+                                                sc09.row.sector_Standard_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a4))
+                                                    .toFixed(2);
+                                                sc09.row.sector_SubStandard_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a4))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Doubtful_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a4))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Loss_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a4))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_Adj_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Adj_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_a4))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_Total_a1 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a1) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a1) + sc09.parseFloat(sc09.row.sector_Adj_a1))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Total_a2 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a2) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a2) + sc09.parseFloat(sc09.row.sector_Adj_a2))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Total_a3 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a3) + sc09.parseFloat(sc09.row.sector_Adj_a3))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Total_a4 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_a4)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_a4)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_a4) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_a4) + sc09.parseFloat(sc09.row.sector_Adj_a4))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_a_Total_a_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Total_a1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Total_a2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Total_a3) + sc09
+                                                        .parseFloat(sc09.row.sector_Total_a4))
+                                                    .toFixed(2);
+
+                                                // /b
+
+                                                sc09.row.sector_Standard_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Standard_3))
+                                                    .toFixed(2);
+                                                sc09.row.sector_SubStandard_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_2) + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_3))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Doubtful_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_3))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Loss_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Loss_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_Adj_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Adj_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_Total_b1 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_b1) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_b1) + sc09.parseFloat(sc09.row.sector_Adj_b1))
+                                                    .toFixed(2);
+
+
+                                                sc09.row.sector_Total_1 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_1) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_1) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_1))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Total_2 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_2)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_2))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Total_3 = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_3)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_3) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_3) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_b_Total_b_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Total_b1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Total_1)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Total_2) + sc09
+                                                        .parseFloat(sc09.row.sector_Total_3))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_Standard_ab_Total = (sc09
+                                                    .parseFloat(sc09.row.sector_Standard_a_Total) + sc09
+                                                    .parseFloat(sc09.row.sector_Standard_b_Total))
+                                                    .toFixed(2);
+                                                sc09.row.sector_SubStandard_ab_Total = (sc09
+                                                    .parseFloat(sc09.row.sector_SubStandard_a_Total) + sc09
+                                                    .parseFloat(sc09.row.sector_SubStandard_b_Total))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Doubtful_ab_Total = (sc09
+                                                    .parseFloat(sc09.row.sector_Doubtful_a_Total) + sc09
+                                                    .parseFloat(sc09.row.sector_Doubtful_b_Total))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Loss_ab_Total = (sc09
+                                                    .parseFloat(sc09.row.sector_Loss_a_Total) + sc09
+                                                    .parseFloat(sc09.row.sector_Loss_b_Total))
+                                                    .toFixed(2);
+                                                sc09.row.sector_Adj_ab_Total = (sc09
+                                                    .parseFloat(sc09.row.sector_Adj_a_Total) + sc09
+                                                    .parseFloat(sc09.row.sector_Adj_b_Total))
+                                                    .toFixed(2);
+
+                                                sc09.row.sector_ab_Total_ab_Total = (sc09
+                                                        .parseFloat(sc09.row.sector_Standard_ab_Total)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_SubStandard_ab_Total)
+                                                    + sc09
+                                                        .parseFloat(sc09.row.sector_Doubtful_ab_Total) + sc09
+                                                        .parseFloat(sc09.row.sector_Loss_ab_Total) + sc09
+                                                        .parseFloat(sc09.row.sector_Adj_ab_Total))
+                                                    .toFixed(2);
+
+                                                function areEqual(arg1, arg2, arg3) {
+                                                    return (parseFloat(arg1) == parseFloat(arg2)
+                                                        && parseFloat(arg2) == parseFloat(arg3) && parseFloat(arg3) == parseFloat(arg1));
+                                                }
+
+                                                var ap1 = areEqual(
+                                                    sc09.row.facility_Standard_Total,
+                                                    sc09.row.security_Standard_Total,
+                                                    sc09.row.sector_Standard_ab_Total);
+                                                if (ap1 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_Standard_Total");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_Standard_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("sector_Standard_ab_Total");
+                                                    def.style.border = "1px solid red";
+                                                }
+                                                var ap2 = areEqual(
+                                                    sc09.row.facility_SubStandard_Total,
+                                                    sc09.row.security_SubStandard_Total,
+                                                    sc09.row.sector_SubStandard_ab_Total);
+
+                                                if (ap2 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_SubStandard_Total");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_SubStandard_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("sector_SubStandard_ab_Total");
+                                                    def.style.border = "1px solid red";
+                                                }
+
+                                                var ap3 = areEqual(
+                                                    sc09.row.facility_Doubtful_Total,
+                                                    sc09.row.security_Doubtful_Total,
+                                                    sc09.row.sector_Doubtful_ab_Total);
+
+                                                if (ap3 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_Doubtful_Total");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_Doubtful_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("sector_Doubtful_ab_Total");
+                                                    def.style.border = "1px solid red";
+                                                }
+
+                                                var ap4 = areEqual(
+                                                    sc09.row.facility_Loss_Total,
+                                                    sc09.row.security_Loss_Total,
+                                                    sc09.row.sector_Loss_ab_Total);
+
+                                                if (ap4 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_Loss_Total");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_Loss_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("sector_Loss_ab_Total");
+                                                    def.style.border = "1px solid red";
+                                                }
+                                                var ap5 = areEqual(
+                                                    sc09.row.facility_Total_TotalDisplay,
+                                                    sc09.row.security_Total_Total,
+                                                    sc09.row.sector_ab_Total_ab_Total);
+
+                                                if (ap5 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_Total_TotalDisplay");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_Total_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("sector_ab_Total_ab_Total");
+                                                    def.style.border = "1px solid red";
+                                                }
+
+                                                var ap6 = areEqual(
+                                                    sc09.row.facility_Adj_Total,
+                                                    sc09.row.security_Adj_Total,
+                                                    sc09.row.sector_Adj_ab_Total);
+
+                                                if (ap6 == false) {
+                                                    var abc = document
+                                                        .getElementById("facility_Adj_Total");
+                                                    abc.style.border = "1px solid red";
+                                                    var def = document
+                                                        .getElementById("security_Adj_Total");
+                                                    def.style.border = "1px solid red";
+                                                    var ghi = document
+                                                        .getElementById("sector_Adj_ab_Total");
+                                                    ghi.style.border = "1px solid red";
+                                                }
+
+
+                                                /*
+                                                                 * ///total// var abc=
+                                                                 * document.getElementById("facility_Standard_Total");
+                                                                 * abc.style.border="0px solid
+                                                                 * white"; var abc=
+                                                                 * document.getElementById("security_Standard_Total");
+                                                                 * abc.style.border="0px solid
+                                                                 * white";
+                                                                 * if(parseFloat(sc09.row.facility_Standard_Total)!=parseFloat(sc09.row.security_Standard_Total)) {
+                                                                 * //var abc=
+                                                                 * document.getElementsByName(sc09.row.facility_Total_Display1);
+                                                                 * var abc=
+                                                                 * document.getElementById("facility_Standard_Total");
+                                                                 * abc.style.border="0px solid
+                                                                 * white"; var def=
+                                                                 * document.getElementById("security_Standard_Total");
+                                                                 * def.style.border="0px solid
+                                                                 * white"; }
+                                                                 */
+
+                                            }
+                                        });
+
+
+                                sc09.SubmitSC09Report = function (row) {
+
+                                    var validateArray = [];
+
+                                    console.log("inside sc09 submit ...");
+                                    console.log("*****  For Saving data  ? " + sc09.row.save);
+                                    console.log("********** M O C pending ?" + $rootScope.reportObject.areMocPending);
+                                    //while saving ignoring validations
+                                    if (sc09.row.save == false) {
+
+
+                                        if (parseFloat(sc09.row.FirstTotal) != parseFloat(sc09.row.facility_Total_1)) {
+                                            validateArray
+                                                .push('Total value Not Matching for [i] Bills Purchased and Discounted less bills rediscounted $');
+                                        }
+                                        if (parseFloat(sc09.row.SecondTotal) != parseFloat(sc09.row.facility_Total_2)) {
+                                            validateArray
+                                                .push('Total value Not Matching for [ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$');
+                                        }
+                                        if (parseFloat(sc09.row.ThirdTotal) != parseFloat(
+                    function areEqual(arg1, arg2, arg3) {
+                        return (parseFloat(arg1) == parseFloat(arg2)
+                            && parseFloat(arg2) == parseFloat(arg3) && parseFloat(arg3) == parseFloat(arg1));
+                    }
+
+                    var ap1 = areEqual(sc09.row.facility_Standard_Total,
+                        sc09.row.security_Standard_Total,
+                        sc09.row.sector_Standard_ab_Total);
+                    if (ap1 == false) {
+                        validateArray
+                            .push('Total values of A-1, A-2 and A-3 Differ for Standatd');
+                    }
+
+                    var ap2 = areEqual(sc09.row.facility_SubStandard_Total,
+                        sc09.row.security_SubStandard_Total,
+                        sc09.row.sector_SubStandard_ab_Total);
+
+                    if (ap2 == false) {
+                        validateArray
+                            .push('Total values of A-1, A-2 and A-3 Differ for Sub-Standatd');
+                    }
+
+                    var ap3 = areEqual(sc09.row.facility_Doubtful_Total,
+                        sc09.row.security_Doubtful_Total,
+                        sc09.row.sector_Doubtful_ab_Total);
+
+                    if (ap3 == false) {
+                        validateArray
+                            .push('Total values of A-1, A-2 and A-3 Differ for Doubtful');
+                    }
+
+                    var ap4 = areEqual(sc09.row.facility_Loss_Total,
+                        sc09.row.security_Loss_Total,
+                        sc09.row.sector_Loss_ab_Total);
+
+                    if (ap4 == false) {
+                        validateArray
+                            .push('Total values of A-1, A-2 and A-3 Differ for Loss');
+                    }
+
+                    console.log("user role in SUBMIT sc09 is " + $scope.sessionUser.capacity);
+                    if ($scope.sessionUser.capacity == '61') {
+                        var ap6 = areEqual(sc09.row.facility_Adj_Total,
+                            sc09.row.security_Adj_Total,
+                            sc09.row.sector_Adj_ab_Total);
+                        if (ap6 == false) {
+                            validateArray.push('Total values of A-1, A-2 and A-3 Differ for Adjustment');
+                        }
+                    }
+
+                    console.log("******* SC 9 ******* number of validation errors " + validateArray.length);
+
+                }
+
+                $scope.validateArray = validateArray;
+
+                if (validateArray.length == 0) {
+                    console.log(row);
+                    var i = {};
+                    i = row;
+                    console.log(i);
+                    var circleCode = $scope.sessionUser.circleCode;
+                    var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                    if ($scope.sessionUser.capacity == "61") {
+                        var row1 = {
+                            'circleCode': circleCode,
+                            'quarterEndDate': quarterEndDate,
+                            'userId': $scope.sessionUser.userId,
+                            'role': $scope.sessionUser.capacity,
+                            'reportName': $rootScope.reportObject.name,
+                            'reportId': $rootScope.reportObject.reportId,
+                            'reportMasterId': $rootScope.reportObject.reportMasterId,
+                            'status': $rootScope.reportObject.status,
+                            'areMocPending': $rootScope.reportObject.areMocPending
+                        };
+                    } else {
+
+                        var row1 = {
+                            'circleCode': circleCode,
+                            'quarterEndDate': quarterEndDate,
+                            'userId': $scope.sessionUser.userId,
+                            'reportName': $rootScope.reportObject.name,
+                            'reportId': $rootScope.reportObject.reportId,
+                            'reportMasterId': $rootScope.reportObject.reportMasterId,
+                            'status': $rootScope.reportObject.status,
+                            'role': $scope.sessionUser.capacity,
+                            'areMocPending': $rootScope.reportObject.areMocPending
+                        };
+                    }
+                    var copy = angular.extend({}, i, row1);
+
+
+                    if ($scope.sc09Form.$dirty == true) {
+
+                        sc09Factory
+                            .SubmitSC09Report(copy)
+                            .then(
+                                function (data) {
+
+                                    console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
+                                    var result = [];
+                                    result = data.split('~');
+
+
+                                    if (result[0] == 0) {
+
+                                        $rootScope.reportObject.reportId = result[1];
+                                        $rootScope.reportObject.status = result[2];
+                                        console.log("# reportId " + $rootScope.reportObject.reportId);
+                                        console.log("# status " + $rootScope.reportObject.status);
+
+                                        if (sc09.row.save == false) {
+                                            sc09.displayMessage = "Report Submitted Successfully";
+                                            if (sc09.displayMessage) {
+
+                                                $('#myModal1')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal1')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+                                        if (sc09.row.save == true) {
+                                            sc09.displayMessage = "Report Saved Successfully";
+
+                                            if (sc09.displayMessage) {
+
+                                                $('#myModal9')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal9')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+
+                                        }
+
+
+                                    }
+
+                                },
+                                function (errResponse) {
+                                    console
+                                        .error('Error while submitting schedule 09');
+                                });
+
+                    }
+
+                    if ($scope.sc09Form.$dirty == false) {
+
+                        if (sc09.row.save == false) {
+                            sc09.displayMessage111 = "Would you like to submit report without changing data ?";
+                        }
+                        if (sc09.row.save == true) {
+                            sc09.displayMessage111 = "Would you like to save report without changing data ?";
+                        }
+                        if (sc09.displayMessage111) {
+
+                            $('#myModal3').modal({
+                                backdrop: 'static',
+                                keyboard: false,
+                                modal: true
+                            });
+                            $('#myModal3')
+                                .on(
+                                    'shown.bs.modal',
+                                    function () {
+                                        $('#myModal3').trigger(
+                                            'focus');
+                                    });
+                        }
+
+                    }
+
+                    sc09.YesSubmitSc09 = function (row) {
+
+                        var i = {};
+                        i = row;
+                        console.log(i);
+                        var circleCode = $scope.sessionUser.circleCode;
+                        var quarterEndDate = $scope.sessionUser.quarterEndDate;
+                        if ($scope.sessionUser.capacity == "61") {
+                            var row1 = {
+                                'circleCode': circleCode,
+                                'quarterEndDate': quarterEndDate,
+                                'role': $scope.sessionUser.capacity,
+                                'userId': $scope.sessionUser.userId,
+                                'reportName': $rootScope.reportObject.name,
+                                'reportId': $rootScope.reportObject.reportId,
+                                'reportMasterId': $rootScope.reportObject.reportMasterId,
+                                'status': $rootScope.reportObject.status,
+                                'areMocPending': $rootScope.reportObject.areMocPending
+
+                            };
+                        } else {
+                            var row1 = {
+                                'circleCode': circleCode,
+                                'role': $scope.sessionUser.capacity,
+                                'quarterEndDate': quarterEndDate,
+                                'userId': $scope.sessionUser.userId,
+                                'reportName': $rootScope.reportObject.name,
+                                'reportId': $rootScope.reportObject.reportId,
+                                'reportMasterId': $rootScope.reportObject.reportMasterId,
+                                'status': $rootScope.reportObject.status,
+                                'role': $scope.sessionUser.capacity,
+                                'areMocPending': $rootScope.reportObject.areMocPending
+
+                            };
+                        }
+                        var copy = angular.extend({}, i, row1);
+
+                        sc09Factory
+                            .SubmitSC09Report(copy)
+                            .then(
+                                function (data) {
+
+                                    console.log("************** submitStatus ~ Sequence (reportId) ~ reportStatus : " + data);
+                                    var result = [];
+                                    result = data.split('~');
+
+                                    if (result[0] == 0) {
+                                        $rootScope.reportObject.reportId = result[1];
+                                        $rootScope.reportObject.status = result[2];
+
+                                        console.log("reportId " + $rootScope.reportObject.reportId);
+                                        console.log("status " + $rootScope.reportObject.status);
+
+                                        if (sc09.row.save == false) {
+                                            sc09.displayMessage = "Report Submitted Successfully";
+                                            if (sc09.displayMessage) {
+
+                                                $('#myModal1')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal1')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+                                        }
+                                        if (sc09.row.save == true) {
+                                            sc09.displayMessage = "Report Saved Successfully";
+                                            if (sc09.displayMessage) {
+
+                                                $('#myModal9')
+                                                    .modal(
+                                                        {
+                                                            backdrop: 'static',
+                                                            keyboard: false,
+                                                            modal: true
+                                                        });
+                                                $('#myModal9')
+                                                    .on(
+                                                        'shown.bs.modal',
+                                                        function () {
+                                                            $(
+                                                                '#myModal1')
+                                                                .trigger(
+                                                                    'focus');
+                                                        });
+                                            }
+
+                                        }
+
+                                    }
+                                    /*if (data == 0) {
+                                        sc09.displayMessage = "Report Submitted Successfully";
+                                        if (sc09.displayMessage) {
+
+                                            $('#myModal1')
+                                                .modal(
+                                                    {
+                                                        backdrop: 'static',
+                                                        keyboard: false,
+                                                        modal: true
+                                                    });
+                                            $('#myModal1')
+                                                .on(
+                                                    'shown.bs.modal',
+                                                    function () {
+                                                        $(
+                                                            '#myModal1')
+                                                            .trigger(
+                                                                'focus');
+                                                    });
+                                        }
+                                    }*/
+
+                                },
+                                function (errResponse) {
+                                    console
+                                        .error('Error while login');
+                                });
+
+                    }
+
+                } else {
+                    $('#myModal2').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        modal: true
+                    });
+                    $('#myModal2').on('shown.bs.modal', function () {
+                        $('#myModal2').trigger('focus');
+                    });
+                }
+
+            };
+
+            sc09.parseFloat = function (value) {
+                if (isNaN(value)) {
+                    value = 0;
+                }
+                return parseFloat(value * 1);
+            };
+
+            sc09.redirect = function () {
+                $timeout(function () {
+
+                    if ($scope.sessionUser.capacity == "61") {
+                        $state.go('frt_maker.worklist');
+                    } else {
+                        $state.go('circle_maker.worklist');
+                    }
+                }, 500);
+            }
+
+        });
+
+
+
+
+
+
+
+
+Old code jsp : 
+
+
+<head>
+<style>
+     .validateColor{
+     		border:"1px solid red";
+     }
+     
+     .validateColor1{
+     		border:"0px solid white";
+     }
+</style>
+
+</head>
+<div class="wrapper">
+<div class="header header-filter" style="background-image: url('assets/img/bg2.jpeg');">
+		<div class="container">
+			<div class="row tim-row">
+				<div class="col-md-8 col-md-offset-2">
+					<div class="brand">
+						<h3 style="color: white;">Schedule 9</h3>
+					</div>
+				</div>
+			</div>
+
+		</div>
+		
+	</div>
+<div class="main main-raised ">
+		<div class="section">
+		<div class="container" ng-cloak class="ng-cloak">
+<div class="col-md-12">
+
+<script type="text/javascript">
+ $(".decimal-2-places").numeric({ decimalPlaces: 2 });
+ 
+</script>
+
+
+	<form name="sc09Form" ng-submit="sc09.SubmitSC09Report(sc09.row);">
+		<table id="example1" class="table" border="1">
+			<thead>
+			<tr>
+				<th style="text-align:center;">Classification of Advances (Excluding non-advances<br>related items
+					debited to Recalled Assets<br>and interest free Staff Advances)(A1 = A2 = A3)
+				</th>
+				<th style="text-align:center;">Standard</th>
+				<th style="text-align:center;">Sub-standard</th>
+				<th style="text-align:center;">Doubtful</th>
+				<th style="text-align:center;">Loss</th>
+				<th style="text-align:center;" ng-if="sc09.adjColmn==true">Adjustment</th>
+				<th style="text-align:center;">Total</th>
+			</tr>
+			</thead>
+			<tbody ng-readonly="true">
+			<tr>
+				<td colspan="7"><b>A-1. Facility Wise Classification</b></td>
+
+
+			<tr>
+				<td>[i] Bills Purchased and Discounted less bills rediscounted $</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_1" style="text-align:right;"
+						   name="facility_Standard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_1"
+						   style="text-align:right;" name="facility_SubStandard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_1" style="text-align:right;"
+						   name="facility_Doubtful_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_1" style="text-align:right;"
+						   name="facility_Loss_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.facility_Adj_1"
+													   style="text-align:right;" name="facility_Adj_1"
+													   class="form-control decimal-2-places"
+													   ng-readonly="sc09.adjColmn==true"/></td>
+
+				<td><input type="hidden" ng-model="sc09.row.facility_Total_1" style="text-align:right;"
+						   name="facility_Total_1" class="form-control decimal-2-places" ng-readonly="true"/>
+					<input type="text" ng-model="sc09.row.facility_Total_Display1" style="text-align:right;"
+						   id="facility_Total_Display1" name="facility_Total_Display1" class="form-control "
+						   ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[ii] Cash Credits, Overdrafts, Loans repayable on Demand and Recalled Assets $$</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_2" style="text-align:right;"
+						   name="facility_Standard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_2"
+						   style="text-align:right;" name="facility_SubStandard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_2" style="text-align:right;"
+						   name="facility_Doubtful_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_2" style="text-align:right;"
+						   name="facility_Loss_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.facility_Adj_2"
+													   style="text-align:right;" name="facility_Adj_2"
+													   class="form-control decimal-2-places"
+													   ng-readonly="sc09.adjColmn==true"/></td>
+
+				<td><input type="hidden" ng-model="sc09.row.facility_Total_2" style="text-align:right;"
+						   name="facility_Total_2" class="form-control decimal-2-places" ng-readonly="true"/>
+					<input type="text" ng-model="sc09.row.facility_Total_Display2" style="text-align:right;"
+						   id="facility_Total_Display2" name="facility_Total_Display2" class="form-control "
+						   ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[iii] Term Loans , Agricultural Term Loans, FCNRB Term Loan</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Standard_3" style="text-align:right;"
+						   name="facility_Standard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_SubStandard_3"
+						   style="text-align:right;" name="facility_SubStandard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Doubtful_3" style="text-align:right;"
+						   name="facility_Doubtful_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.facility_Loss_3" style="text-align:right;"
+						   name="facility_Loss_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.facility_Adj_3"
+													   style="text-align:right;" name="facility_Adj_3"
+													   class="form-control decimal-2-places"
+													   ng-readonly="sc09.adjColmn==true"/></td>
+
+				<td><input type="hidden" ng-model="sc09.row.facility_Total_3" style="text-align:right;"
+						   name="facility_Total_3" class="form-control decimal-2-places" ng-readonly="true"/>
+					<input type="text" ng-model="sc09.row.facility_Total_Display3" style="text-align:right;"
+						   name="facility_Total_Display3" id="facility_Total_Display3" class="form-control "
+						   ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>Total A-1</td>
+				<td>
+					<input type="text" value="" ng-model="sc09.row.facility_Standard_Total" id="facility_Standard_Total"
+						   style="text-align:right;" name="facility_Standard_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.facility_SubStandard_Total" style="text-align:right;"
+						   id="facility_SubStandard_Total" name="facility_SubStandard_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.facility_Doubtful_Total" style="text-align:right;"
+						   id="facility_Doubtful_Total" name="facility_Doubtful_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.facility_Loss_Total" style="text-align:right;"
+						   id="facility_Loss_Total" name="facility_Loss_Total" class="form-control decimal-2-places"
+						   ng-readonly="true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" ng-model="sc09.row.facility_Adj_Total"
+													   style="text-align:right;" id="facility_Adj_Total"
+													   name="facility_Adj_Total" class="form-control decimal-2-places"
+													   ng-readonly="true"/></td>
+
+				<td><input type="hidden" ng-model="sc09.row.facility_Total_Total" style="text-align:right;"
+						   name="facility_Total_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+					<input type="text" ng-model="sc09.row.facility_Total_TotalDisplay" style="text-align:right;"
+						   id="facility_Total_TotalDisplay" name="facility_Total_TotalDisplay"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+
+			</tr>
+
+
+			<tr>
+				<td colspan="7"><b>A. 2 Security Wise Classifications</b></td>
+
+			</tr>
+
+
+			<tr>
+				<td>[i] Secured by Tangible Assets</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_1" style="text-align:right;"
+						   name="security_Standard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_1"
+						   style="text-align:right;" name="security_SubStandard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_1" style="text-align:right;"
+						   name="security_Doubtful_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_1" style="text-align:right;"
+						   name="security_Loss_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.security_Adj_1"
+													   style="text-align:right;" name="security_Adj_1"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.security_Total_1" style="text-align:right;"
+						   name="security_Total_1" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[ii] Covered by Bank/ DICGC/ ECGC/ CGTSI/ Govt Guarantee</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_2" style="text-align:right;"
+						   name="security_Standard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_2"
+						   style="text-align:right;" name="security_SubStandard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_2" style="text-align:right;"
+						   name="security_Doubtful_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_2" style="text-align:right;"
+						   name="security_Loss_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.security_Adj_2"
+													   style="text-align:right;" name="security_Adj_2"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.security_Total_2" style="text-align:right;"
+						   name="security_Total_2" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[iii] Unsecured</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Standard_3" style="text-align:right;"
+						   name="security_Standard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_SubStandard_3"
+						   style="text-align:right;" name="security_SubStandard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Doubtful_3" style="text-align:right;"
+						   name="security_Doubtful_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.security_Loss_3" style="text-align:right;"
+						   name="security_Loss_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.security_Adj_3"
+													   style="text-align:right;" name="security_Adj_3"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.security_Total_3" style="text-align:right;"
+						   name="security_Total_3" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>Total A-2</td>
+				<td><input type="text" ng-model="sc09.row.security_Standard_Total" style="text-align:right;"
+						   id="security_Standard_Total" name="security_Standard_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.security_SubStandard_Total" style="text-align:right;"
+						   id="security_SubStandard_Total" name="security_SubStandard_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.security_Doubtful_Total" style="text-align:right;"
+						   id="security_Doubtful_Total" name="security_Doubtful_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.security_Loss_Total" style="text-align:right;"
+						   id="security_Loss_Total" name="security_Loss_Total" class="form-control decimal-2-places"
+						   ng-readonly="true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" ng-model="sc09.row.security_Adj_Total"
+													   style="text-align:right;" id="security_Adj_Total"
+													   name="security_Adj_Total" class="form-control decimal-2-places"
+													   ng-readonly="true"/></td>
+
+				<td><input type="text" ng-model="sc09.row.security_Total_Total" style="text-align:right;"
+						   id="security_Total_Total" name="security_Total_Total" class="form-control decimal-2-places"
+						   ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td colspan="7"><b>A.3 Sector -Wise Classifications</b></td>
+
+			</tr>
+
+
+			<tr>
+				<td colspan="7">a)In India</td>
+
+			</tr>
+
+
+			<tr>
+				<td>[i] Priority</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a1" style="text-align:right;"
+						   name="sector_Standard_a1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a1"
+						   style="text-align:right;" name="sector_SubStandard_a1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a1" style="text-align:right;"
+						   name="sector_Doubtful_a1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a1" style="text-align:right;"
+						   name="sector_Loss_a1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_a1"
+													   style="text-align:right;" name="sector_Adj_a1"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_a1" style="text-align:right;"
+						   name="sector_Total_a1" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td> [ii] Public</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a2" style="text-align:right;"
+						   name="sector_Standard_a2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a2"
+						   style="text-align:right;" name="sector_SubStandard_a2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a2" style="text-align:right;"
+						   name="sector_Doubtful_a2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a2" style="text-align:right;"
+						   name="sector_Loss_a2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_a2"
+													   style="text-align:right;" name="sector_Adj_a2"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_a2" style="text-align:right;"
+						   name="sector_Total_a2" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[iii] Banks in India*</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a3" style="text-align:right;"
+						   name="sector_Standard_a3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a3"
+						   style="text-align:right;" name="sector_SubStandard_a3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a3" style="text-align:right;"
+						   name="sector_Doubtful_a3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a3" style="text-align:right;"
+						   name="sector_Loss_a3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_a3"
+													   style="text-align:right;" name="sector_Adj_a3"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_a3" style="text-align:right;"
+						   name="sector_Total_a3" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[iv] Others</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_a4" style="text-align:right;"
+						   name="sector_Standard_a4" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_a4"
+						   style="text-align:right;" name="sector_SubStandard_a4" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_a4" style="text-align:right;"
+						   name="sector_Doubtful_a4" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_a4" style="text-align:right;"
+						   name="sector_Loss_a4" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_a4"
+													   style="text-align:right;" name="sector_Adj_a4"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_a4" style="text-align:right;"
+						   name="sector_Total_a4" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>TOTAL IN INDIA (i+ii+iii+iv)</td>
+				<td><input type="text" ng-model="sc09.row.sector_Standard_a_Total" style="text-align:right;"
+						   name="sector_Standard_a_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_SubStandard_a_Total" style="text-align:right;"
+						   name="sector_SubStandard_a_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_Doubtful_a_Total" style="text-align:right;"
+						   name="sector_Doubtful_a_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_Loss_a_Total" style="text-align:right;"
+						   name="sector_Loss_a_Total" class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" ng-model="sc09.row.sector_Adj_a_Total"
+													   style="text-align:right;" name="sector_Adj_a_Total"
+													   class="form-control decimal-2-places" ng-readonly="true"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_a_Total_a_Total" style="text-align:right;"
+						   name="sector_a_Total_a_Total" class="form-control decimal-2-places" ng-readonly="true"></td>
+			</tr>
+
+
+			<tr>
+				<td colspan="7">b) Outside India ( Excluding Foreign LCs and BGs)</td>
+
+			</tr>
+
+
+			<tr>
+				<td>[i] Due from Banks</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_b1" style="text-align:right;"
+						   name="sector_Standard_b1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_b1"
+						   style="text-align:right;" name="sector_SubStandard_b1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_b1" style="text-align:right;"
+						   name="sector_Doubtful_b1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_b1" style="text-align:right;"
+						   name="sector_Loss_b1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_b1"
+													   style="text-align:right;" name="sector_Adj_b1"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_b1" style="text-align:right;"
+						   name="sector_Total_b1" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td colspan="7">[ii] Due from Others</td>
+				<%--	<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_b2" style="text-align:right;" name="sector_Standard_b2"    class="form-control decimal-2-places"  ng-readonly="sc09.adjColmn==true"/></td>
+                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_b2" style="text-align:right;" name="sector_SubStandard_b2"    class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true"/></td>
+                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_b2" style="text-align:right;" name="sector_Doubtful_b2"    class="form-control decimal-2-places" ng-readonly="sc09.adjColmn==true" /></td>
+                    <td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_b2" style="text-align:right;" name="sector_Loss_b2"    class="form-control decimal-2-places"ng-readonly="sc09.adjColmn==true" /></td>
+                        <td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_b2" style="text-align:right;" name="sector_Adj_b2"    class="form-control decimal-2-places" /></td>
+
+                        <td><input type="text" ng-model="sc09.row.sector_Total_b2" style="text-align:right;"name="sector_Total_b2" class="form-control decimal-2-places" ng-readonly="true"/></td>--%>
+			</tr>
+
+
+			<tr>
+				<td>[1] Bills Purchased and Discounted</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_1" style="text-align:right;"
+						   name="sector_Standard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_1" style="text-align:right;"
+						   name="sector_SubStandard_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_1" style="text-align:right;"
+						   name="sector_Doubtful_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_1" style="text-align:right;"
+						   name="sector_Loss_1" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_1"
+													   style="text-align:right;" name="sector_Adj_1"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_1" style="text-align:right;"
+						   name="sector_Total_1" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>[2] Syndicated Loans</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_2" style="text-align:right;"
+						   name="sector_Standard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_2" style="text-align:right;"
+						   name="sector_SubStandard_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_2" style="text-align:right;"
+						   name="sector_Doubtful_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_2" style="text-align:right;"
+						   name="sector_Loss_2" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_2"
+													   style="text-align:right;" name="sector_Adj_2"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_2" style="text-align:right;"
+						   name="sector_Total_2" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td> [3] Others</td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Standard_3" style="text-align:right;"
+						   name="sector_Standard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_SubStandard_3" style="text-align:right;"
+						   name="sector_SubStandard_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Doubtful_3" style="text-align:right;"
+						   name="sector_Doubtful_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td><input type="text" maxlength="18" ng-model="sc09.row.sector_Loss_3" style="text-align:right;"
+						   name="sector_Loss_3" class="form-control decimal-2-places"
+						   ng-readonly="sc09.adjColmn==true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" maxlength="18" ng-model="sc09.row.sector_Adj_3"
+													   style="text-align:right;" name="sector_Adj_3"
+													   class="form-control decimal-2-places"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_Total_3" style="text-align:right;"
+						   name="sector_Total_3" class="form-control decimal-2-places" ng-readonly="true"/></td>
+			</tr>
+
+
+			<tr>
+				<td>TOTAL IN OUTSIDE INDIA (i+ ii.1+ii.2+ii.3)</td>
+				<td><input type="text" ng-model="sc09.row.sector_Standard_b_Total" style="text-align:right;"
+						   name="sector_Standard_b_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_SubStandard_b_Total" style="text-align:right;"
+						   name="sector_SubStandard_b_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_Doubtful_b_Total" style="text-align:right;"
+						   name="sector_Doubtful_b_Total" class="form-control decimal-2-places" ng-readonly="true"/>
+				</td>
+				<td><input type="text" ng-model="sc09.row.sector_Loss_b_Total" style="text-align:right;"
+						   name="sector_Loss_b_Total" class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" ng-model="sc09.row.sector_Adj_b_Total"
+													   style="text-align:right;" name="sector_Adj_b_Total"
+													   class="form-control decimal-2-places" ng-readonly="true"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_b_Total_b_Total" style="text-align:right;"
+						   name="sector_b_Total_b_Total" class="form-control decimal-2-places" ng-readonly="true"></td>
+			</tr>
+
+
+			<tr>
+				<td><b>Total advances A3 ( a+b)</b></td>
+				<td><input type="text" ng-model="sc09.row.sector_Standard_ab_Total" style="text-align:right;"
+						   id="sector_Standard_ab_Total" name="sector_Standard_ab_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.sector_SubStandard_ab_Total" style="text-align:right;"
+						   id="sector_SubStandard_ab_Total" name="sector_SubStandard_ab_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.sector_Doubtful_ab_Total" style="text-align:right;"
+						   id="sector_Doubtful_ab_Total" name="sector_Doubtful_ab_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"/></td>
+				<td><input type="text" ng-model="sc09.row.sector_Loss_ab_Total" style="text-align:right;"
+						   id="sector_Loss_ab_Total" name="sector_Loss_ab_Total" class="form-control decimal-2-places"
+						   ng-readonly="true"/></td>
+				<td ng-if="sc09.adjColmn==true"><input type="text" ng-model="sc09.row.sector_Adj_ab_Total"
+													   style="text-align:right;" id="sector_Adj_ab_Total"
+													   name="sector_Adj_ab_Total" class="form-control decimal-2-places"
+													   ng-readonly="true"/></td>
+
+				<td><input type="text" ng-model="sc09.row.sector_ab_Total_ab_Total" style="text-align:right;"
+						   id="sector_ab_Total_ab_Total" name="sector_ab_Total_ab_Total"
+						   class="form-control decimal-2-places" ng-readonly="true"></td>
+			</tr>
+
+
+			</tbody>
+		</table>
+		<button class="btn btn-warning" type="submit" ng-click="sc09.row.save = true">Save</button>
+
+		<button type="submit" class="btn btn-default btn-success" ng-click="sc09.row.save = false">Submit</button>
+
+	</form>
+
+	<%--<div ng-if="sc09.showView==true">
+		<button type="submit" class="btn btn-default btn-primary" ng-click="sc09.viewSubmitData('V');">View</button>    </fieldset>
+ng-if="sc09.isData ==false"
+	</div>--%>
+
+
+	<%--<div class="checkbox" ng-if="sc09.showView==true">
+		<label> <input type="checkbox" ng-click="sc09.viewSubmitData('V');"
+					   name="checkView" id="checkView"
+					   ng-model="sc09.checkView"
+		/><span
+				class="checkbox-material"><span class="check"></span></span>
+			<br>
+		</label><span class="label label-primary">View</span>
+	</div> </fieldset>
+	<fieldset ng-disabled="sc09.isData ==true" >
+
+	--%>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="modal fade" id="myModal2" role="dialog" style="z-index : 1400">  
+    <div class="modal-dialog">  
+      
+      <!-- Modal content-->  
+      <div class="modal-content">  
+        <div class="modal-header" style="background-color: #E74C3C";>  
+          <!--<button type="button" class="close" data-dismiss="modal">�</button> -->  
+          <h4 class="modal-title" style="color: white;">Errors!</h4>  
+        </div>  
+        <div class="modal-body" id="popup">  
+        <table id="example2" class="table table-hover table-responsive no-padding dataTable no-footer" style="width: 100%">
+		<thead>
+		<tr>
+	<!-- 	<th style="width: 5%"></th> -->
+		</thead>
+		<tr data-ng-repeat="row in validateArray">
+		<td>#. </td><td>{{row}}</td></tr>
+		</table>
+       	</div>
+<div class="modal-footer">  
+          <button type="button" class="btn btn-default btn-success" data-dismiss="modal">Continue</button>  
+        </div> 
+  </div>          
+    
+  
+         
+      </div>  
+        
+    </div> 
+    
+
+
+<div class="modal fade" id="myModal1" role="dialog" style="z-index : 1400">  
+    <div class="modal-dialog">  
+      
+      <!-- Modal content-->  
+      <div class="modal-content">  
+        <div class="modal-header" style="background-color: #E74C3C";>  
+          <!--<button type="button" class="close" data-dismiss="modal">�</button> -->  
+          <h4 class="modal-title" style="color: white;">Attention!</h4>  
+        </div>  
+        <div class="modal-body" id="popup">  
+        {{sc09.displayMessage}}
+       	</div>
+		<div class="modal-footer">  
+          <button type="button" class="btn btn-default btn-success" data-dismiss="modal" ng-click="sc09.redirect();">Continue</button>  
+        </div>  
+
+
+ 		 </div>
+	</div>
+	
+	
+	
+</div>
+
+
+<div class="modal fade" id="myModal3" role="dialog" style="z-index : 1400">  
+    <div class="modal-dialog">  
+      
+      <!-- Modal content-->  
+      <div class="modal-content">  
+        <div class="modal-header" style="background-color: #E74C3C";>  
+          <!--<button type="button" class="close" data-dismiss="modal">�</button> -->  
+          <h4 class="modal-title" style="color: white;">Attention!</h4>  
+        </div>  
+        <div class="modal-body" id="popup">  
+       {{sc09.displayMessage111}}
+       	</div>
+		<div class="modal-footer">  
+          <button type="button" class="btn btn-default btn-success" ng-click="sc09.YesSubmitSc09(sc09.row);" data-dismiss="modal">YES</button>  
+          
+          <button type="button" class="btn btn-default btn-success"  data-dismiss="modal">No</button>
+        </div>  
+
+
+ 		 </div>
+	</div>
+	
+	
+	
+</div>
+
+
+<div class="modal fade" id="myModal9" role="dialog" style="z-index : 1400">
+	<div class="modal-dialog">
+
+		<!-- Modal content-->
+		<div class="modal-content">
+			<div class="modal-header" style="background-color: #E74C3C";>
+				<!--<button type="button" class="close" data-dismiss="modal">?</button> -->
+				<h4 class="modal-title" style="color: white;">Attention!</h4>
+			</div>
+			<div class="modal-body" id="popup">
+				{{sc09.displayMessage}}
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default btn-success"  data-dismiss="modal" >Continue</button>
+			</div>
+
+
+		</div>
+	</div>
+
+
+
+</div>
+
+    
