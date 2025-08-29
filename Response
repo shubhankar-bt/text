@@ -1,0 +1,983 @@
+package com.yourcompany.common.api.model;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ApiResponse<T> {
+    private boolean success;
+    private int status;
+    private String message;
+    private T data;
+    private List<ErrorDetail> errors;
+    private Meta meta;
+    private String traceId;
+    private Instant timestamp;
+
+    public static <T> ApiResponse<T> success(int status, String message, T data, String traceId, Meta meta) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .status(status)
+                .message(message)
+                .data(data)
+                .traceId(traceId)
+                .meta(meta)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    public static <T> ApiResponse<T> success(T data, String traceId) {
+        return success(200, "OK", data, traceId, null);
+    }
+
+    public static ApiResponse<Void> success(String message, String traceId) {
+        return ApiResponse.<Void>builder()
+                .success(true)
+                .status(200)
+                .message(message)
+                .traceId(traceId)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    public static ApiResponse<Void> error(int status, String message, List<ErrorDetail> errors, String traceId) {
+        return ApiResponse.<Void>builder()
+                .success(false)
+                .status(status)
+                .message(message)
+                .errors(errors)
+                .traceId(traceId)
+                .timestamp(Instant.now())
+                .build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorDetail {
+    private String code;    // optional machine-friendly code
+    private String message; // user/developer friendly message
+    private String field;   // field name if applicable (validation)
+    private String moreInfo; // optional link or debug info
+}
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Meta {
+    private Integer page;
+    private Integer size;
+    private Long totalElements;
+    private Integer totalPages;
+    private String sort; // e.g. "createdAt,desc"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.util;
+
+import com.yourcompany.common.api.model.ApiResponse;
+import com.yourcompany.common.api.model.ErrorDetail;
+import com.yourcompany.common.api.model.Meta;
+import org.springframework.http.HttpStatus;
+
+import java.util.Collections;
+import java.util.List;
+
+public final class ResponseBuilder {
+
+    private ResponseBuilder() {}
+
+    public static <T> ApiResponse<T> ok(T data, String traceId) {
+        return ApiResponse.success(data, traceId);
+    }
+
+    public static <T> ApiResponse<T> ok(T data, Meta meta, String traceId) {
+        return ApiResponse.success(200, "OK", data, traceId, meta);
+    }
+
+    public static ApiResponse<Void> okMessage(String message, String traceId) {
+        return ApiResponse.success(message, traceId);
+    }
+
+    public static ApiResponse<Void> error(HttpStatus httpStatus, String message, List<ErrorDetail> errors, String traceId) {
+        return ApiResponse.error(httpStatus.value(), message, errors, traceId);
+    }
+
+    public static ApiResponse<Void> error(HttpStatus httpStatus, String message, String traceId) {
+        return error(httpStatus, message, Collections.emptyList(), traceId);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.web;
+
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.MDC;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.UUID;
+
+@Component
+public class TraceFilter implements Filter {
+    public static final String TRACE_ID_HEADER = "X-Trace-Id";
+    public static final String MDC_TRACE_ID = "traceId";
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        String traceId = UUID.randomUUID().toString();
+        try {
+            MDC.put(MDC_TRACE_ID, traceId);
+            if (request instanceof HttpServletRequest) {
+                ((HttpServletRequest) request).setAttribute(TRACE_ID_HEADER, traceId);
+            }
+            chain.doFilter(request, response);
+        } finally {
+            MDC.remove(MDC_TRACE_ID);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.web;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.yourcompany.common.api.model.ApiResponse;
+import org.slf4j.MDC;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.http.server.ServletServerHttpResponse;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+@RestControllerAdvice
+public class ApiResponseWrapperAdvice implements ResponseBodyAdvice<Object> {
+
+    private final ObjectMapper mapper;
+
+    public ApiResponseWrapperAdvice() {
+        this.mapper = new ObjectMapper();
+        this.mapper.registerModule(new JavaTimeModule());
+    }
+
+    @Override
+    public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+        // apply to all controllers that produce JSON responses
+        return true;
+    }
+
+    @Override
+    public Object beforeBodyWrite(Object body,
+                                  MethodParameter returnType,
+                                  MediaType selectedContentType,
+                                  Class<? extends HttpMessageConverter<?>> selectedConverterType,
+                                  ServerHttpRequest request,
+                                  ServerHttpResponse response) {
+
+        // If controller already returns ApiResponse, do nothing
+        if (body instanceof ApiResponse) return body;
+
+        // If not JSON, don't wrap (e.g. file download, html, etc.)
+        if (selectedContentType != null && !MediaType.APPLICATION_JSON.includes(selectedContentType)) {
+            return body;
+        }
+
+        String traceId = resolveTraceId(request);
+
+        // If it's a String, we must return a serialized JSON string (Spring treats String specially)
+        if (body instanceof String) {
+            try {
+                ApiResponse<Object> wrapped = ApiResponse.success(body, traceId);
+                // return JSON String so that String return types still work
+                return mapper.writeValueAsString(wrapped);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to wrap String response", e);
+            }
+        }
+
+        // Wrap the payload into ApiResponse with 200 if response status is 2xx or unknown
+        int status = 200;
+        if (response instanceof ServletServerHttpResponse) {
+            HttpServletResponse servletResponse = ((ServletServerHttpResponse) response).getServletResponse();
+            status = servletResponse.getStatus();
+        }
+
+        if (status >= 200 && status < 300) {
+            return ApiResponse.success(status, "OK", body, traceId, null);
+        }
+
+        // Non-2xx — leave it alone (exception handler will convert exceptions to ApiResponse)
+        return body;
+    }
+
+    private String resolveTraceId(ServerHttpRequest request) {
+        try {
+            if (request instanceof ServletServerHttpRequest) {
+                HttpServletRequest servletRequest = ((ServletServerHttpRequest) request).getServletRequest();
+                Object attr = servletRequest.getAttribute(TraceFilter.TRACE_ID_HEADER);
+                if (attr != null) return String.valueOf(attr);
+            }
+        } catch (Exception ignored) {}
+
+        String mdc = MDC.get(TraceFilter.MDC_TRACE_ID);
+        if (mdc != null) return mdc;
+        return java.util.UUID.randomUUID().toString();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.web;
+
+import com.yourcompany.common.api.model.ApiResponse;
+import com.yourcompany.common.api.model.ErrorDetail;
+import org.slf4j.MDC;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@ControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private String traceId() {
+        String tid = MDC.get(TraceFilter.MDC_TRACE_ID);
+        return tid != null ? tid : java.util.UUID.randomUUID().toString();
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                                 HttpHeaders headers,
+                                                                 HttpStatus status,
+                                                                 org.springframework.web.context.request.WebRequest request) {
+        BindingResult br = ex.getBindingResult();
+        List<ErrorDetail> errors = new ArrayList<>();
+        for (FieldError fe : br.getFieldErrors()) {
+            errors.add(ErrorDetail.builder()
+                    .field(fe.getField())
+                    .message(fe.getDefaultMessage())
+                    .code("VALIDATION_ERROR")
+                    .build());
+        }
+
+        ApiResponse<Object> api = ApiResponse.error(HttpStatus.UNPROCESSABLE_ENTITY.value(), "Validation Failed", errors, traceId());
+        return new ResponseEntity<>(api, HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                                  HttpHeaders headers,
+                                                                  HttpStatus status,
+                                                                  org.springframework.web.context.request.WebRequest request) {
+        List<ErrorDetail> errors = List.of(ErrorDetail.builder().message(ex.getMessage()).code("MALFORMED_JSON").build());
+        ApiResponse<Object> api = ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "Malformed request body", errors, traceId());
+        return new ResponseEntity<>(api, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        ApiResponse<Object> api = ApiResponse.error(HttpStatus.FORBIDDEN.value(), "Access denied", List.of(ErrorDetail.builder().message(ex.getMessage()).code("ACCESS_DENIED").build()), traceId());
+        return new ResponseEntity<>(api, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleAll(Exception ex) {
+        // log full exception at ERROR level (not shown here) — keep message generic for clients
+        ApiResponse<Object> api = ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal server error", List.of(ErrorDetail.builder().message(ex.getMessage()).code("SERVER_ERROR").build()), traceId());
+        return new ResponseEntity<>(api, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// SampleService.java
+package com.yourcompany.service;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class SampleService {
+    public UserDto getUser(String id) {
+        // Do your heavy work here, return DTO
+        return UserDto.builder().id(id).name("Alice").email("alice@example.com").build();
+    }
+}
+
+// SampleController.java
+package com.yourcompany.web;
+
+import com.yourcompany.service.SampleService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class SampleController {
+    private final SampleService sampleService;
+    public SampleController(SampleService sampleService){ this.sampleService = sampleService; }
+
+    @GetMapping("/api/v1/users/{id}")
+    public UserDto getUser(@PathVariable String id) {
+        return sampleService.getUser(id);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++#+#-#--#-#-#-#6#-+#----------------------------
+
+
+package com.yourcompany.common.api.model;
+
+public enum ErrorCode {
+    VALIDATION_ERROR("VALIDATION_ERROR", "Validation failed"),
+    MALFORMED_JSON("MALFORMED_JSON", "Malformed request body"),
+    ACCESS_DENIED("ACCESS_DENIED", "Access denied"),
+    SERVER_ERROR("SERVER_ERROR", "Internal server error"),
+    NOT_FOUND("NOT_FOUND", "Resource not found"),
+    BAD_REQUEST("BAD_REQUEST", "Bad request"),
+    UNAUTHORIZED("UNAUTHORIZED", "Unauthorized access"),
+    CONFLICT("CONFLICT", "Resource conflict"),
+    RATE_LIMIT_EXCEEDED("RATE_LIMIT_EXCEEDED", "Too many requests"),
+    TIMEOUT("TIMEOUT", "Request timed out");
+
+    private final String code;
+    private final String defaultMessage;
+
+    ErrorCode(String code, String defaultMessage) {
+        this.code = code;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.common.api.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorDetail {
+    private String code;    // Now comes from ErrorCode enum
+    private String message; // user/developer friendly message
+    private String field;   // field name if applicable (validation)
+    private String moreInfo; // optional link or debug info
+
+    public static ErrorDetail of(ErrorCode errorCode, String message, String field) {
+        return ErrorDetail.builder()
+                .code(errorCode.getCode())
+                .message(message != null ? message : errorCode.getDefaultMessage())
+                .field(field)
+                .build();
+    }
+
+    public static ErrorDetail of(ErrorCode errorCode, String message) {
+        return of(errorCode, message, null);
+    }
+
+    public static ErrorDetail of(ErrorCode errorCode) {
+        return of(errorCode, null, null);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// snippet showing changes only
+
+@Override
+protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
+                                                             HttpHeaders headers,
+                                                             HttpStatus status,
+                                                             WebRequest request) {
+    BindingResult br = ex.getBindingResult();
+    List<ErrorDetail> errors = new ArrayList<>();
+    for (FieldError fe : br.getFieldErrors()) {
+        errors.add(ErrorDetail.of(ErrorCode.VALIDATION_ERROR, fe.getDefaultMessage(), fe.getField()));
+    }
+
+    ApiResponse<Object> api = ApiResponse.error(HttpStatus.UNPROCESSABLE_ENTITY.value(), ErrorCode.VALIDATION_ERROR.getDefaultMessage(), errors, traceId());
+    return new ResponseEntity<>(api, HttpStatus.UNPROCESSABLE_ENTITY);
+}
+
+@Override
+protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                                              HttpHeaders headers,
+                                                              HttpStatus status,
+                                                              WebRequest request) {
+    List<ErrorDetail> errors = List.of(ErrorDetail.of(ErrorCode.MALFORMED_JSON, ex.getMessage()));
+    ApiResponse<Object> api = ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ErrorCode.MALFORMED_JSON.getDefaultMessage(), errors, traceId());
+    return new ResponseEntity<>(api, HttpStatus.BAD_REQUEST);
+}
+
+@ExceptionHandler(AccessDeniedException.class)
+public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+    ApiResponse<Object> api = ApiResponse.error(HttpStatus.FORBIDDEN.value(), ErrorCode.ACCESS_DENIED.getDefaultMessage(), List.of(ErrorDetail.of(ErrorCode.ACCESS_DENIED, ex.getMessage())), traceId());
+    return new ResponseEntity<>(api, HttpStatus.FORBIDDEN);
+}
+
+@ExceptionHandler(Exception.class)
+public ResponseEntity<ApiResponse<Object>> handleAll(Exception ex) {
+    ApiResponse<Object> api = ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), ErrorCode.SERVER_ERROR.getDefaultMessage(), List.of(ErrorDetail.of(ErrorCode.SERVER_ERROR, ex.getMessage())), traceId());
+    return new ResponseEntity<>(api, HttpStatus.INTERNAL_SERVER_ERROR);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+++++++++++++++++++++++++++++++++
+
+
+Production-ready Api Response (response Vo) Design For Spring Boot Microservices
+
+This design ensures a common, parameterized, and production-standard response structure that can be reused across all service layers. It includes:
+
+Unified ResponseVo
+
+ResponseBuilder utility
+
+ErrorCode enum for centralized error management
+
+Global exception handling
+
+Clean, extensible, and developer-friendly API responses
+
+
+
+---
+
+Step 1: Create ResponseVo
+
+package com.company.project.response;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ResponseVo<T> {
+
+    private boolean success;
+    private String statusCode;
+    private String message;
+    private T data;
+    private ErrorDetail error;
+}
+
+
+---
+
+Step 2: Create ErrorDetail
+
+package com.company.project.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorDetail {
+    private String code;
+    private String message;
+}
+
+
+---
+
+Step 3: Add Centralized ErrorCode Enum
+
+package com.company.project.enums;
+
+public enum ErrorCode {
+
+    VALIDATION_ERROR("E001", "Validation failed"),
+    DATABASE_ERROR("E002", "Database error occurred"),
+    AUTHENTICATION_ERROR("E003", "Authentication failed"),
+    AUTHORIZATION_ERROR("E004", "Access denied"),
+    RESOURCE_NOT_FOUND("E005", "Requested resource not found"),
+    INTERNAL_SERVER_ERROR("E006", "Internal server error"),
+    BAD_REQUEST("E007", "Bad request"),
+    SERVICE_UNAVAILABLE("E008", "Service unavailable");
+
+    private final String code;
+    private final String defaultMessage;
+
+    ErrorCode(String code, String defaultMessage) {
+        this.code = code;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+}
+
+
+---
+
+Step 4: Response Builder Utility
+
+package com.company.project.response;
+
+import com.company.project.enums.ErrorCode;
+
+public class ResponseBuilder {
+
+    public static <T> ResponseVo<T> success(T data, String message) {
+        return ResponseVo.<T>builder()
+                .success(true)
+                .statusCode("200")
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    public static <T> ResponseVo<T> success(T data) {
+        return success(data, "Success");
+    }
+
+    public static <T> ResponseVo<T> error(ErrorCode errorCode) {
+        return ResponseVo.<T>builder()
+                .success(false)
+                .statusCode(errorCode.getCode())
+                .message(errorCode.getDefaultMessage())
+                .error(new ErrorDetail(errorCode.getCode(), errorCode.getDefaultMessage()))
+                .build();
+    }
+
+    public static <T> ResponseVo<T> error(ErrorCode errorCode, String customMessage) {
+        return ResponseVo.<T>builder()
+                .success(false)
+                .statusCode(errorCode.getCode())
+                .message(customMessage)
+                .error(new ErrorDetail(errorCode.getCode(), customMessage))
+                .build();
+    }
+}
+
+
+---
+
+Step 5: Global Exception Handler
+
+package com.company.project.exception;
+
+import com.company.project.enums.ErrorCode;
+import com.company.project.response.ResponseBuilder;
+import com.company.project.response.ResponseVo;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ResponseVo<Object>> handleValidationException(MethodArgumentNotValidException ex) {
+        return new ResponseEntity<>(
+                ResponseBuilder.error(ErrorCode.VALIDATION_ERROR, ex.getBindingResult().getAllErrors().get(0).getDefaultMessage()),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ResponseVo<Object>> handleRuntimeException(RuntimeException ex) {
+        return new ResponseEntity<>(
+                ResponseBuilder.error(ErrorCode.INTERNAL_SERVER_ERROR, ex.getMessage()),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ResponseVo<Object>> handleGenericException(Exception ex) {
+        return new ResponseEntity<>(
+                ResponseBuilder.error(ErrorCode.INTERNAL_SERVER_ERROR),
+                HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
+}
+
+
+---
+
+✅ Now, any developer in your team can simply return:
+
+return ResponseBuilder.success(userDto, "User fetched successfully");
+
+or in case of errors:
+
+return ResponseBuilder.error(ErrorCode.RESOURCE_NOT_FOUND);
+
+This ensures clean, consistent, production-ready responses across your microservices.  🚀
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---+-+-+-+-+-+-
+
+
+
+
+
+
+
+package com.example.demo.enums;
+
+public enum ErrorCode {
+
+    // --- Common Errors ---
+    UNKNOWN_ERROR("E000", "An unknown error occurred"),
+    VALIDATION_ERROR("E001", "Validation failed"),
+    BAD_REQUEST("E002", "Bad request"),
+    UNAUTHORIZED("E003", "Unauthorized access"),
+    FORBIDDEN("E004", "Forbidden"),
+    NOT_FOUND("E005", "Resource not found"),
+    METHOD_NOT_ALLOWED("E006", "HTTP method not allowed"),
+    UNSUPPORTED_MEDIA_TYPE("E007", "Unsupported media type"),
+    TOO_MANY_REQUESTS("E008", "Too many requests"),
+    TIMEOUT("E009", "Request timed out"),
+
+    // --- User / Auth Errors ---
+    USER_NOT_FOUND("U001", "User not found"),
+    USER_ALREADY_EXISTS("U002", "User already exists"),
+    INVALID_CREDENTIALS("U003", "Invalid username or password"),
+    ACCOUNT_LOCKED("U004", "Account is locked"),
+    TOKEN_EXPIRED("U005", "Token has expired"),
+    TOKEN_INVALID("U006", "Invalid authentication token"),
+
+    // --- Database / Persistence Errors ---
+    DB_ERROR("D001", "Database error occurred"),
+    DB_CONNECTION_ERROR("D002", "Database connection failed"),
+    DATA_INTEGRITY_ERROR("D003", "Data integrity violation"),
+
+    // --- Service / Business Logic Errors ---
+    SERVICE_UNAVAILABLE("S001", "Service temporarily unavailable"),
+    EXTERNAL_API_ERROR("S002", "External API call failed"),
+    BUSINESS_RULE_VIOLATION("S003", "Business rule violation"),
+    DUPLICATE_REQUEST("S004", "Duplicate request"),
+
+    // --- File / Data Processing Errors ---
+    FILE_NOT_FOUND("F001", "File not found"),
+    FILE_UPLOAD_FAILED("F002", "File upload failed"),
+    FILE_DOWNLOAD_FAILED("F003", "File download failed"),
+    INVALID_FILE_FORMAT("F004", "Invalid file format"),
+
+    // --- Security Errors ---
+    ACCESS_DENIED("SEC001", "Access denied"),
+    INVALID_SIGNATURE("SEC002", "Invalid request signature"),
+    ENCRYPTION_ERROR("SEC003", "Encryption/Decryption failed");
+
+    private final String code;
+    private final String defaultMessage;
+
+    ErrorCode(String code, String defaultMessage) {
+        this.code = code;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
