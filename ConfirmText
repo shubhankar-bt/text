@@ -1,0 +1,535 @@
+import { Box, Button, CircularProgress, Divider, Fade, Grid, Paper, Stack, Typography } from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
+import useCustomSnackbar from './../../../../common/hooks/useCustomSnackbar';
+import { createUsers, deleteRequests, getRequests } from './UserConfirmationService';
+import { UserCard } from './UserConfirmationPage'; // Assuming UserCard is in a separate file
+
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
+import { styled } from '@mui/material/styles';
+import AnimatedBorderBox from '../../../../common/AnimationBorderBox';
+import ConfirmDialog from './ConfirmDialogUserConfirm';
+
+export default function UserConfirmation() {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const [requests, setRequests] = useState([]);
+  const [selectedRequests, setSelectedRequests] = useState(new Set());
+  const { callApi } = useApi();
+  const snackbar = useCustomSnackbar();
+  const [loading, setLoading] = useState(false);
+  const [isSelectMode, setIsSelectMode] = useState(false); // New state for select mode
+  const [showMessage, setShowMessage] = useState(false);
+
+  // state for confirm dialog
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState({});
+
+  const Android12Switch = styled(Switch)(({ theme }) => ({
+    padding: 8,
+    '& .MuiSwitch-track': {
+      borderRadius: 22 / 2,
+      '&::before, &::after': {
+        content: '""',
+        position: 'absolute',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        width: 16,
+        height: 16,
+      },
+      '&::before': {
+        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24"><path fill="${encodeURIComponent(
+          theme.palette.getContrastText(theme.palette.primary.main)
+        )}" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"/></svg>')`,
+        left: 12,
+      },
+      '&::after': {
+        backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24"><path fill="${encodeURIComponent(
+          theme.palette.getContrastText(theme.palette.primary.main)
+        )}" d="M19,13H5V11H19V13Z" /></svg>')`,
+        right: 12,
+      },
+    },
+    '& .MuiSwitch-thumb': {
+      boxShadow: 'none',
+      width: 16,
+      height: 16,
+      margin: 2,
+    },
+  }));
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      setSelectedRequests(new Set());
+      const requests = await getRequests(callApi);
+
+      if (!requests) {
+        setRequests([]);
+        snackbar('Failed to Load Data!', 'error');
+        return;
+      }
+      setRequests(requests);
+    } catch (error) {
+      console.log(error);
+      if (error.code !== 'ERR_CANCELED') {
+        setRequests([]);
+        snackbar('Failed to Load Data!', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [callApi, snackbar]);
+
+  const getListToBeSent = useCallback(
+    () => requests.filter((request) => selectedRequests.has(request.userId1)),
+    [requests, selectedRequests]
+  );
+
+  const onToggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedRequests(new Set()); // Clear selection when toggling mode
+  };
+
+  const onCancelSelect = () => {
+    setIsSelectMode(false);
+    setSelectedRequests(new Set()); // Clear selection and exit mode
+  };
+
+  const onClickCreateUsers = useCallback(async () => {
+    setOpenConfirmDialog(false);
+    if (selectedRequests.size === 0) return;
+    setLoading(true);
+    const listToBeSent = getListToBeSent();
+
+    try {
+      const success = await createUsers(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Create the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+        return;
+      }
+      snackbar(`User${listToBeSent.length === 1 ? '' : 's'} Created!`, 'success');
+    } catch (error) {
+      console.log(error);
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar(`Failed to Create the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+      }
+    } finally {
+      loadData();
+      setIsSelectMode(false); // Exit select mode after action
+    }
+  }, [
+    callApi,
+    getListToBeSent,
+    loadData,
+    selectedRequests.size,
+    snackbar,
+    user.circleCode,
+    user.quarterEndDate,
+    user.userId,
+  ]);
+
+  const onClickDeleteRequests = useCallback(async () => {
+    setOpenConfirmDialog(false);
+    if (selectedRequests.size === 0) return;
+    setLoading(true);
+    const listToBeSent = getListToBeSent();
+    try {
+      const success = await deleteRequests(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Delete the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+        return;
+      }
+      snackbar(`User${listToBeSent.length === 1 ? '' : 's'} Deleted!`, 'warning');
+    } catch (error) {
+      console.log(error);
+      if (error.code !== 'ERR_CANCELED') {
+        snackbar(`Failed to Delete the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+      }
+    } finally {
+      loadData();
+      setIsSelectMode(false); // Exit select mode after action
+    }
+  }, [
+    callApi,
+    getListToBeSent,
+    loadData,
+    selectedRequests.size,
+    snackbar,
+    user.circleCode,
+    user.quarterEndDate,
+    user.userId,
+  ]);
+
+  // new one
+  // Handler for opening the dialog
+  const handleOpenDialog = (title, message, action) => {
+    setDialogConfig({ title, message, action });
+    setOpenConfirmDialog(true);
+  };
+
+  // Handlers for confirming or deleting selected items
+  const handleConfirmSelected = () => {
+    // This is the action to be performed on confirmation
+    handleOpenDialog('Confirm Users', 'Are you sure you want to confirm all selected users?', onClickCreateUsers);
+  };
+
+  const handleDeleteSelected = () => {
+    // This is the action to be performed on deletion
+    handleOpenDialog(
+      'Delete Users',
+      'Are you sure you want to delete all selected users? This action is irreversible.',
+      onClickDeleteRequests
+    );
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Handle selection of a user
+  const handleSelect = (userId) => {
+    setSelectedRequests((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(userId)) {
+        newSelected.delete(userId);
+      } else {
+        newSelected.add(userId);
+      }
+      return newSelected;
+    });
+  };
+
+  const Actions = () => {
+    return (
+      <Stack direction={'row'} spacing={2} sx={{}}>
+        {isSelectMode ? (
+          <>
+            <CustomButton
+              buttonType={'create'}
+              label={'Confirm Selected'}
+              disabled={selectedRequests.size === 0}
+              // onClickHandler={onClickCreateUsers}
+              onClickHandler={handleConfirmSelected}
+            />
+            <CustomButton
+              buttonType={'delete'}
+              label={'Delete Selected'}
+              disabled={selectedRequests.size === 0}
+              // onClickHandler={onClickDeleteRequests}
+              onClickHandler={handleDeleteSelected}
+            />
+            <Button variant="outlined" color="secondary" onClick={onCancelSelect}>
+              Exit Select Mode
+            </Button>
+          </>
+        ) : (
+          <Grid sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            <FormControlLabel
+              control={<Android12Switch onClick={onToggleSelectMode} />}
+              label="Select Mode"
+              disabled={!requests.length}
+              onMouseLeave={() => {
+                setShowMessage(false);
+              }}
+              onMouseEnter={() => {
+                setShowMessage(true);
+              }}
+            />
+            <Stack
+              direction="row"
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}
+            >
+              {showMessage && requests.length > 0 && (
+                <Box>
+                  <AnimatedBorderBox
+                    props={
+                      <Fade in={showMessage} timeout={500}>
+                        <Typography variant="body1" color="text.secondary">
+                          <Typography component="span" variant="body1" fontWeight="bold">
+                            Select Mode:
+                          </Typography>
+                          <Typography component="span" variant="body2" color="text.secondary">
+                            To perform actions on multiple users at once, click the Select Multiple button. You can then
+                            select users and choose to confirm or delete them in bulk
+                          </Typography>
+                        </Typography>
+                      </Fade>
+                    }
+                  />
+                </Box>
+              )}
+            </Stack>
+          </Grid>
+        )}
+      </Stack>
+    );
+  };
+
+  if (loading) {
+    return (
+      <Stack direction={'row'} justifyContent={'center'}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
+  return (
+    <Box component={Paper} elevation={2} sx={{ p: 3, minHeight: '100%' }}>
+      <Actions />
+      <Divider sx={{ my: 2 }}></Divider>
+      <Grid container spacing={4}>
+        {requests.length > 0 ? (
+          requests.map((request) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={request.userId1}>
+              <UserCard
+                request={request}
+                isSelected={selectedRequests.has(request.userId1)}
+                onSelect={handleSelect}
+                isSelectMode={isSelectMode} // Pass the new prop
+                onIndividualConfirm={loadData} // Reload data after individual action
+                onIndividualDelete={loadData} // Reload data after individual action
+              />
+            </Grid>
+          ))
+        ) : (
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            textAlign="center"
+            alignContent={'center'}
+            sx={{ width: '100%', minHeight: 200 }}
+          >
+            No Users Found to Confirm/Delete!
+          </Typography>
+        )}
+      </Grid>
+      <ConfirmDialog
+        title={dialogConfig.title}
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+        onConfirm={dialogConfig.action}
+      >
+        {dialogConfig.message}
+      </ConfirmDialog>
+    </Box>
+  );
+}
+
+
+this is my main component and below is my user card, the confirmation dialog i want in user card also for individual actions, implement that correctly - 
+
+import React from 'react';
+import {
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  CardActions,
+  Typography,
+  Avatar,
+  Stack,
+  Checkbox,
+  useTheme,
+} from '@mui/material';
+import {
+  Person,
+  AccountCircleOutlined,
+  BusinessOutlined,
+  BadgeOutlined,
+  CalendarTodayOutlined,
+  SupervisorAccountOutlined,
+} from '@mui/icons-material';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
+import { createUsers, deleteRequests } from './UserConfirmationService';
+import useCustomSnackbar from './../../../../common/hooks/useCustomSnackbar';
+
+export const UserCard = ({
+  request,
+  isSelected,
+  onSelect,
+  isSelectMode,
+  onIndividualConfirm,
+  onIndividualDelete,
+  // New prop
+}) => {
+  const theme = useTheme();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { callApi } = useApi();
+  const { snackbar } = useCustomSnackbar();
+
+  const getInitials = (name) => {
+    if (!name) return '';
+    const words = name.split(' ');
+    let initials = '';
+    if (words.length >= 2) {
+      initials += words[0][0];
+      initials += words[1][0];
+    } else if (words.length === 1 && words[0].length > 0) {
+      initials += words[0][0];
+    }
+    return initials.toUpperCase();
+  };
+
+  const onClickCreateUser = async (listToBeSent) => {
+    try {
+      const success = await createUsers(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+
+      if (!success) {
+        snackbar(`Failed to Create the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+        return;
+      }
+      snackbar(`User${listToBeSent.length === 1 ? '' : 's'} Created!`, 'success');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualConfirm();
+    }
+  };
+  const onClickDeleteUser = async (listToBeSent) => {
+    try {
+      const success = await deleteRequests(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+
+      if (!success) {
+        snackbar(`Failed to Delete the User${listToBeSent.length === 1 ? '' : 's'}!`, 'error');
+        return;
+      }
+      snackbar(`User${listToBeSent.length === 1 ? '' : 's'} Deleted!`, 'success');
+      console.log(success, 'Delete');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualDelete();
+    }
+  };
+
+  const userInitials = getInitials(request.userName1);
+
+  // Function to format the date string
+  const formatDateTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    const timeOptions = { hour: 'numeric', minute: 'numeric', hour12: true };
+    return {
+      formattedDate: date.toLocaleDateString('en-US', dateOptions),
+      formattedTime: date.toLocaleTimeString('en-US', timeOptions),
+    };
+  };
+
+  const { formattedDate, formattedTime } = formatDateTime(request.createddate);
+
+  const handleCardClick = () => {
+    if (isSelectMode) {
+      onSelect(request.userId1);
+    }
+  };
+
+  const handleActionClick = (event) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <Card
+      sx={{
+        width: 350,
+        boxShadow: 3,
+        borderRadius: 2,
+        p: 2,
+        cursor: isSelectMode ? 'pointer' : 'default', // Change cursor based on mode
+        border: isSelected ? `2px solid ${theme.palette.success.main}` : '2px solid transparent',
+        transition: 'border-color 0.2s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        '&:hover': {
+          boxShadow: 4,
+          border: isSelected
+            ? `2px solid ${theme.palette.success.main}`
+            : isSelectMode
+            ? `2px solid ${theme.palette.grey[300]}`
+            : '2px solid transparent',
+        },
+      }}
+      onClick={handleCardClick}
+    >
+      <CardHeader
+        avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>{userInitials || <Person />}</Avatar>}
+        title={
+          <Typography variant="subtitle1" fontWeight="bold">
+            {request.userName1}
+          </Typography>
+        }
+        // action={
+        //   isSelectMode && (
+        //     <Checkbox
+        //       checked={isSelected}
+        //       onChange={() => onSelect(request.userId1)}
+        //       onClick={handleActionClick} // Prevent click from triggering card select again
+        //     />
+        //   )
+        // }
+      />
+      <CardContent sx={{ flexGrow: 1, pt: 1, pb: 0 }}>
+        <Stack spacing={1.5}>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <BadgeOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Role:
+              </Box>
+              {` ${request.role1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <AccountCircleOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                User ID:
+              </Box>
+              {` ${request.userId1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <BusinessOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Circle:
+              </Box>
+              {` ${request.circleCode1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <SupervisorAccountOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Created By:
+              </Box>
+              {` ${request.createdby}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <CalendarTodayOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Created At:
+              </Box>
+              {` ${formattedDate} at ${formattedTime}`}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+      {!isSelectMode && (
+        <CardActions sx={{ justifyContent: 'flex-end', pt: 2 }} onClick={handleActionClick}>
+          <CustomButton buttonType={'delete'} onClickHandler={() => onClickDeleteUser([request])} label={'Delete'} />
+          <CustomButton
+            label={'Confirm User'}
+            buttonType={'confirm'}
+            onClickHandler={() => onClickCreateUser([request])}
+          />
+        </CardActions>
+      )}
+    </Card>
+  );
+};
