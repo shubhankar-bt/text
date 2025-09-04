@@ -746,3 +746,310 @@ export const UserCard = ({
     </>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------)))))))))))(((((((((()((
+
+
+
+
+import React from 'react';
+import {
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  CardActions,
+  Typography,
+  Avatar,
+  Stack,
+  useTheme,
+} from '@mui/material';
+import {
+  Person,
+  AccountCircleOutlined,
+  BusinessOutlined,
+  BadgeOutlined,
+  CalendarTodayOutlined,
+  SupervisorAccountOutlined,
+} from '@mui/icons-material';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
+import { createUsers, deleteRequests } from './UserConfirmationService';
+import useCustomSnackbar from './../../../../common/hooks/useCustomSnackbar';
+
+export const UserCard = ({
+  request,
+  isSelected,
+  onSelect,
+  isSelectMode,
+  onIndividualConfirm,
+  onIndividualDelete,
+  onOpenDialog, // ✨ ADD: New prop to open the dialog
+}) => {
+  const theme = useTheme();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { callApi } = useApi();
+  const { snackbar } = useCustomSnackbar();
+
+  const getInitials = (name) => {
+    if (!name) return '';
+    const words = name.split(' ');
+    let initials = '';
+    if (words.length >= 2) {
+      initials += words[0][0];
+      initials += words[1][0];
+    } else if (words.length === 1 && words[0].length > 0) {
+      initials += words[0][0];
+    }
+    return initials.toUpperCase();
+  };
+
+  const onClickCreateUser = async (listToBeSent) => {
+    try {
+      const success = await createUsers(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Create the User!`, 'error');
+        return;
+      }
+      snackbar(`User Created!`, 'success');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualConfirm();
+    }
+  };
+
+  const onClickDeleteUser = async (listToBeSent) => {
+    try {
+      const success = await deleteRequests(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Delete the User!`, 'error');
+        return;
+      }
+      snackbar(`User Deleted!`, 'warning'); // Changed to warning for better UX
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualDelete();
+    }
+  };
+
+  // ✨ ADD: Handler to open confirm dialog
+  const handleConfirm = () => {
+    onOpenDialog(
+      'Confirm User',
+      `Are you sure you want to confirm ${request.userName1}?`,
+      () => onClickCreateUser([request]) // The action to run on confirm
+    );
+  };
+
+  // ✨ ADD: Handler to open delete dialog
+  const handleDelete = () => {
+    onOpenDialog(
+      'Delete User',
+      `Are you sure you want to delete the request for ${request.userName1}? This action is irreversible.`,
+      () => onClickDeleteUser([request]) // The action to run on confirm
+    );
+  };
+
+
+  const userInitials = getInitials(request.userName1);
+
+  const formatDateTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    const timeOptions = { hour: 'numeric', minute: 'numeric', hour12: true };
+    return {
+      formattedDate: date.toLocaleDateString('en-US', dateOptions),
+      formattedTime: date.toLocaleTimeString('en-US', timeOptions),
+    };
+  };
+
+  const { formattedDate, formattedTime } = formatDateTime(request.createddate);
+
+  const handleCardClick = () => {
+    if (isSelectMode) {
+      onSelect(request.userId1);
+    }
+  };
+
+  const handleActionClick = (event) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <Card
+      sx={{
+        width: 350,
+        boxShadow: 3,
+        borderRadius: 2,
+        p: 2,
+        cursor: isSelectMode ? 'pointer' : 'default',
+        border: isSelected ? `2px solid ${theme.palette.success.main}` : '2px solid transparent',
+        transition: 'border-color 0.2s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        '&:hover': {
+          boxShadow: 4,
+          border: isSelected
+            ? `2px solid ${theme.palette.success.main}`
+            : isSelectMode
+            ? `2px solid ${theme.palette.grey[300]}`
+            : '2px solid transparent',
+        },
+      }}
+      onClick={handleCardClick}
+    >
+      <CardHeader
+        avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>{userInitials || <Person />}</Avatar>}
+        title={
+          <Typography variant="subtitle1" fontWeight="bold">
+            {request.userName1}
+          </Typography>
+        }
+      />
+      <CardContent sx={{ flexGrow: 1, pt: 1, pb: 0 }}>
+        <Stack spacing={1.5}>
+           {/* ... your other card content fields ... */}
+           <Box display="flex" alignItems="center" spacing={1}>
+            <BadgeOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Role:
+              </Box>
+              {` ${request.role1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <AccountCircleOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                User ID:
+              </Box>
+              {` ${request.userId1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <BusinessOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Circle:
+              </Box>
+              {` ${request.circleCode1}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <SupervisorAccountOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Created By:
+              </Box>
+              {` ${request.createdby}`}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" spacing={1}>
+            <CalendarTodayOutlined color="action" sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              <Box component="span" fontWeight="bold" color="text.secondary">
+                Created At:
+              </Box>
+              {` ${formattedDate} at ${formattedTime}`}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+      {!isSelectMode && (
+        <CardActions sx={{ justifyContent: 'flex-end', pt: 2 }} onClick={handleActionClick}>
+          {/* ✨ CHANGE: Use the new handlers */}
+          <CustomButton buttonType={'delete'} onClickHandler={handleDelete} label={'Delete'} />
+          <CustomButton
+            label={'Confirm User'}
+            buttonType={'confirm'}
+            onClickHandler={handleConfirm}
+          />
+        </CardActions>
+      )}
+    </Card>
+  );
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ... inside the return statement of UserConfirmation component
+
+      <Grid container spacing={4}>
+        {requests.length > 0 ? (
+          requests.map((request) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={request.userId1}>
+              <UserCard
+                request={request}
+                isSelected={selectedRequests.has(request.userId1)}
+                onSelect={handleSelect}
+                isSelectMode={isSelectMode}
+                onIndividualConfirm={loadData}
+                onIndividualDelete={loadData}
+                onOpenDialog={handleOpenDialog} // ✨ ADD THIS LINE
+              />
+            </Grid>
+          ))
+        ) : (
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            textAlign="center"
+            alignContent={'center'}
+            sx={{ width: '100%', minHeight: 200 }}
+          >
+            No Users Found to Confirm/Delete!
+          </Typography>
+        )}
+      </Grid>
+// ... rest of the component
+
+
+
+
+
+
