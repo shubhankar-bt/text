@@ -533,3 +533,216 @@ export const UserCard = ({
     </Card>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----- 
+
+
+
+import React, { useState } from 'react';
+import {
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  CardActions,
+  Typography,
+  Avatar,
+  Stack,
+  useTheme,
+} from '@mui/material';
+import {
+  Person,
+  AccountCircleOutlined,
+  BusinessOutlined,
+  BadgeOutlined,
+  CalendarTodayOutlined,
+  SupervisorAccountOutlined,
+} from '@mui/icons-material';
+import { CustomButton } from '../../../../common/components/ui/Buttons';
+import useApi from '../../../../common/hooks/useApi';
+import { createUsers, deleteRequests } from './UserConfirmationService';
+import useCustomSnackbar from './../../../../common/hooks/useCustomSnackbar';
+import ConfirmDialog from './ConfirmDialogUserConfirm'; // same ConfirmDialog used in main
+
+export const UserCard = ({
+  request,
+  isSelected,
+  onSelect,
+  isSelectMode,
+  onIndividualConfirm,
+  onIndividualDelete,
+}) => {
+  const theme = useTheme();
+  const user = JSON.parse(localStorage.getItem('user'));
+  const { callApi } = useApi();
+  const { snackbar } = useCustomSnackbar();
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState({ title: '', message: '', action: null });
+
+  const openConfirmDialog = (title, message, action) => {
+    setDialogConfig({ title, message, action });
+    setOpenDialog(true);
+  };
+
+  const handleConfirmAction = async () => {
+    setOpenDialog(false);
+    if (dialogConfig.action) await dialogConfig.action();
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '';
+    const words = name.split(' ');
+    return words.map((w) => w[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const onClickCreateUser = async (listToBeSent) => {
+    try {
+      const success = await createUsers(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Create the User!`, 'error');
+        return;
+      }
+      snackbar(`User Created!`, 'success');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualConfirm();
+    }
+  };
+
+  const onClickDeleteUser = async (listToBeSent) => {
+    try {
+      const success = await deleteRequests(user.circleCode, user.quarterEndDate, user.userId, listToBeSent, callApi);
+      if (!success) {
+        snackbar(`Failed to Delete the User!`, 'error');
+        return;
+      }
+      snackbar(`User Deleted!`, 'success');
+    } catch (error) {
+      console.log(error);
+    } finally {
+      onIndividualDelete();
+    }
+  };
+
+  const { formattedDate, formattedTime } = (() => {
+    const date = new Date(request.createddate);
+    return {
+      formattedDate: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      formattedTime: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }),
+    };
+  })();
+
+  const handleCardClick = () => {
+    if (isSelectMode) onSelect(request.userId1);
+  };
+
+  const handleActionClick = (event) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <>
+      <Card
+        sx={{
+          width: 350,
+          boxShadow: 3,
+          borderRadius: 2,
+          p: 2,
+          cursor: isSelectMode ? 'pointer' : 'default',
+          border: isSelected ? `2px solid ${theme.palette.success.main}` : '2px solid transparent',
+          transition: 'border-color 0.2s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          '&:hover': {
+            boxShadow: 4,
+            border: isSelected
+              ? `2px solid ${theme.palette.success.main}`
+              : isSelectMode
+              ? `2px solid ${theme.palette.grey[300]}`
+              : '2px solid transparent',
+          },
+        }}
+        onClick={handleCardClick}
+      >
+        <CardHeader
+          avatar={<Avatar sx={{ bgcolor: 'primary.main' }}>{getInitials(request.userName1) || <Person />}</Avatar>}
+          title={<Typography variant="subtitle1" fontWeight="bold">{request.userName1}</Typography>}
+        />
+        <CardContent sx={{ flexGrow: 1, pt: 1, pb: 0 }}>
+          <Stack spacing={1.5}>
+            <Box display="flex" alignItems="center">
+              <BadgeOutlined color="action" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary"><b>Role:</b> {request.role1}</Typography>
+            </Box>
+            <Box display="flex" alignItems="center">
+              <AccountCircleOutlined color="action" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary"><b>User ID:</b> {request.userId1}</Typography>
+            </Box>
+            <Box display="flex" alignItems="center">
+              <BusinessOutlined color="action" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary"><b>Circle:</b> {request.circleCode1}</Typography>
+            </Box>
+            <Box display="flex" alignItems="center">
+              <SupervisorAccountOutlined color="action" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary"><b>Created By:</b> {request.createdby}</Typography>
+            </Box>
+            <Box display="flex" alignItems="center">
+              <CalendarTodayOutlined color="action" sx={{ mr: 1 }} />
+              <Typography variant="body2" color="text.secondary"><b>Created At:</b> {`${formattedDate} at ${formattedTime}`}</Typography>
+            </Box>
+          </Stack>
+        </CardContent>
+
+        {!isSelectMode && (
+          <CardActions sx={{ justifyContent: 'flex-end', pt: 2 }} onClick={handleActionClick}>
+            <CustomButton
+              buttonType={'delete'}
+              label={'Delete'}
+              onClickHandler={() =>
+                openConfirmDialog('Delete User', 'Are you sure you want to delete this user?', () =>
+                  onClickDeleteUser([request])
+                )
+              }
+            />
+            <CustomButton
+              buttonType={'confirm'}
+              label={'Confirm User'}
+              onClickHandler={() =>
+                openConfirmDialog('Confirm User', 'Are you sure you want to confirm this user?', () =>
+                  onClickCreateUser([request])
+                )
+              }
+            />
+          </CardActions>
+        )}
+      </Card>
+
+      {/* Confirm Dialog for Individual Actions */}
+      <ConfirmDialog
+        title={dialogConfig.title}
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        onConfirm={handleConfirmAction}
+      >
+        {dialogConfig.message}
+      </ConfirmDialog>
+    </>
+  );
+};
