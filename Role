@@ -41,3 +41,423 @@ CREATE TABLE T_ROLE_MENU_ACCESS (
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.entity;
+
+import jakarta.persistence.*;
+import java.util.List;
+import java.util.Set;
+
+@Entity
+@Table(name = "T_MENU_ITEMS")
+public class MenuItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "menu_items_seq")
+    @SequenceGenerator(name = "menu_items_seq", sequenceName = "MENU_ITEMS_SEQ", allocationSize = 1)
+    private Long id;
+
+    private String title;
+    private String icon;
+    private String route;
+    private boolean hasChildren;
+
+    // Embedded screen details
+    private String screenId;
+    private String screenTitle;
+    private String screenRoute;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PARENT_ID")
+    private MenuItem parent;
+
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<MenuItem> children;
+
+    @ManyToMany(mappedBy = "accessibleMenuItems")
+    private Set<Role> roles;
+
+    // Getters and Setters...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.entity;
+
+import jakarta.persistence.*;
+import java.util.Set;
+
+@Entity
+@Table(name = "T_ROLES")
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "roles_seq")
+    @SequenceGenerator(name = "roles_seq", sequenceName = "ROLES_SEQ", allocationSize = 1)
+    private Long id;
+
+    private String roleName;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "T_ROLE_MENU_ACCESS",
+        joinColumns = @JoinColumn(name = "ROLE_ID"),
+        inverseJoinColumns = @JoinColumn(name = "MENU_ITEM_ID")
+    )
+    private Set<MenuItem> accessibleMenuItems;
+
+    // Getters and Setters...
+}
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ScreenDetailsDto {
+    private String screenId;
+    private String screenTitle;
+    private String screenRoute;
+
+    // Constructor, Getters, and Setters...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class MenuDto {
+    private Long id;
+    private String title;
+    private String icon;
+    private String route;
+    private Boolean hasChildren;
+    private ScreenDetailsDto screenDetails;
+    private List<MenuDto> children;
+
+    // Constructor, Getters, and Setters...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.repository;
+
+import com.yourcompany.menu.entity.MenuItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
+
+    @Query("SELECT m FROM MenuItem m JOIN m.roles r WHERE r.id = :roleId ORDER BY m.id ASC")
+    List<MenuItem> findAllByRoleId(@Param("roleId") Long roleId);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.service;
+
+import com.yourcompany.menu.dto.MenuDto;
+import com.yourcompany.menu.dto.ScreenDetailsDto;
+import com.yourcompany.menu.entity.MenuItem;
+import com.yourcompany.menu.repository.MenuItemRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+public class MenuService {
+
+    @Autowired
+    private MenuItemRepository menuItemRepository;
+
+    @Transactional(readOnly = true)
+    public List<MenuDto> getMenuForRole(Long roleId) {
+        // 1. Fetch all accessible menu items for the role in one query
+        List<MenuItem> accessibleItems = menuItemRepository.findAllByRoleId(roleId);
+
+        // 2. Map entities to DTOs and group them by their ID for easy lookup
+        Map<Long, MenuDto> dtoMap = accessibleItems.stream()
+                .collect(Collectors.toMap(MenuItem::getId, this::convertToDto));
+        
+        // 3. Assemble the hierarchy
+        List<MenuDto> rootMenus = new java.util.ArrayList<>();
+        accessibleItems.forEach(item -> {
+            MenuDto currentDto = dtoMap.get(item.getId());
+            if (item.getParent() == null) {
+                // This is a top-level menu item
+                rootMenus.add(currentDto);
+            } else {
+                // This is a child item, add it to its parent's children list
+                MenuDto parentDto = dtoMap.get(item.getParent().getId());
+                if (parentDto != null) {
+                    if (parentDto.getChildren() == null) {
+                        parentDto.setChildren(new java.util.ArrayList<>());
+                    }
+                    parentDto.getChildren().add(currentDto);
+                }
+            }
+        });
+
+        return rootMenus;
+    }
+
+    private MenuDto convertToDto(MenuItem item) {
+        MenuDto dto = new MenuDto();
+        dto.setId(item.getId());
+        dto.setTitle(item.getTitle());
+        dto.setIcon(item.getIcon());
+        dto.setRoute(item.getRoute());
+        
+        ScreenDetailsDto screenDetails = new ScreenDetailsDto();
+        screenDetails.setScreenId(item.getScreenId());
+        screenDetails.setScreenTitle(item.getScreenTitle());
+        screenDetails.setScreenRoute(item.getScreenRoute());
+        dto.setScreenDetails(screenDetails);
+
+        if (item.isHasChildren()) {
+            dto.setHasChildren(true);
+        }
+
+        return dto;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.yourcompany.menu.controller;
+
+import com.yourcompany.menu.dto.MenuDto;
+import com.yourcompany.menu.service.MenuService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/menus")
+public class MenuController {
+
+    @Autowired
+    private MenuService menuService;
+
+    @GetMapping("/role/{roleId}")
+    public ResponseEntity<List<MenuDto>> getMenuByRole(@PathVariable Long roleId) {
+        List<MenuDto> menu = menuService.getMenuForRole(roleId);
+        return ResponseEntity.ok(menu);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Insert Menu Items
+-- Top-level item 1
+INSERT INTO T_MENU_ITEMS (ID, TITLE, ICON, ROUTE, HAS_CHILDREN, SCREEN_ID, SCREEN_TITLE, SCREEN_ROUTE, PARENT_ID)
+VALUES (MENU_ITEMS_SEQ.NEXTVAL, 'Downloads', 'download_icon', '/downloads', 0, 'DOWNLOAD_SCREEN', 'Download', '/downloads', NULL);
+
+-- Top-level item 2 (Parent)
+INSERT INTO T_MENU_ITEMS (ID, TITLE, ICON, ROUTE, HAS_CHILDREN, SCREEN_ID, SCREEN_TITLE, SCREEN_ROUTE, PARENT_ID)
+VALUES (MENU_ITEMS_SEQ.NEXTVAL, 'User Management', 'user_icon', '/user-management', 1, 'USER_MANAGEMENT_SCREEN', 'User Management', '/user-management', NULL);
+
+-- Child item 1
+INSERT INTO T_MENU_ITEMS (ID, TITLE, ICON, ROUTE, HAS_CHILDREN, SCREEN_ID, SCREEN_TITLE, SCREEN_ROUTE, PARENT_ID)
+VALUES (MENU_ITEMS_SEQ.NEXTVAL, 'User Create', NULL, '/user-management/create', 0, 'USER_CREATE_SCREEN', 'User Create', '/user-management/create', 2); -- Parent ID is 2
+
+-- Child item 2
+INSERT INTO T_MENU_ITEMS (ID, TITLE, ICON, ROUTE, HAS_CHILDREN, SCREEN_ID, SCREEN_TITLE, SCREEN_ROUTE, PARENT_ID)
+VALUES (MENU_ITEMS_SEQ.NEXTVAL, 'User Modify', NULL, '/user-management/modify', 0, 'USER_MODIFY_SCREEN', 'User Modify', '/user-management/modify', 2); -- Parent ID is 2
+
+
+-- Insert Roles
+INSERT INTO T_ROLES (ID, ROLE_NAME) VALUES (51, 'ADMIN');
+INSERT INTO T_ROLES (ID, ROLE_NAME) VALUES (52, 'VIEWER');
+
+
+-- Grant Access to Role 51 (Admin) - Full Access
+INSERT INTO T_ROLE_MENU_ACCESS (ROLE_ID, MENU_ITEM_ID) VALUES (51, 1); -- Downloads
+INSERT INTO T_ROLE_MENU_ACCESS (ROLE_ID, MENU_ITEM_ID) VALUES (51, 2); -- User Management (Parent)
+INSERT INTO T_ROLE_MENU_ACCESS (ROLE_ID, MENU_ITEM_ID) VALUES (51, 3); -- User Create
+INSERT INTO T_ROLE_MENU_ACCESS (ROLE_ID, MENU_ITEM_ID) VALUES (51, 4); -- User Modify
+
+-- Grant Access to Role 52 (Viewer) - Only Downloads
+INSERT INTO T_ROLE_MENU_ACCESS (ROLE_ID, MENU_ITEM_ID) VALUES (52, 1); -- Downloads
+
+COMMIT;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
