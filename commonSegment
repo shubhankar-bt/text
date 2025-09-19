@@ -1,0 +1,756 @@
+package com.tcs.f1.cglservice.controller;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.SegmentRequestService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+public class SegmentRequestController {
+
+    private final SegmentRequestService segmentRequestService;
+
+    public SegmentRequestController(SegmentRequestService segmentRequestService) {
+        this.segmentRequestService = segmentRequestService;
+    }
+
+    @GetMapping("/segment-requests")
+    public ResponseEntity<List<CommonReq>> getSegmentRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        try {
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                String jwtToken = authorizationHeader.substring(7);
+                // todo assuming jwt decrypted
+//                int userRole = jwtToken.userRole;
+//                String userId = jwtToken.userId;
+                int userRole = 51;
+                String userId = "1234567";
+                List<CommonReq> cgls = userRole == 51 ? segmentRequestService.getMySegmentRequests(userId) : segmentRequestService.getSegmentRequestsForExecutor();
+                return ResponseEntity.ok(cgls);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+        } catch (Exception e) {
+            log.error("Error getting the SegmentRequests!\n{}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/segment-requests")
+    public ResponseEntity<CommonReq> postSegmentRequest(@RequestBody CommonReq commonReq) {
+        try {
+            CommonReq reqResponse = segmentRequestService.postSegmentReqCode(commonReq);
+            return ResponseEntity.ok(reqResponse);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Error posting the segment code request: DataIntegrityViolationException!\n{}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("Error posting the Segment!\n{}", e.getClass());
+        }
+        return ResponseEntity.internalServerError().build();
+    }
+
+    @PatchMapping("/segment-request")
+    public ResponseEntity<CommonReq> patchSegmentReqCode(@RequestBody CommonReq commonReq) {
+        try {
+            CommonReq patchResponse = segmentRequestService.patchSegmentReqCode(commonReq);
+            if (patchResponse == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else {
+                return ResponseEntity.ok(patchResponse);
+            }
+        } catch (DataIntegrityViolationException e) {
+            log.error("Error patching the CGL: DataIntegrityViolationException!\n{}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("Error patching the CGL!\n{}", e.getClass());
+        }
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "COMMON_REQ")
+public class CommonReq {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "COMMON_REQ_id_gen")
+    @SequenceGenerator(name = "COMMON_REQ_id_gen", sequenceName = "COMMON_REQ_SEQ", allocationSize = 1)
+    @Column(name = "REQ_ID", nullable = false)
+    private Long id;
+
+    @Column(name = "REQ_TYPE", nullable = false)
+    private Short reqType;
+
+    @Column(name = "CHANGE_TYPE", nullable = false)
+    private Short changeType;
+
+    @Column(name = "REQ_STATUS", nullable = false)
+    private String reqStatus;
+
+    @ColumnDefault("SYSDATE")
+    @Column(name = "REQ_DATE", nullable = false)
+    private LocalDate reqDate;
+
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @Column(name = "CREATOR_ID", nullable = false)
+    private String creatorId;
+
+    @Column(name = "EXECUTION_DATE")
+    private LocalDate executionDate;
+
+    @Lob
+    @Column(name = "EXECUTION_REMARKS")
+    private String executionRemarks;
+
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @Column(name = "EXECUTOR_ID")
+    private String executorId;
+
+    @Column(name = "EXECUTOR_REMARKS", length = 500)
+    private String executorRemarks;
+
+    @Lob
+    @Column(name = "PAYLOAD")
+    private String payload;
+
+    @Column(name = "TARGET_ID", length = 4000)
+    private String targetId;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "SEGMENT_CODE_MASTER")
+public class SegmentCodeMaster {
+    @Id
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+}
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import org.springframework.data.repository.CrudRepository;
+
+public interface SegmentCodeMasterRepository extends CrudRepository<SegmentCodeMaster, String> {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
+
+public interface CommonRequestRepository extends JpaRepository<CommonReq, Long> {
+    @Query(value = """
+                SELECT * FROM COMMON_REQ WHERE CREATOR_ID = :userId
+            """,
+            nativeQuery = true
+    )
+    List<CommonReq> getMySegmentRequests(String userId);
+
+    @Query(value = """
+                SELECT * FROM COMMON_REQ WHERE REQ_STATUS = 'P'
+            """,
+            nativeQuery = true
+    )
+    List<CommonReq> getSegmentRequestsForExecutor();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.model.CommonReq;
+
+import java.util.List;
+
+public interface SegmentRequestService {
+
+    List<CommonReq> getMySegmentRequests(String userId);
+
+    List<CommonReq> getSegmentRequestsForExecutor();
+
+    CommonReq postSegmentReqCode(CommonReq commonReq);
+
+    CommonReq patchSegmentReqCode(CommonReq commonReq) throws JsonProcessingException;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.repository.SegmentCodeMasterRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class SegmentRequestServiceImpl implements SegmentRequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+
+    private final ObjectMapper mapper;
+
+    public SegmentRequestServiceImpl(CommonRequestRepository commonRequestRepository, SegmentCodeMasterRepository segmentCodeMasterRepository, ObjectMapper mapper) {
+        this.commonRequestRepository = commonRequestRepository;
+        this.segmentCodeMasterRepository = segmentCodeMasterRepository;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public List<CommonReq> getMySegmentRequests(String userId) {
+        return commonRequestRepository.getMySegmentRequests(userId);
+    }
+
+    @Override
+    public List<CommonReq> getSegmentRequestsForExecutor() {
+        return commonRequestRepository.getSegmentRequestsForExecutor();
+    }
+
+    @Override
+    public CommonReq postSegmentReqCode(CommonReq commonReq) {
+
+        return commonRequestRepository.save(commonReq);
+    }
+
+    @Transactional
+    @Override
+    public CommonReq patchSegmentReqCode(CommonReq commonReq) throws JsonProcessingException {
+        String executorId = "1234567"; //todo user id must be fetched from jwt token
+        Optional<CommonReq> existingSegmentOptional = commonRequestRepository.findById(commonReq.getId());
+
+        if (existingSegmentOptional.isPresent()) {
+            CommonReq existingCommonRequest = existingSegmentOptional.get();
+
+            if (existingCommonRequest.getReqStatus() != null) {
+                existingCommonRequest.setReqStatus(existingCommonRequest.getReqStatus());
+            }
+            if (existingCommonRequest.getExecutorRemarks() != null) {
+                existingCommonRequest.setExecutorRemarks(existingCommonRequest.getExecutorRemarks());
+            }
+            if (existingCommonRequest.getReqStatus() != null && existingCommonRequest.getReqStatus().equals("A")) {
+                String payloadJson = commonReq.getPayload();
+                SegmentCodeMaster segmentCodeMaster = mapper.readValue(payloadJson, SegmentCodeMaster.class);
+
+                try {
+                    segmentCodeMasterRepository.save(segmentCodeMaster);
+                    existingCommonRequest.setExecutionDate(LocalDate.now());
+                    existingCommonRequest.setExecutionRemarks("Request Accepted.");
+                    existingCommonRequest.setExecutorId(executorId);
+                } catch (Exception e) {
+                    existingCommonRequest.setReqStatus("P");
+                }
+            }
+            return commonRequestRepository.save(existingCommonRequest);
+        }
+        return null;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//cgl---------------------------------------------------------------
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+
+import com.tcs.f1.cglservice.model.CGLMaster;
+
+import java.util.List;
+
+public interface CGLService {
+
+    List<CGLMaster> getCGLs();
+
+    CGLMaster postCGL(CGLMaster cglMaster);
+
+    CGLMaster patchCGL(CGLMaster cglMaster);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class CGLServiceImpl implements CGLService {
+
+    private final CGLMasterRepository repository;
+
+    public CGLServiceImpl(CGLMasterRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<CGLMaster> getCGLs() {
+        return (List<CGLMaster>) repository.findAll();
+    }
+
+    @Override
+    public CGLMaster postCGL(CGLMaster cglMaster) {
+        return repository.save(cglMaster);
+    }
+
+    @Override
+    public CGLMaster patchCGL(CGLMaster cglMaster) {
+        Optional<CGLMaster> existingCGLOptional = repository.findById(cglMaster.getCglNumber());
+        if (existingCGLOptional.isPresent()) {
+            CGLMaster existingCGL = existingCGLOptional.get();
+            if (cglMaster.getDescription() != null) {
+                existingCGL.setDescription(cglMaster.getDescription());
+            }
+            if (cglMaster.getAcClassification() != null) {
+                existingCGL.setAcClassification(cglMaster.getAcClassification());
+            }
+            if (cglMaster.getBalFwd() != null) {
+                existingCGL.setBalFwd(cglMaster.getBalFwd());
+            }
+            if (cglMaster.getDefBalType() != null) {
+                existingCGL.setDefBalType(cglMaster.getDefBalType());
+            }
+            if (cglMaster.getStatus() != null) {
+                existingCGL.setStatus(cglMaster.getStatus());
+                existingCGL.setCloseDate(cglMaster.getStatus() == 1 ? null : LocalDate.now());
+            }
+            if (cglMaster.getBalCompare() != null) {
+                existingCGL.setBalCompare(cglMaster.getBalCompare());
+            }
+            if (cglMaster.getManualPosting() != null) {
+                existingCGL.setManualPosting(cglMaster.getManualPosting());
+            }
+            return repository.save(existingCGL);
+        } else {
+            return null;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CGLMaster;
+import org.springframework.data.repository.CrudRepository;
+
+public interface CGLMasterRepository extends CrudRepository<CGLMaster, String> {
+}
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "CGL_MASTER")
+public class CGLMaster {
+    @Id
+    @Generated(event = EventType.INSERT)
+    @Column(name = "CGL_NUMBER", insertable = false, updatable = false)
+    private String cglNumber;
+
+    @Column(name = "COMP_1", nullable = false)
+    private Short comp1;
+
+    @Column(name = "SEGMENT_CODE", nullable = false)
+    private String segmentCode;
+
+    @Column(name = "COMP_2", nullable = false)
+    private Short comp2;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+
+    @Column(name = "AC_CLASSIFICATION", nullable = false, length = 1)
+    private String acClassification;
+
+    @Column(name = "BAL_FWD", nullable = false)
+    private Integer balFwd = 0;
+
+    @Column(name = "DEF_BAL_TYPE", nullable = false, length = 1)
+    private String defBalType;
+
+    @Column(name = "STATUS", nullable = false)
+    private Integer status;
+
+    @ColumnDefault("SYSDATE")
+    @Generated(event = EventType.INSERT)
+    @Column(name = "OPEN_DATE", nullable = false, insertable = false, updatable = false)
+    private LocalDate openDate;
+
+    @Column(name = "CLOSE_DATE")
+    private LocalDate closeDate;
+
+    @Column(name = "BAL_COMPARE", nullable = false)
+    private Integer balCompare = 0;
+
+    @Column(name = "MANUAL_POSTING", nullable = false)
+    private Integer manualPosting = 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.service.CGLService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+public class CGLController {
+
+    private final CGLService service;
+
+    public CGLController(CGLService service) {
+        this.service = service;
+    }
+
+    @GetMapping("/cgls")
+    public ResponseEntity<List<CGLMaster>> getCGLs() {
+
+        try {
+
+            List<CGLMaster> cgls = service.getCGLs();
+            return ResponseEntity.ok(cgls);
+        } catch (Exception e) {
+            log.error("Error getting the CGLs!\n{}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/cgls")
+    public ResponseEntity<CGLMaster> postCGL(@RequestBody CGLMaster cglMaster) {
+
+        try {
+
+            CGLMaster cgl = service.postCGL(cglMaster);
+            return ResponseEntity.ok(cgl);
+        } catch (DataIntegrityViolationException e) {
+            log.error("Error posting the CGL: DataIntegrityViolationException!\n{}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("Error posting the CGL!\n{}", e.getClass());
+        }
+        return ResponseEntity.internalServerError().build();
+    }
+
+    @PatchMapping("/cgls")
+    public ResponseEntity<CGLMaster> patchCGL(@RequestBody CGLMaster cglMaster) {
+
+        try {
+
+            CGLMaster cgl = service.patchCGL(cglMaster);
+            if (cgl == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            } else {
+                return ResponseEntity.ok(cgl);
+            }
+        } catch (DataIntegrityViolationException e) {
+            log.error("Error patching the CGL: DataIntegrityViolationException!\n{}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        } catch (Exception e) {
+            log.error("Error patching the CGL!\n{}", e.getClass());
+        }
+        return ResponseEntity.internalServerError().build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+REQ_ID	NUMBER(38,0)	No	"FTWOAHM"."COMMON_REQ_SEQ"."NEXTVAL"	1	Unique PK.
+REQ_TYPE	NUMBER(4,0)	No		2	Which type of request it. 1001: Segment Code, 1002: CGL.
+CHANGE_TYPE	NUMBER(2,0)	No		3	What type of change it is. 11: Add, 12: Update, 13: Delete.
+REQ_STATUS	NUMBER(2,0)	No	11 	4	Status of the request. 11: Pending, 12: Accepted, 13: Rejected.
+REQ_DATE	DATE	No	SYSDATE 	5	When this request was created.
+CREATOR_ID	VARCHAR2(12 BYTE)	No		6	User id of the user who created this request.
+EXECUTION_DATE	DATE	Yes		7	Timestamp when the request was actually applied to the target table.
+EXECUTION_REMARKS	CLOB	Yes		8	JSON string containing details about the execution (e.g., success/failure message, errors).
+EXECUTOR_ID	VARCHAR2(12 BYTE)	Yes		9	User id of the user who accepted/rejected this request.
+EXECUTOR_REMARKS	VARCHAR2(500 BYTE)	Yes		10	Remarks added by executor.
+PAYLOAD	CLOB	Yes		11	Actual change request data to be updated to the target table. Can be null id delete request.
+TARGET_ID	VARCHAR2(4000 BYTE)	Yes		12	Target table row id of this request. Can be null if add request.
+
+
+
+
+
+
+
+
+
+COMP_1	NUMBER(4,0)	No		1	4 digit comp1 code.
+SEGMENT_CODE	VARCHAR2(4 BYTE)	No		2	FK SEGMENT_CODE from SEGMENT_CODE_MASTER table.
+COMP_2	NUMBER(4,0)	No		3	2 digit comp2 code.
+CGL_NUMBER	VARCHAR2(84 BYTE)	No	TO_CHAR("COMP_1")||"SEGMENT_CODE"||TO_CHAR("COMP_2")	4	10 digit CGL number computed as (COMP_1 + SEGMENT_CODE + COMP_2).
+DESCRIPTION	VARCHAR2(100 BYTE)	No		5	Short description of this CGL.
+AC_CLASSIFICATION	VARCHAR2(1 BYTE)	No		6	A: Asset, L: Liability, I: Income, E: Expense, M: Memo A/c
+BAL_FWD	NUMBER(1,0)	No		7	Flag on whether to carry forward the balance to the next year or not.
+DEF_BAL_TYPE	VARCHAR2(1 BYTE)	No		8	C: Credit, D: Debit
+STATUS	NUMBER(1,0)	No		9	Status of the CGL. 1: Active, 0: InActive.
+OPEN_DATE	DATE	No	SYSDATE                                              	10	Date when this CGL opened. Defaults to SYSDATE.
+CLOSE_DATE	DATE	Yes		11	Date when this CGL closed. Defaults to SYSDATE at the time of closing.
+BAL_COMPARE	NUMBER(1,0)	No		12	Flag on whether to compare the balance or not.
+MANUAL_POSTING	NUMBER(1,0)	No		13	Flag on whether to allow manual posting or not.
+
+
+
+
+
+
+
+SEGMENT_CODE	VARCHAR2(4 BYTE)	No		1	4 character unique segment code.
+DESCRIPTION	VARCHAR2(100 BYTE)	No		2	Short description about this segment code.
