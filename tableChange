@@ -662,3 +662,110 @@ public class RequestServiceImpl implements RequestService {
 
 
 
+
+------------>
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.repository.SegmentCodeMasterRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SegmentCodeStrategy implements RequestTypeStrategy {
+
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        SegmentCodeMaster segmentData = objectMapper.readValue(request.getPayload(), SegmentCodeMaster.class);
+
+        // ** NEW LOGIC TO HANDLE ADD vs UPDATE **
+        if (ChangeType.ADD.equals(request.getChangeType())) {
+            log.info("Executing ADD strategy for SegmentCode: {}", segmentData.getSegmentCode());
+            // No need to check if exists, primary key constraint will handle it.
+        } else if (ChangeType.UPDATE.equals(request.getChangeType())) {
+            log.info("Executing UPDATE strategy for SegmentCode: {}", request.getTargetId());
+            // Ensure the record to be updated actually exists.
+            if (!segmentCodeMasterRepository.existsById(request.getTargetId())) {
+                throw new IllegalStateException("Cannot update SegmentCode with ID " + request.getTargetId() + " because it does not exist.");
+            }
+        } else {
+             throw new UnsupportedOperationException("Change type " + request.getChangeType() + " is not supported for Segment Codes.");
+        }
+        
+        segmentCodeMasterRepository.save(segmentData);
+        log.info("Successfully saved SegmentCode: {}", segmentData.getSegmentCode());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CglCodeStrategy implements RequestTypeStrategy {
+
+    private final CGLMasterRepository cglMasterRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        CGLMaster cglData = objectMapper.readValue(request.getPayload(), CGLMaster.class);
+        
+        // ** NEW LOGIC TO HANDLE ADD vs UPDATE **
+        if (ChangeType.ADD.equals(request.getChangeType())) {
+             log.info("Executing ADD strategy for CGL: {}", cglData.getCglNumber());
+        } else if (ChangeType.UPDATE.equals(request.getChangeType())) {
+             log.info("Executing UPDATE strategy for CGL: {}", request.getTargetId());
+             if(!cglMasterRepository.existsById(request.getTargetId())) {
+                  throw new IllegalStateException("Cannot update CGL with ID " + request.getTargetId() + " because it does not exist.");
+             }
+        } else {
+             throw new UnsupportedOperationException("Change type " + request.getChangeType() + " is not supported for CGL.");
+        }
+
+        cglMasterRepository.save(cglData);
+        log.info("Successfully saved CGL: {}", cglData.getCglNumber());
+    }
+}
+
+
+
