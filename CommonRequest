@@ -1,3 +1,28 @@
+Here is a completely rewritten and improved version of your application. I've focused on creating a generic request management system that can easily handle both Segment Code and CGL Code requests, and can be extended for future request types.
+Key Architectural Improvements:
+Generic Request Service: I've introduced a central RequestService that handles all common logic for creating and managing requests, eliminating code duplication.
+Strategy Pattern: To handle the unique logic for approving different request types (like saving a Segment vs. a CGL code), I've used the Strategy design pattern. This makes the system very easy to extend in the future.
+Consolidated Controller: There is now a single RequestController that manages all request-related operations, providing a cleaner API.
+Enums for Clarity: I've used Java Enums for RequestStatus, RequestType, and ChangeType to make the code more readable and prevent errors from using raw numbers or strings.
+DTOs (Data Transfer Objects): I've introduced DTOs to separate the API layer from your database models, which is a crucial best practice for building scalable applications.
+Improved Queries: The repository queries are now more efficient and easier to understand.
+Centralized Exception Handling: A GlobalExceptionHandler has been added to manage errors gracefully across the application.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 package com.tcs.f1.cglservice.model.enums;
 
 /**
