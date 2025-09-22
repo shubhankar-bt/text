@@ -1,0 +1,1098 @@
+package com.tcs.f1.cglservice.model.enums;
+
+/**
+ * Represents the status of a request in the system.
+ */
+public enum RequestStatus {
+    PENDING("P"),
+    ACCEPTED("A"),
+    REJECTED("R");
+
+    private final String code;
+
+    RequestStatus(String code) {
+        this.code = code;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public static RequestStatus fromCode(String code) {
+        for (RequestStatus status : RequestStatus.values()) {
+            if (status.getCode().equalsIgnoreCase(code)) {
+                return status;
+            }
+        }
+        throw new IllegalArgumentException("Unknown status code: " + code);
+    }
+}
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model.enums;
+
+/**
+ * Defines the type of entity a request is for (e.g., Segment Code, CGL).
+ */
+public enum RequestType {
+    SEGMENT_CODE(1001),
+    CGL_CODE(1002);
+
+    private final int code;
+
+    RequestType(int code) {
+        this.code = code;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+     public static RequestType fromCode(int code) {
+        for (RequestType type : RequestType.values()) {
+            if (type.getCode() == code) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown request type code: " + code);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model.enums;
+
+/**
+ * Specifies the type of change being requested (Add, Update, Delete).
+ */
+public enum ChangeType {
+    ADD(11),
+    UPDATE(12),
+    DELETE(13);
+
+    private final int code;
+
+    ChangeType(int code) {
+        this.code = code;
+    }
+
+    public int getCode() {
+        return code;
+    }
+
+    public static ChangeType fromCode(int code) {
+        for (ChangeType type : ChangeType.values()) {
+            if (type.getCode() == code) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown change type code: " + code);
+    }
+}
+
+
+
+
+
+
+
+
+
+----------
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "COMMON_REQ")
+public class CommonReq {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "COMMON_REQ_id_gen")
+    @SequenceGenerator(name = "COMMON_REQ_id_gen", sequenceName = "COMMON_REQ_SEQ", allocationSize = 1)
+    @Column(name = "REQ_ID", nullable = false)
+    private Long id;
+
+    @Column(name = "REQ_TYPE", nullable = false)
+    private Integer reqType;
+
+    @Column(name = "CHANGE_TYPE", nullable = false)
+    private Integer changeType;
+
+    @Column(name = "REQ_STATUS", nullable = false, length = 1)
+    private String reqStatus;
+
+    @CreationTimestamp
+    @Column(name = "REQ_DATE", nullable = false, updatable = false)
+    private LocalDateTime reqDate;
+
+    @Column(name = "CREATOR_ID", nullable = false, length = 12)
+    private String creatorId;
+
+    @Column(name = "EXECUTION_DATE")
+    private LocalDateTime executionDate;
+
+    @Lob
+    @Column(name = "EXECUTION_REMARKS")
+    private String executionRemarks;
+
+    @Column(name = "EXECUTOR_ID", length = 12)
+    private String executorId;
+
+    @Column(name = "EXECUTOR_REMARKS", length = 500)
+    private String executorRemarks;
+
+    @Lob
+    @Column(name = "PAYLOAD", nullable = false)
+    private String payload;
+
+    @Column(name = "TARGET_ID", length = 4000)
+    private String targetId;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.reqStatus == null) {
+            this.reqStatus = "P"; // Default to Pending
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "SEGMENT_CODE_MASTER")
+public class SegmentCodeMaster {
+    @Id
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+}
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "CGL_MASTER")
+public class CGLMaster {
+    @Id
+    @Column(name = "CGL_NUMBER", length = 84)
+    private String cglNumber;
+
+    @Column(name = "COMP_1", nullable = false)
+    private Short comp1;
+
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "COMP_2", nullable = false)
+    private Short comp2;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+
+    @Column(name = "AC_CLASSIFICATION", nullable = false, length = 1)
+    private String acClassification;
+
+    @ColumnDefault("0")
+    @Column(name = "BAL_FWD", nullable = false)
+    private Integer balFwd = 0;
+
+    @Column(name = "DEF_BAL_TYPE", nullable = false, length = 1)
+    private String defBalType;
+
+    @Column(name = "STATUS", nullable = false)
+    private Integer status;
+
+    @CreationTimestamp
+    @Column(name = "OPEN_DATE", nullable = false, updatable = false)
+    private LocalDate openDate;
+
+    @Column(name = "CLOSE_DATE")
+    private LocalDate closeDate;
+
+    @ColumnDefault("0")
+    @Column(name = "BAL_COMPARE", nullable = false)
+    private Integer balCompare = 0;
+
+    @ColumnDefault("0")
+    @Column(name = "MANUAL_POSTING", nullable = false)
+    private Integer manualPosting = 0;
+
+    @PrePersist
+    private void computeCglNumber() {
+        this.cglNumber = String.format("%04d%s%02d", comp1, segmentCode, comp2);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface CommonRequestRepository extends JpaRepository<CommonReq, Long> {
+
+    /**
+     * Finds all requests created by a specific user.
+     * @param creatorId The ID of the user.
+     * @return A list of requests.
+     */
+    List<CommonReq> findByCreatorId(String creatorId);
+
+    /**
+     * Finds all requests with a given status.
+     * @param status The status code ('P', 'A', 'R').
+     * @return A list of requests.
+     */
+    List<CommonReq> findByReqStatus(String status);
+}
+
+
+
+
+
+
+
+
+
+
+--------
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface SegmentCodeMasterRepository extends CrudRepository<SegmentCodeMaster, String> {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CGLMaster;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface CGLMasterRepository extends CrudRepository<CGLMaster, String> {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Data;
+
+@Data
+public class CreateRequestDto {
+    private int reqType;
+    private int changeType;
+    private String targetId;
+    private JsonNode payload;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import lombok.Data;
+
+@Data
+public class UpdateRequestStatusDto {
+    private String status; // "A" for Accept, "R" for Reject
+    private String remarks;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+----------
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.model.CommonReq;
+
+/**
+ * Strategy interface to handle the processing of different request types.
+ */
+public interface RequestTypeStrategy {
+    /**
+     * Processes the request upon approval. This typically involves saving the
+     * payload data to the relevant master table.
+     *
+     * @param request The common request object containing the payload.
+     * @throws JsonProcessingException if there is an error processing the JSON payload.
+     */
+    void processApproval(CommonReq request) throws JsonProcessingException;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import com.tcs.f1.cglservice.repository.SegmentCodeMasterRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class SegmentCodeStrategy implements RequestTypeStrategy {
+
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void processApproval(CommonReq request) throws JsonProcessingException {
+        SegmentCodeMaster segmentCodeMaster = objectMapper.readValue(request.getPayload(), SegmentCodeMaster.class);
+        segmentCodeMasterRepository.save(segmentCodeMaster);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class CglCodeStrategy implements RequestTypeStrategy {
+
+    private final CGLMasterRepository cglMasterRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public void processApproval(CommonReq request) throws JsonProcessingException {
+        CGLMaster cglMaster = objectMapper.readValue(request.getPayload(), CGLMaster.class);
+        cglMasterRepository.save(cglMaster);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class RequestStrategyFactory {
+
+    private final SegmentCodeStrategy segmentCodeStrategy;
+    private final CglCodeStrategy cglCodeStrategy;
+
+    public RequestTypeStrategy getStrategy(RequestType requestType) {
+        switch (requestType) {
+            case SEGMENT_CODE:
+                return segmentCodeStrategy;
+            case CGL_CODE:
+                return cglCodeStrategy;
+            default:
+                throw new IllegalArgumentException("Unsupported request type: " + requestType);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface RequestService {
+
+    /**
+     * Creates a new request.
+     * @param createRequestDto DTO containing request details.
+     * @param creatorId The ID of the user creating the request.
+     * @return The saved request entity.
+     */
+    CommonReq createRequest(CreateRequestDto createRequestDto, String creatorId) throws JsonProcessingException;
+
+    /**
+     * Retrieves all requests created by a specific user (Maker).
+     * @param userId The user's ID.
+     * @return A list of their requests.
+     */
+    List<CommonReq> getMyRequests(String userId);
+
+    /**
+     * Retrieves all pending requests for Checkers.
+     * @return A list of pending requests.
+     */
+    List<CommonReq> getPendingRequests();
+    
+    /**
+     * Retrieves all requests for Checkers (Pending, Accepted, Rejected).
+     * @return A list of all requests.
+     */
+    List<CommonReq> getAllRequests();
+
+    /**
+     * Updates the status of a request (Accept/Reject).
+     * @param requestId The ID of the request to update.
+     * @param updateDto DTO containing the new status and remarks.
+     * @param executorId The ID of the user performing the action.
+     * @return The updated request entity.
+     */
+    Optional<CommonReq> updateRequestStatus(Long requestId, UpdateRequestStatusDto updateDto, String executorId) throws JsonProcessingException;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.service.strategy.RequestStrategyFactory;
+import com.tcs.f1.cglservice.service.strategy.RequestTypeStrategy;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImpl implements RequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final RequestStrategyFactory requestStrategyFactory;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional
+    public CommonReq createRequest(CreateRequestDto createRequestDto, String creatorId) throws JsonProcessingException {
+        CommonReq newRequest = new CommonReq();
+        newRequest.setCreatorId(creatorId);
+        newRequest.setReqType(createRequestDto.getReqType());
+        newRequest.setChangeType(createRequestDto.getChangeType());
+        newRequest.setTargetId(createRequestDto.getTargetId());
+        newRequest.setPayload(objectMapper.writeValueAsString(createRequestDto.getPayload()));
+        newRequest.setReqStatus(RequestStatus.PENDING.getCode());
+        return commonRequestRepository.save(newRequest);
+    }
+
+    @Override
+    public List<CommonReq> getMyRequests(String userId) {
+        return commonRequestRepository.findByCreatorId(userId);
+    }
+
+    @Override
+    public List<CommonReq> getPendingRequests() {
+        return commonRequestRepository.findByReqStatus(RequestStatus.PENDING.getCode());
+    }
+    
+    @Override
+    public List<CommonReq> getAllRequests() {
+        return commonRequestRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Optional<CommonReq> updateRequestStatus(Long requestId, UpdateRequestStatusDto updateDto, String executorId) throws JsonProcessingException {
+        CommonReq request = commonRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found with id: " + requestId));
+
+        if (!request.getReqStatus().equals(RequestStatus.PENDING.getCode())) {
+            log.warn("Attempted to process an already processed request with ID: {}", requestId);
+            // Optionally throw an exception here, e.g., IllegalStateException
+            return Optional.of(request);
+        }
+
+        RequestStatus newStatus = RequestStatus.fromCode(updateDto.getStatus());
+        request.setReqStatus(newStatus.getCode());
+        request.setExecutorId(executorId);
+        request.setExecutorRemarks(updateDto.getRemarks());
+        request.setExecutionDate(LocalDateTime.now());
+
+        if (newStatus == RequestStatus.ACCEPTED) {
+            try {
+                RequestType requestType = RequestType.fromCode(request.getReqType());
+                RequestTypeStrategy strategy = requestStrategyFactory.getStrategy(requestType);
+                strategy.processApproval(request);
+                request.setExecutionRemarks("Request approved and processed successfully.");
+                 log.info("Request {} accepted and processed for type {}", requestId, requestType);
+            } catch (Exception e) {
+                log.error("Error processing approval for request ID {}: {}", requestId, e.getMessage(), e);
+                // Important: Revert status to pending and set error remarks
+                request.setReqStatus(RequestStatus.PENDING.getCode());
+                request.setExecutionRemarks("Processing failed: " + e.getMessage());
+                commonRequestRepository.save(request);
+                // Re-throw a specific exception to indicate failure in the transaction
+                throw new RuntimeException("Failed to process request approval.", e);
+            }
+        } else {
+            request.setExecutionRemarks("Request was rejected by the checker.");
+            log.info("Request {} was rejected", requestId);
+        }
+
+        return Optional.of(commonRequestRepository.save(request));
+    }
+}
+
+
+
+
+
+
+
+--------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.RequestService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+@Slf4j
+public class RequestController {
+
+    private final RequestService requestService;
+
+    // A mock function to get user info from token. Replace with your actual implementation.
+    private String getUserIdFromToken(String authorizationHeader) {
+        // In a real app, you would decode the JWT and get the user ID
+        return "user123"; // MOCK USER ID
+    }
+    private int getUserRoleFromToken(String authorizationHeader) {
+       // In a real app, you would decode the JWT and get the user role
+        return 51; // MOCK MAKER ROLE
+    }
+
+
+    /**
+     * Endpoint for a Maker to create a new request.
+     */
+    @PostMapping
+    public ResponseEntity<CommonReq> createRequest(@RequestBody CreateRequestDto createRequestDto, @RequestHeader("Authorization") String authorizationHeader) throws JsonProcessingException {
+        String userId = getUserIdFromToken(authorizationHeader);
+        log.info("Received request creation call from user: {}", userId);
+        CommonReq createdRequest = requestService.createRequest(createRequestDto, userId);
+        return new ResponseEntity<>(createdRequest, HttpStatus.CREATED);
+    }
+
+    /**
+     * Endpoint for a Maker to view their own requests.
+     */
+    @GetMapping("/my-requests")
+    public ResponseEntity<List<CommonReq>> getMyRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        String userId = getUserIdFromToken(authorizationHeader);
+        return ResponseEntity.ok(requestService.getMyRequests(userId));
+    }
+
+    /**
+     * Endpoint for a Checker to see all pending requests.
+     */
+    @GetMapping("/pending")
+    public ResponseEntity<List<CommonReq>> getPendingRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        // Here you could add role-based authorization checks
+        return ResponseEntity.ok(requestService.getPendingRequests());
+    }
+    
+    /**
+     * Endpoint for a Checker to see all requests (pending, accepted, rejected).
+     */
+    @GetMapping("/all")
+    public ResponseEntity<List<CommonReq>> getAllRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        // Here you could add role-based authorization checks
+        return ResponseEntity.ok(requestService.getAllRequests());
+    }
+
+    /**
+     * Endpoint for a Checker to accept or reject a request.
+     */
+    @PatchMapping("/{requestId}/status")
+    public ResponseEntity<CommonReq> updateRequestStatus(
+            @PathVariable Long requestId,
+            @RequestBody UpdateRequestStatusDto updateDto,
+            @RequestHeader("Authorization") String authorizationHeader) throws JsonProcessingException {
+
+        String executorId = getUserIdFromToken(authorizationHeader);
+        log.info("User {} is attempting to update status for request {}", executorId, requestId);
+
+        return requestService.updateRequestStatus(requestId, updateDto, executorId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.exception;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+
+import java.util.Map;
+
+@ControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Object> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+        log.error("Resource not found: {}", ex.getMessage());
+        return new ResponseEntity<>(Map.of("error", ex.getMessage()), HttpStatus.NOT_FOUND);
+    }
+    
+    @ExceptionHandler(JsonProcessingException.class)
+    public ResponseEntity<Object> handleJsonProcessingException(JsonProcessingException ex, WebRequest request) {
+        log.error("Error processing JSON payload: {}", ex.getMessage());
+        return new ResponseEntity<>(Map.of("error", "Invalid request payload format."), HttpStatus.BAD_REQUEST);
+    }
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolationException(DataIntegrityViolationException ex, WebRequest request) {
+        log.error("Data integrity violation: {}", ex.getMessage());
+        return new ResponseEntity<>(Map.of("error", "Database constraint violation. The resource might already exist or a required field is missing."), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
+        log.error("Illegal argument provided: {}", ex.getMessage());
+        return new ResponseEntity<>(Map.of("error", ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleGlobalException(Exception ex, WebRequest request) {
+        log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(Map.of("error", "An internal server error occurred."), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.NOT_FOUND)
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+
+
+
+
