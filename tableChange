@@ -447,3 +447,218 @@ public class CommonReq {
 }
 
 
+
+
+
+
+
+
+
+
+&&&&&&-----&&&--&-&-&---&-&-------------
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class CreateRequestDto {
+    // Jackson will convert the incoming JSON string "SEGMENT_CODE" to the enum RequestType.SEGMENT_CODE
+    private RequestType requestType;
+
+    // Jackson will convert the incoming JSON string "ADD" to the enum ChangeType.ADD
+    private ChangeType changeType;
+
+    private Object payload;
+    private String targetId;
+}
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class UpdateRequestStatusDto {
+    // Jackson will convert the incoming JSON string "ACCEPTED" to the enum RequestStatus.ACCEPTED
+    private RequestStatus status;
+    private String remarks;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface CommonRequestRepository extends JpaRepository<CommonReq, Long> {
+
+    List<CommonReq> findByCreatorId(String creatorId);
+
+    /**
+     * Finds requests by their status.
+     * The method signature now correctly uses the RequestStatus enum.
+     * The RequestStatusConverter will automatically handle converting the enum
+     * to its database character code ('P', 'A', 'R') for the SQL query.
+     * @param status The enum status to search for.
+     * @return A list of matching requests.
+     */
+    List<CommonReq> findByReqStatus(RequestStatus status);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.service.strategy.RequestStrategyFactory;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImpl implements RequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final RequestStrategyFactory strategyFactory;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        // This now works because dto.getRequestType() correctly returns a RequestType enum
+        request.setReqType(dto.getRequestType());
+        // This now works because dto.getChangeType() correctly returns a ChangeType enum
+        request.setChangeType(dto.getChangeType());
+        request.setPayload(objectMapper.writeValueAsString(dto.getPayload()));
+        request.setTargetId(dto.getTargetId());
+        request.setReqStatus(RequestStatus.PENDING);
+
+        log.info("Saving new request of type {} from user {}", dto.getRequestType(), creatorId);
+        return commonRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public Optional<CommonReq> updateRequestStatus(Long requestId, UpdateRequestStatusDto dto, String executorId) throws JsonProcessingException {
+        log.info("Attempting to update status for request ID: {}", requestId);
+
+        CommonReq request = commonRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request with ID " + requestId + " not found."));
+
+        if (request.getReqStatus() != RequestStatus.PENDING) {
+            log.warn("Attempted to modify an already processed request. ID: {}, Current Status: {}", requestId, request.getReqStatus());
+            throw new IllegalStateException("Request has already been processed and cannot be modified.");
+        }
+
+        request.setExecutorId(executorId);
+        request.setExecutorRemarks(dto.getRemarks());
+        request.setExecutionDate(LocalDateTime.now());
+        // This now works because dto.getStatus() correctly returns a RequestStatus enum
+        request.setReqStatus(dto.getStatus());
+
+        // FIX: Changed comparison from == to .equals() for robustness.
+        // This now works as it compares two RequestStatus enums.
+        if (RequestStatus.ACCEPTED.equals(dto.getStatus())) {
+            log.info("Request {} ACCEPTED. Applying strategy for type {}", requestId, request.getReqType());
+            strategyFactory.getStrategy(request.getReqType()).approve(request);
+        } else {
+            log.info("Request {} REJECTED.", requestId);
+        }
+
+        return Optional.of(commonRequestRepository.save(request));
+    }
+
+    @Override
+    public List<CommonReq> getMyRequests(String userId) {
+        return commonRequestRepository.findByCreatorId(userId);
+    }
+
+    @Override
+    public List<CommonReq> getPendingRequests() {
+        // FIX: This call now matches the corrected repository method signature.
+        return commonRequestRepository.findByReqStatus(RequestStatus.PENDING);
+    }
+
+    @Override
+    public List<CommonReq> getAllRequests() {
+        return commonRequestRepository.findAll();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
