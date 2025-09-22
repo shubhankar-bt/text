@@ -12,3 +12,285 @@ EXECUTOR_ID	VARCHAR2(12 BYTE)	Yes		9	User id of the user who accepted/rejected t
 EXECUTOR_REMARKS	VARCHAR2(500 BYTE)	Yes		10	Remarks added by executor.
 PAYLOAD	CLOB	Yes		11	Actual change request data to be updated to the target table. Can be null id delete request.
 TARGET_ID	VARCHAR2(4000 BYTE)	Yes		12	Target table row id of this request. Can be null if add request.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------+
+
+
+
+package com.tcs.f1.cglservice.model.converters;
+
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+import java.util.stream.Stream;
+
+/**
+ * This converter handles the mapping between the RequestStatus enum in Java
+ * and its single-character representation ('P', 'A', 'R') in the database.
+ * The autoApply=true attribute means JPA will automatically use this converter
+ * for all fields of type RequestStatus.
+ */
+@Converter(autoApply = true)
+public class RequestStatusConverter implements AttributeConverter<RequestStatus, String> {
+
+    /**
+     * Converts the enum constant to its database character code.
+     * @param status The enum value (e.g., RequestStatus.PENDING)
+     * @return The database value (e.g., "P")
+     */
+    @Override
+    public String convertToDatabaseColumn(RequestStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return status.getCode();
+    }
+
+    /**
+     * Converts the character code from the database back to the enum constant.
+     * @param code The database value (e.g., "P")
+     * @return The enum value (e.g., RequestStatus.PENDING)
+     */
+    @Override
+    public RequestStatus convertToEntityAttribute(String code) {
+        if (code == null) {
+            return null;
+        }
+        return Stream.of(RequestStatus.values())
+                .filter(c -> c.getCode().equals(code))
+                .findFirst()
+                .orElseThrow(IllegalArgumentException::new);
+    }
+}
+
+
+
+
+
+
+
+
+
+-------
+
+package com.tcs.f1.cglservice.model.converters;
+
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+import java.util.stream.Stream;
+
+/**
+ * This converter handles the mapping between the ChangeType enum in Java
+ * and its single-character representation ('A', 'U', 'D') in the database.
+ */
+@Converter(autoApply = true)
+public class ChangeTypeConverter implements AttributeConverter<ChangeType, String> {
+
+    @Override
+    public String convertToDatabaseColumn(ChangeType changeType) {
+        if (changeType == null) {
+            return null;
+        }
+        return changeType.getCode();
+    }
+
+    @Override
+    public ChangeType convertToEntityAttribute(String code) {
+        if (code == null) {
+            return null;
+        }
+        return Stream.of(ChangeType.values())
+                .filter(c -> c.getCode().equals(code))
+                .findFirst()
+                .orElseThrow(IllegalArgumentException::new);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+--------------
+
+
+
+package com.tcs.f1.cglservice.model.enums;
+
+import lombok.Getter;
+
+@Getter
+public enum RequestStatus {
+    PENDING("P"),
+    ACCEPTED("A"),
+    REJECTED("R");
+
+    private final String code;
+
+    RequestStatus(String code) {
+        this.code = code;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+----
+
+
+package com.tcs.f1.cglservice.model.enums;
+
+import lombok.Getter;
+
+@Getter
+public enum ChangeType {
+    ADD("A"),
+    UPDATE("U"),
+    DELETE("D");
+
+    private final String code;
+
+    ChangeType(String code) {
+        this.code = code;
+    }
+}
+
+
+
+
+
+
+
+
+--------.
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.model;
+
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "COMMON_REQ")
+public class CommonReq {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "COMMON_REQ_id_gen")
+    @SequenceGenerator(name = "COMMON_REQ_id_gen", sequenceName = "COMMON_REQ_SEQ", allocationSize = 1)
+    @Column(name = "REQ_ID", nullable = false)
+    private Long id;
+
+    @Enumerated(EnumType.STRING) // Stays as STRING because the DB column is VARCHAR2(20)
+    @Column(name = "REQ_TYPE", nullable = false, length = 20)
+    private RequestType reqType;
+
+    // The @Converter(autoApply = true) on our converter classes handles these fields automatically.
+    // No @Enumerated annotation is needed.
+    @Column(name = "CHANGE_TYPE", nullable = false, length = 2)
+    private ChangeType changeType;
+
+    @Column(name = "REQ_STATUS", nullable = false, length = 2)
+    private RequestStatus reqStatus;
+
+    @CreationTimestamp
+    @Column(name = "REQ_DATE", nullable = false, updatable = false)
+    private LocalDateTime reqDate;
+
+    @Column(name = "CREATOR_ID", nullable = false, length = 12)
+    private String creatorId;
+
+    @Column(name = "EXECUTION_DATE")
+    private LocalDateTime executionDate;
+
+    @Lob
+    @Column(name = "EXECUTION_REMARKS")
+    private String executionRemarks;
+
+    @Column(name = "EXECUTOR_ID", length = 12)
+    private String executorId;
+
+    @Column(name = "EXECUTOR_REMARKS", length = 500)
+    private String executorRemarks;
+
+    @Lob
+    @Column(name = "PAYLOAD", nullable = false)
+    private String payload;
+
+    @Column(name = "TARGET_ID", length = 4000)
+    private String targetId;
+}
+
+
+
+
+
+
+
+
+
+
+
+----++++--++---+++--++---
+
+
+{
+  "requestType": "SEGMENT_CODE",
+  "changeType": "ADD",
+  "payload": {
+    "segmentCode": "S123",
+    "description": "New Marketing Segment"
+  }
+}
+
+
+
+
+
+
+
+
