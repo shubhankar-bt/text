@@ -1121,3 +1121,457 @@ public class ResourceNotFoundException extends RuntimeException {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++++++++++++++++++++++++++
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Getter;
+
+import java.time.Instant;
+
+@Getter
+@JsonInclude(JsonInclude.Include.NON_NULL) // Don't include null fields in the JSON response
+public class ApiResponse<T> {
+
+    private final boolean success;
+    private final String message;
+    private final T data;
+    private final Instant timestamp;
+
+    private ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+        this.timestamp = Instant.now();
+    }
+
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return new ApiResponse<>(true, message, data);
+    }
+    
+    public static <T> ApiResponse<T> success(T data) {
+        return new ApiResponse<>(true, "Operation completed successfully.", data);
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(false, message, null);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++++
+
+
+<!-- Add this inside your <dependencies> tag -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+
+
+
+
+
+
+
+
+
+
+
+
+-----
+
+
+
+
+
+
+# Expose all actuator endpoints over HTTP. In a real production environment,
+# you would be more selective and secure these endpoints.
+management.endpoints.web.exposure.include=*
+
+# Always show full details on the health endpoint (e.g., database connection status)
+management.endpoint.health.show-details=always
+
+# Add some custom info to the /info endpoint
+info.app.name=CGL Service
+info.app.description=Service for managing CGL and Segment Code requests.
+info.app.version=1.0.0
+
+
+
+
+
+
+
+
+
+
+
++++++++++++++
+
+
+
+package com.tcs.f1.cglservice.advice;
+
+import com.tcs.f1.cglservice.dto.ApiResponse;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+
+/**
+ * This advice intercepts all successful responses from controllers in the specified base package
+ * and wraps them in a standardized ApiResponse object. This automates the response structure,
+ * ensuring consistency and reducing boilerplate code in the controllers.
+ */
+@ControllerAdvice(basePackages = "com.tcs.f1.cglservice.controller")
+public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
+
+    /**
+     * This method determines if this advice should be applied.
+     * We apply it to any response that is NOT already an ApiResponse, to prevent double-wrapping.
+     * It also ignores responses from the Spring Actuator endpoints.
+     */
+    @Override
+    public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+        // Do not wrap a response that is already in our desired format.
+        if (returnType.getParameterType().equals(ApiResponse.class)) {
+            return false;
+        }
+        
+        // Do not wrap responses from Springfox/Swagger or Actuator endpoints if they are present.
+        String controllerClassName = returnType.getContainingClass().getName();
+        return !controllerClassName.startsWith("org.springframework.boot.actuate");
+    }
+
+    /**
+     * This is the core logic. It's called before the response body is written.
+     * It takes the raw object returned by the controller and wraps it in ApiResponse.success().
+     */
+    @Override
+    public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType selectedContentType,
+                                  Class<? extends HttpMessageConverter<?>> selectedConverterType,
+                                  ServerHttpRequest request, ServerHttpResponse response) {
+
+        // The GlobalExceptionHandler will format errors, so we only handle successful responses here.
+        return ApiResponse.success(body);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+++++++++++
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.RequestService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+@Slf4j
+public class RequestController {
+
+    private final RequestService requestService;
+
+    // A mock function to get user info from token. Replace with your actual implementation.
+    private String getUserIdFromToken(String authorizationHeader) {
+        return "user123"; // MOCK USER ID
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED) // Declaratively set the HTTP status for success
+    public CommonReq createRequest(@RequestBody CreateRequestDto createRequestDto, @RequestHeader("Authorization") String authorizationHeader) throws JsonProcessingException {
+        String userId = getUserIdFromToken(authorizationHeader);
+        log.info("Received request creation call from user: {}", userId);
+        // Simply return the object. The ApiResponseWrapper will handle the rest.
+        return requestService.createRequest(createRequestDto, userId);
+    }
+
+    @GetMapping("/my-requests")
+    public List<CommonReq> getMyRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        String userId = getUserIdFromToken(authorizationHeader);
+        // Simply return the list.
+        return requestService.getMyRequests(userId);
+    }
+
+    @GetMapping("/pending")
+    public List<CommonReq> getPendingRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        // Simply return the list.
+        return requestService.getPendingRequests();
+    }
+    
+    @GetMapping("/all")
+    public List<CommonReq> getAllRequests(@RequestHeader("Authorization") String authorizationHeader) {
+        // Simply return the list.
+        return requestService.getAllRequests();
+    }
+
+    @PatchMapping("/{requestId}/status")
+    public CommonReq updateRequestStatus(
+            @PathVariable Long requestId,
+            @RequestBody UpdateRequestStatusDto updateDto,
+            @RequestHeader("Authorization") String authorizationHeader) throws JsonProcessingException {
+
+        String executorId = getUserIdFromToken(authorizationHeader);
+        log.info("User {} is attempting to update status for request {}", executorId, requestId);
+        
+        // The service layer throws a ResourceNotFoundException if the optional is empty, 
+        // which is caught by the GlobalExceptionHandler.
+        return requestService.updateRequestStatus(requestId, updateDto, executorId).get();
+    }
+}
+
+
+
+
+
+
+
+++++++++++++++++
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.service.strategy.RequestStrategyFactory;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImpl implements RequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final RequestStrategyFactory strategyFactory;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        request.setReqType(dto.getRequestType());
+        request.setChangeType(dto.getChangeType());
+        request.setPayload(objectMapper.writeValueAsString(dto.getPayload()));
+        request.setTargetId(dto.getTargetId());
+        request.setReqStatus(RequestStatus.PENDING); // Default status
+
+        log.info("Saving new request of type {} from user {}", dto.getRequestType(), creatorId);
+        return commonRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public Optional<CommonReq> updateRequestStatus(Long requestId, UpdateRequestStatusDto dto, String executorId) throws JsonProcessingException {
+        log.info("Attempting to update status for request ID: {}", requestId);
+
+        CommonReq request = commonRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request with ID " + requestId + " not found."));
+
+        if (request.getReqStatus() != RequestStatus.PENDING) {
+            log.warn("Attempted to modify an already processed request. ID: {}, Current Status: {}", requestId, request.getReqStatus());
+            throw new IllegalStateException("Request has already been processed and cannot be modified.");
+        }
+
+        request.setExecutorId(executorId);
+        request.setExecutorRemarks(dto.getRemarks());
+        request.setExecutionDate(LocalDateTime.now());
+        request.setReqStatus(dto.getStatus());
+
+        if (dto.getStatus() == RequestStatus.ACCEPTED) {
+            log.info("Request {} ACCEPTED. Applying strategy for type {}", requestId, request.getReqType());
+            strategyFactory.getStrategy(request.getReqType()).approve(request);
+        } else {
+            log.info("Request {} REJECTED.", requestId);
+        }
+
+        return Optional.of(commonRequestRepository.save(request));
+    }
+
+    @Override
+    public List<CommonReq> getMyRequests(String userId) {
+        return commonRequestRepository.findByCreatorId(userId);
+    }
+
+    @Override
+    public List<CommonReq> getPendingRequests() {
+        return commonRequestRepository.findByReqStatus(RequestStatus.PENDING);
+    }
+    
+    @Override
+    public List<CommonReq> getAllRequests() {
+        return commonRequestRepository.findAll();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+++++++++++++
+
+
+
+
+
+package com.tcs.f1.cglservice.exception;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+
+@ControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+        log.error("Resource not found: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), HttpStatus.NOT_FOUND);
+    }
+    
+    @ExceptionHandler({JsonProcessingException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ApiResponse<Object>> handleJsonProcessingException(Exception ex, WebRequest request) {
+        log.error("Error processing JSON payload: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error("Invalid request payload format. Please check the JSON structure and data types."), HttpStatus.BAD_REQUEST);
+    }
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolationException(DataIntegrityViolationException ex, WebRequest request) {
+        log.error("Data integrity violation: {}", ex.getMessage());
+        // Check for common unique constraint violation message
+        if (ex.getMostSpecificCause().getMessage().contains("unique constraint")) {
+             return new ResponseEntity<>(ApiResponse.error("A resource with the provided identifier already exists."), HttpStatus.CONFLICT);
+        }
+        return new ResponseEntity<>(ApiResponse.error("Database constraint violation. A required field may be missing or a value is invalid."), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ApiResponse<Object>> handleArgumentAndStateExceptions(RuntimeException ex, WebRequest request) {
+        log.error("Illegal argument or state: {}", ex.getMessage());
+        return new ResponseEntity<>(ApiResponse.error(ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex, WebRequest request) {
+        log.error("An unexpected error occurred: {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(ApiResponse.error("An internal server error occurred. Please contact support."), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+
+
+
+
+
