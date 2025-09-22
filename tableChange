@@ -769,3 +769,140 @@ public class CglCodeStrategy implements RequestTypeStrategy {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--_-----&&------------++++++
+
+
+
+package com.tcs.f1.cglservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // 1. Disable CSRF, not needed for stateless REST APIs
+                .csrf(csrf -> csrf.disable())
+
+                // 2. Define authorization rules
+                .authorizeHttpRequests(authz -> authz
+                        // IMPORTANT: For now, permit all requests to solve the 401 error.
+                        // In a real application, you would secure these endpoints.
+                        // Example: .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/**").permitAll() // Allows access to all your API endpoints
+                        .requestMatchers("/actuator/**").permitAll() // Allows access to Spring Actuator
+                        .anyRequest().authenticated() // Secure any other endpoints not listed
+                )
+
+                // 3. Set session management to stateless, essential for REST APIs
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                
+        // In a real application with JWTs, you would add your JWT filter here
+        // .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.UpdateRequestStatusDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.RequestService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+public class RequestController {
+
+    private final RequestService requestService;
+
+    // Example of how to get user details from a JWT token
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommonReq createRequest(@RequestBody CreateRequestDto createRequestDto, @AuthenticationPrincipal Jwt jwt) throws JsonProcessingException {
+        // The JWT filter you will add later will validate the token.
+        // Spring Security's @AuthenticationPrincipal provides the decoded token.
+        String userId = jwt.getSubject(); // Or jwt.getClaimAsString("userId");
+        // String userRole = jwt.getClaimAsString("role");
+        
+        return requestService.createRequest(createRequestDto, userId);
+    }
+
+    // A Checker would call this endpoint.
+    @PatchMapping("/{requestId}/status")
+    public CommonReq updateRequestStatus(@PathVariable Long requestId, @RequestBody UpdateRequestStatusDto updateRequestStatusDto, @AuthenticationPrincipal Jwt jwt) throws JsonProcessingException {
+        String executorId = jwt.getSubject();
+        return requestService.updateRequestStatus(requestId, updateRequestStatusDto, executorId).get();
+    }
+
+    // A Maker gets their own requests.
+    @GetMapping("/my-requests")
+    public List<CommonReq> getMyRequests(@AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        return requestService.getMyRequests(userId);
+    }
+    
+    // A Checker gets pending requests.
+    @GetMapping("/pending")
+    public List<CommonReq> getPendingRequests() {
+        return requestService.getPendingRequests();
+    }
+
+    // An Admin might get all requests.
+    @GetMapping
+    public List<CommonReq> getAllRequests() {
+        return requestService.getAllRequests();
+    }
+}
+
+
+
