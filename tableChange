@@ -1,0 +1,14 @@
+there is a change in common req table in db, i have provided the table structure below kindly go through with this and make changes in related files accordingly. 
+
+REQ_ID	NUMBER	No	"FTWOAHM"."COMMON_REQ_SEQ"."NEXTVAL" 	1	Unique PK.
+REQ_TYPE	VARCHAR2(20 BYTE)	No		2	Which type of request it. SegmentCode, CGL.
+CHANGE_TYPE	VARCHAR2(2 BYTE)	No		3	What type of change it is. A: Add, U: Update, D: Delete.
+REQ_STATUS	VARCHAR2(2 BYTE)	No	'P'                                  	4	Status of the request. P: Pending, A: Accepted, R: Rejected.
+REQ_DATE	DATE	No	SYSDATE                              	5	When this request was created.
+CREATOR_ID	VARCHAR2(12 BYTE)	No		6	User id of the user who created this request.
+EXECUTION_DATE	DATE	Yes		7	Timestamp when the request was actually applied to the target table.
+EXECUTION_REMARKS	CLOB	Yes		8	JSON string containing details about the execution (e.g., success/failure message, errors).
+EXECUTOR_ID	VARCHAR2(12 BYTE)	Yes		9	User id of the user who accepted/rejected this request.
+EXECUTOR_REMARKS	VARCHAR2(500 BYTE)	Yes		10	Remarks added by executor.
+PAYLOAD	CLOB	Yes		11	Actual change request data to be updated to the target table. Can be null id delete request.
+TARGET_ID	VARCHAR2(4000 BYTE)	Yes		12	Target table row id of this request. Can be null if add request.
