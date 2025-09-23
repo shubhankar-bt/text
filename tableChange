@@ -906,3 +906,365 @@ public class RequestController {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------->>>>>>>>>>>>>>>>>>>
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.util;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.Base64;
+
+@Component
+public class JwtUtil {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Extracts the User ID (subject) from a JWT token.
+     * WARNING: This method DOES NOT verify the token's signature. It is intended for
+     * development and debugging purposes where the token is assumed to be valid.
+     * In a production environment, you MUST use a proper JWT validation library
+     * with a public key to ensure the token is authentic and not tampered with.
+     *
+     * @param token The full "Bearer <token>" string.
+     * @return The User ID (from the "sub" claim).
+     */
+    public static String getUserIdFromToken(String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid Authorization header");
+        }
+        String jwt = token.substring(7);
+        String[] chunks = jwt.split("\\.");
+        if (chunks.length < 2) {
+            throw new IllegalArgumentException("Invalid JWT token");
+        }
+        Base64.Decoder decoder = Base64.getUrlDecoder();
+        String payload = new String(decoder.decode(chunks[1]));
+        try {
+            JsonNode payloadNode = objectMapper.readTree(payload);
+            if (payloadNode.has("sub")) {
+                return payloadNode.get("sub").asText();
+            }
+            throw new IllegalArgumentException("JWT token does not contain 'sub' (subject) claim");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to parse JWT payload", e);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface CommonRequestRepository extends JpaRepository<CommonReq, Long> {
+
+    List<CommonReq> findByCreatorId(String creatorId);
+
+    /**
+     * Finds requests by their status.
+     * The method signature now correctly uses the RequestStatus enum.
+     * The RequestStatusConverter will automatically handle converting the enum
+     * to its database character code ('P', 'A', 'R') for the SQL query.
+     * @param status The enum status to search for.
+     * @return A list of matching requests.
+     */
+    List<CommonReq> findByReqStatus(RequestStatus status);
+
+    /**
+     * Finds requests for a specific creator filtered by the request type.
+     * @param creatorId The ID of the user who created the requests.
+     * @param reqType The type of request to filter by.
+     * @return A filtered list of matching requests.
+     */
+    List<CommonReq> findByCreatorIdAndReqType(String creatorId, RequestType reqType);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.ProcessRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface RequestService {
+
+    CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException;
+
+    /**
+     * Updates the status of a request using the data provided in the DTO.
+     *
+     * @param dto        The DTO containing the request ID, new status, and remarks.
+     * @param executorId The ID of the user performing the action.
+     * @return An Optional containing the updated CommonReq if found and processed.
+     * @throws JsonProcessingException if there is an issue processing the payload.
+     */
+    Optional<CommonReq> updateRequestStatus(ProcessRequestDto dto, String executorId) throws JsonProcessingException;
+
+    List<CommonReq> getMyRequests(String userId, RequestType requestType);
+
+    List<CommonReq> getPendingRequests();
+
+    List<CommonReq> getAllRequests();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.ProcessRequestDto;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.service.strategy.RequestStrategyFactory;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImpl implements RequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final RequestStrategyFactory strategyFactory;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        request.setReqType(dto.getRequestType());
+        request.setChangeType(dto.getChangeType());
+        request.setPayload(objectMapper.writeValueAsString(dto.getPayload()));
+        request.setTargetId(dto.getTargetId());
+        // Status is always set to PENDING on creation by the backend.
+        request.setReqStatus(RequestStatus.PENDING);
+
+        log.info("Saving new request of type {} from user {}", dto.getRequestType(), creatorId);
+        return commonRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public Optional<CommonReq> updateRequestStatus(ProcessRequestDto dto, String executorId) throws JsonProcessingException {
+        Long requestId = dto.getRequestId();
+        log.info("Attempting to update status for request ID: {}", requestId);
+
+        // Find the request by the ID provided in the DTO
+        CommonReq request = commonRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request with ID " + requestId + " not found."));
+
+        // Business rule: Only PENDING requests can be processed.
+        if (request.getReqStatus() != RequestStatus.PENDING) {
+            log.warn("Attempted to modify an already processed request. ID: {}, Current Status: {}", requestId, request.getReqStatus());
+            throw new IllegalStateException("Request has already been processed and cannot be modified.");
+        }
+
+        // Update the request entity with data from the DTO
+        request.setExecutorId(executorId);
+        request.setExecutorRemarks(dto.getRemarks());
+        request.setExecutionDate(LocalDateTime.now());
+        request.setReqStatus(dto.getStatus());
+
+        // If the request is accepted, execute the specific approval logic using the strategy pattern.
+        if (RequestStatus.ACCEPTED.equals(dto.getStatus())) {
+            log.info("Request {} ACCEPTED. Applying strategy for type {}", requestId, request.getReqType());
+            strategyFactory.getStrategy(request.getReqType()).approve(request);
+        } else {
+            log.info("Request {} REJECTED.", requestId);
+        }
+
+        return Optional.of(commonRequestRepository.save(request));
+    }
+
+    @Override
+    public List<CommonReq> getMyRequests(String userId, RequestType requestType) {
+        if (requestType != null) {
+            log.info("Fetching requests for user {} with type {}", userId, requestType);
+            return commonRequestRepository.findByCreatorIdAndReqType(userId, requestType);
+        } else {
+            log.info("Fetching all requests for user {}", userId);
+            return commonRequestRepository.findByCreatorId(userId);
+        }
+    }
+
+    @Override
+    public List<CommonReq> getPendingRequests() {
+        return commonRequestRepository.findByReqStatus(RequestStatus.PENDING);
+    }
+
+    @Override
+    public List<CommonReq> getAllRequests() {
+        return commonRequestRepository.findAll();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.ProcessRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.service.RequestService;
+import com.tcs.f1.cglservice.util.JwtUtil;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+public class RequestController {
+
+    private final RequestService requestService;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommonReq createRequest(@Valid @RequestBody CreateRequestDto createRequestDto, @RequestHeader("Authorization") String token) throws JsonProcessingException {
+        String userId = JwtUtil.getUserIdFromToken(token);
+        return requestService.createRequest(createRequestDto, userId);
+    }
+
+    /**
+     * Updates the status of a request (Accepts/Rejects).
+     * The request ID is now part of the request body for security.
+     */
+    @PatchMapping("/status")
+    public CommonReq updateRequestStatus(@Valid @RequestBody ProcessRequestDto processRequestDto, @RequestHeader("Authorization") String token) throws JsonProcessingException {
+        String executorId = JwtUtil.getUserIdFromToken(token);
+        return requestService.updateRequestStatus(processRequestDto, executorId)
+                .orElseThrow(() -> new RuntimeException("Could not update request status."));
+    }
+
+    @GetMapping("/my-requests")
+    public List<CommonReq> getMyRequests(@RequestHeader("Authorization") String token, @RequestParam(required = false) RequestType requestType) {
+        String userId = JwtUtil.getUserIdFromToken(token);
+        return requestService.getMyRequests(userId, requestType);
+    }
+
+    @GetMapping("/pending")
+    public List<CommonReq> getPendingRequests() {
+        return requestService.getPendingRequests();
+    }
+
+    @GetMapping
+    public List<CommonReq> getAllRequests() {
+        return requestService.getAllRequests();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
