@@ -1,3 +1,8 @@
+
+
+
+
+
 there is a change in common req table in db, i have provided the table structure below kindly go through with this and make changes in related files accordingly. 
 
 REQ_ID	NUMBER	No	"FTWOAHM"."COMMON_REQ_SEQ"."NEXTVAL" 	1	Unique PK.
@@ -1263,6 +1268,66 @@ public class RequestController {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.advice;
+
+import com.tcs.f1.cglservice.dto.ApiResponse;
+import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+
+/**
+ * A ControllerAdvice that intercepts successful responses from any @RestController
+ * and wraps them in a standard ApiResponse format. This ensures consistency for all
+ * successful API calls.
+ *
+ * This advice is now configured to apply globally to all controllers.
+ */
+@ControllerAdvice
+public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
+
+    @Override
+    public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
+        // This advice applies to any method in a class annotated with @RestController
+        // that is not already returning a ResponseEntity (which gives manual control).
+        return AnnotatedElementUtils.hasAnnotation(returnType.getContainingClass(), RestController.class) &&
+               !returnType.getParameterType().equals(ResponseEntity.class);
+    }
+
+    @Override
+    public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType selectedContentType,
+                                  Class<? extends HttpMessageConverter<?>> selectedConverterType,
+                                  ServerHttpRequest request, ServerHttpResponse response) {
+
+        // If the controller has already manually wrapped the response, do nothing.
+        if (body instanceof ApiResponse<?>) {
+            return body;
+        }
+
+        // Wrap the successful response body in the standard ApiResponse structure.
+        return ApiResponse.success(body);
+    }
+}
 
 
 
