@@ -1,0 +1,21 @@
+API Documentation for Frontend Developers
+1. Introduction
+This document provides all the necessary information to interact with the CGL Service Backend API. It covers authentication, standard response formats, and detailed descriptions of each available endpoint.
+Base URL
+All API endpoints are prefixed with the following base URL:
+/api/v1
+Authentication
+Every request to a protected endpoint must include an Authorization header containing a valid JWT Bearer Token.
+Header Format:
+Authorization: Bearer <your_jwt_token>
+2. Standard Response Format
+All API responses, whether successful or not, are wrapped in a standardized JSON object. This allows for consistent handling on the frontend.
+Success Response (success: true)
+When a request is successful, the data field will contain the requested resource (an object or an array).
+
+
+
+
+
+
+
