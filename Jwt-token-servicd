@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tcs.f1.security</groupId>
+    <artifactId>security-jwt-lib</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>17</java.version>
+        <spring-boot.version>3.1.5</spring-boot.version>
+    </properties>
+
+    <dependencies>
+        <!-- Required for Spring Security annotations and classes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+
+        <!-- Required for JWT classes like Jwt, Converter -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+            <version>6.1.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----
+
+
+package com.tcs.f1.security.config;
+
+// ... (This is the exact same JwtRoleConverter class we created before)
+// It maps numeric roles 51, 52 to ROLE_MAKER, ROLE_CHECKER
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Component
+public class JwtRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+    // ... same code as before
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------  
+
+
+package com.tcs.f1.security.util;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+/**
+ * A robust utility to extract information from the validated security context.
+ */
+public class JwtUtil {
+
+    /**
+     * Safely retrieves the user ID (the 'sub' claim) from the
+     * authenticated principal in the SecurityContext.
+     * @return The user ID string.
+     * @throws IllegalStateException if the principal is not a JWT.
+     */
+    public static String getUserIdFromContext() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Jwt) {
+            return ((Jwt) principal).getSubject();
+        }
+        // This should not happen in a properly configured system
+        throw new IllegalStateException("Could not extract user ID. Principal is not a JWT.");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+package com.tcs.f1.security.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+@Configuration
+public class SecurityJwtAutoConfiguration {
+
+    @Bean
+    public JwtRoleConverter jwtRoleConverter() {
+        return new JwtRoleConverter();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter(JwtRoleConverter jwtRoleConverter) {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwtRoleConverter);
+        return converter;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------------------
+
+
+
+mvn clean install
+
+This command compiles the code, packages it into a `security-jwt-lib-1.0.0.jar` file, and installs it into your local Maven repository (`~/.m2/repository`). Now, your other projects can find it.
+
+---
+
+### **Step 3: Use the Library in Your Microservices**
+
+Now, let's update `CommonRequestService` (and you would do the same for `MasterDataService`).
+
+#### **3.1. Update `pom.xml` to Include the Library**
+Add this dependency to the `pom.xml` of `CommonRequestService`.
+
+
+http://googleusercontent.com/immersive_entry_chip/4
+
+#### **3.2. Simplify the `SecurityConfig`**
+Your service's `SecurityConfig` becomes much simpler. It just needs to use the auto-configured bean from the library.
+
+
+http://googleusercontent.com/immersive_entry_chip/5
+
+#### **3.3. Update the Controller**
+The controller no longer needs to manually handle the header. It will rely on the secure context set by Spring Security.
+
+
+http://googleusercontent.com/immersive_entry_chip/6
+
+This architecture is the professional standard. You now have a single source of truth for your security logic that can be versioned, tested, and shared across all your microservices, perfectly fitting your existing project structure and deployment model.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------
+
+
+
+
++++++++++++++++++++
+
+
+
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tcs.f1.security</groupId>
+    <artifactId>security-jwt-lib</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>17</java.version>
+        <spring-boot.version>3.1.5</spring-boot.version> <!-- Use a recent Spring Boot version -->
+    </properties>
+
+    <dependencies>
+        <!-- This starter provides everything needed for JWT validation and resource server configuration -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>
+
+
+
+
+
+
+
+
+
+
+
+
+-----
+
+package com.tcs.f1.security.config;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Maps the numeric 'userRole' claim from the JWT to Spring Security GrantedAuthorities.
+ * This component is now part of the reusable library.
+ */
+@Component
+public class JwtRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+
+    private static final String ROLE_CLAIM = "userRole";
+    private static final int MAKER_ROLE_CODE = 51;
+    private static final int CHECKER_ROLE_CODE = 52;
+    private static final int ADMIN_ROLE_CODE = 99; // Example for an admin role
+
+    @Override
+    public Collection<GrantedAuthority> convert(Jwt jwt) {
+        Object roles = jwt.getClaim(ROLE_CLAIM);
+        if (roles == null) {
+            return Collections.emptyList();
+        }
+
+        if (roles instanceof Number) {
+            return List.of(mapRole((Number) roles));
+        }
+
+        if (roles instanceof Collection) {
+            return ((Collection<?>) roles).stream()
+                    .filter(Number.class::isInstance)
+                    .map(role -> mapRole((Number) role))
+                    .collect(Collectors.toList());
+        }
+
+        return Collections.emptyList();
+    }
+
+    private GrantedAuthority mapRole(Number roleCode) {
+        int role = roleCode.intValue();
+        if (role == MAKER_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_MAKER");
+        }
+        if (role == CHECKER_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_CHECKER");
+        }
+        if (role == ADMIN_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_ADMIN");
+        }
+        return null;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+------------
+
+
+package com.tcs.f1.security.util;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+/**
+ * Production-ready utility to extract information from the validated and authenticated JWT
+ * stored in Spring's SecurityContext.
+ */
+public class JwtUtil {
+
+    /**
+     * Safely retrieves the user ID (the 'sub' claim) from the authenticated principal.
+     * This method should only be called from within a secured endpoint.
+     *
+     * @return The user ID string.
+     * @throws IllegalStateException if the security context does not contain a valid JWT.
+     */
+    public static String getUserIdFromContext() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (principal instanceof Jwt) {
+            return ((Jwt) principal).getSubject();
+        }
+
+        // This fallback can be useful if the token type is slightly different
+        if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken) {
+            return ((JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication()).getToken().getSubject();
+        }
+
+        throw new IllegalStateException("Could not extract user ID. The principal in the SecurityContext is not a valid JWT.");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+---------------
+
+
+
+package com.tcs.f1.security.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+
+/**
+ * Auto-configuration class that provides the necessary beans for JWT handling
+ * to any service that includes this library as a dependency.
+ */
+@Configuration
+public class SecurityJwtAutoConfiguration {
+
+    @Bean
+    public JwtRoleConverter jwtRoleConverter() {
+        return new JwtRoleConverter();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter(JwtRoleConverter jwtRoleConverter) {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwtRoleConverter);
+        return converter;
+    }
+}
+
+
+
+
+
+
+
+
