@@ -432,3 +432,275 @@ public class SecurityJwtAutoConfiguration {
 
 
 
+
+
+
+
+
+
+
+
+++++++++++++___-----------
+
+
+usage: 
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project ...>
+    <!-- ... other project details ... -->
+    <dependencies>
+        <!-- Standard Spring Boot Dependencies for a web service -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Database Driver -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+        =====================================================================
+        == NEW: Add the shared security library from your local .m2 repository
+        =====================================================================
+        -->
+        <dependency>
+            <groupId>com.tcs.f1.security</groupId>
+            <artifactId>security-jwt-lib</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+    </dependencies>
+    <!-- ... build configuration ... -->
+</project>
+
+
+
+
+
+
+
+
+
+--------
+
+# Server Configuration
+server.port=8080
+
+# Database Connection
+spring.datasource.url=jdbc:oracle:thin:@your_db_host:1521:your_sid
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+
+# ============================================================================
+# == PRODUCTION-READY JWT SECURITY CONFIGURATION
+# ============================================================================
+# This single property tells Spring Security everything it needs to know to
+# validate incoming JWTs. It will automatically fetch the public keys
+# (JWKs) from your identity provider to verify the token signature.
+#
+# REPLACE THIS DUMMY URL with the real issuer URI from your identity provider
+# (e.g., Keycloak, Okta, Auth0, or your custom loginService).
+# It typically ends in "/.well-known/openid-configuration" or similar.
+spring.security.oauth2.resourceserver.jwt.issuer-uri=https://your-identity-server.com/auth/realms/your-realm
+
+# (Optional) Define the audience claim if your tokens have one.
+# spring.security.oauth2.resourceserver.jwt.audiences=your-api-audience
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------
+
+
+
+
+package com.tcs.f1.cglservice.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.web.SecurityFilterChain;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true) // Enable @PreAuthorize
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationConverter jwtAuthenticationConverter; // From our shared library
+    private final ObjectMapper objectMapper; // For writing JSON error responses
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                // Secure all endpoints starting with /api/
+                .requestMatchers("/api/**").authenticated()
+                // Allow public access to actuator health checks and swagger docs
+                .requestMatchers("/actuator/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .anyRequest().denyAll() // Deny any other request by default
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
+                // Best Practice: Provide custom error handlers for authentication/authorization failures
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write(objectMapper.writeValueAsString(Map.of(
+                        "timestamp", LocalDateTime.now(),
+                        "status", 401,
+                        "error", "Unauthorized",
+                        "message", "Full authentication is required to access this resource"
+                    )));
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write(objectMapper.writeValueAsString(Map.of(
+                        "timestamp", LocalDateTime.now(),
+                        "status", 403,
+                        "error", "Forbidden",
+                        "message", "You do not have the required role to perform this action"
+                    )));
+                })
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        return http.build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.*;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.RequestService;
+import com.tcs.f1.security.util.JwtUtil; // Import from the shared library
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+public class RequestController {
+
+    private final RequestService requestService;
+
+    /**
+     * Endpoint for a MAKER to create a new request.
+     * The user ID is securely retrieved from the validated JWT in the Security Context.
+     */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommonReq createRequest(@Valid @RequestBody CreateRequestDto createRequestDto) throws JsonProcessingException {
+        String userId = JwtUtil.getUserIdFromContext();
+        return requestService.createRequest(createRequestDto, userId);
+    }
+
+    /**
+     * Endpoint for a CHECKER to process (approve/reject) a request.
+     * The executor ID is securely retrieved from the validated JWT.
+     */
+    @PatchMapping("/status")
+    public CommonReq processRequest(@Valid @RequestBody ProcessRequestDto processRequestDto) throws JsonProcessingException {
+        String executorId = JwtUtil.getUserIdFromContext();
+        return requestService.updateRequestStatus(processRequestDto, executorId)
+                .orElseThrow(() -> new RuntimeException("Could not process request."));
+    }
+
+    /**
+     * Endpoint for a MAKER to fetch their own requests, with optional filtering.
+     */
+    @PostMapping("/my-requests")
+    public List<CommonReq> getMyRequests(@RequestBody MyRequestsFilterDto filterDto) {
+        String userId = JwtUtil.getUserIdFromContext();
+        return requestService.getMyRequests(userId, filterDto.getRequestType());
+    }
+
+    /**
+     * Endpoint for a CHECKER to see all requests pending their action.
+     */
+    @GetMapping("/pending")
+    public List<CommonReq> getPendingRequests() {
+        return requestService.getPendingRequests();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
