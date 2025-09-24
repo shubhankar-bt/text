@@ -1,1 +1,537 @@
+package com.tcs.f1.masterdata.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "SEGMENT_CODE_MASTER")
+public class SegmentCodeMaster {
+    @Id
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+}
+
+
+
+
+
+
+------
+
+
+
+
+
+package com.tcs.f1.masterdata.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "CGL_MASTER")
+public class CGLMaster {
+    @Id
+    @Column(name = "CGL_NUMBER", length = 84)
+    private String cglNumber;
+
+    @Column(name = "COMP_1", nullable = false)
+    private Short comp1;
+
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "COMP_2", nullable = false)
+    private Short comp2;
+    
+    // ... other CGL Master fields
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------
+
+
+package com.tcs.f1.masterdata.repository;
+
+import com.tcs.f1.masterdata.model.SegmentCodeMaster;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface SegmentCodeMasterRepository extends JpaRepository<SegmentCodeMaster, String> {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------------
+
+package com.tcs.f1.masterdata.repository;
+
+import com.tcs.f1.masterdata.model.CGLMaster;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CGLMasterRepository extends JpaRepository<CGLMaster, String> {
+}
+
+
+
+
+
+
+------
+
+
+package com.tcs.f1.masterdata.service;
+
+import com.tcs.f1.masterdata.model.CGLMaster;
+import com.tcs.f1.masterdata.model.SegmentCodeMaster;
+import java.util.List;
+
+public interface MasterDataService {
+    List<SegmentCodeMaster> getAllSegmentCodes();
+    List<CGLMaster> getAllCglCodes();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+------------
+
+package com.tcs.f1.masterdata.service;
+
+import com.tcs.f1.masterdata.model.CGLMaster;
+import com.tcs.f1.masterdata.model.SegmentCodeMaster;
+import com.tcs.f1.masterdata.repository.CGLMasterRepository;
+import com.tcs.f1.masterdata.repository.SegmentCodeMasterRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class MasterDataServiceImpl implements MasterDataService {
+
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+    private final CGLMasterRepository cglMasterRepository;
+
+    @Override
+    public List<SegmentCodeMaster> getAllSegmentCodes() {
+        return segmentCodeMasterRepository.findAll();
+    }
+
+    @Override
+    public List<CGLMaster> getAllCglCodes() {
+        return cglMasterRepository.findAll();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-------------
+
+
+
+package com.tcs.f1.masterdata.controller;
+
+import com.tcs.f1.masterdata.model.CGLMaster;
+import com.tcs.f1.masterdata.model.SegmentCodeMaster;
+import com.tcs.f1.masterdata.service.MasterDataService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/master-data")
+@RequiredArgsConstructor
+public class MasterDataController {
+
+    private final MasterDataService masterDataService;
+
+    @GetMapping("/segment-codes")
+    public List<SegmentCodeMaster> getSegmentCodes() {
+        return masterDataService.getAllSegmentCodes();
+    }
+
+    @GetMapping("/cgl-codes")
+    public List<CGLMaster> getCglCodes() {
+        return masterDataService.getAllCglCodes();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+----------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// security enhancements in common request service
+
+
+
+package com.tcs.f1.cglservice.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity // NEW: This annotation enables @PreAuthorize
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                // In production, you would configure JWT validation here
+                .requestMatchers("/api/v1/**").permitAll() 
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        return http.build();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+----------------------
+
+
+package com.tcs.f1.cglservice.config;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Custom converter to extract the 'userRole' claim from a JWT
+ * and map the numeric role codes (51, 52) to Spring Security GrantedAuthorities.
+ */
+@Component
+public class JwtRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {
+
+    private static final String ROLE_CLAIM = "userRole";
+    private static final int MAKER_ROLE_CODE = 51;
+    private static final int CHECKER_ROLE_CODE = 52;
+    private static final int ADMIN_ROLE_CODE = 99; // Example for an admin role
+
+    @Override
+    public Collection<GrantedAuthority> convert(Jwt jwt) {
+        Object roles = jwt.getClaim(ROLE_CLAIM);
+        if (roles == null) {
+            return Collections.emptyList();
+        }
+
+        // Handle if the role is a single number or a list of numbers
+        if (roles instanceof Number) {
+            return List.of(mapRole((Number) roles));
+        }
+
+        if (roles instanceof Collection) {
+            return ((Collection<?>) roles).stream()
+                    .filter(Number.class::isInstance)
+                    .map(role -> mapRole((Number) role))
+                    .collect(Collectors.toList());
+        }
+
+        return Collections.emptyList();
+    }
+
+    private GrantedAuthority mapRole(Number roleCode) {
+        int role = roleCode.intValue();
+        if (role == MAKER_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_MAKER");
+        }
+        if (role == CHECKER_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_CHECKER");
+        }
+        if (role == ADMIN_ROLE_CODE) {
+            return new SimpleGrantedAuthority("ROLE_ADMIN");
+        }
+        // Return null or a default authority if the code is unknown
+        return null;
+    }
+}
+
+
+
+
+
+
+
+---------
+
+
+package com.tcs.f1.cglservice.config;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // Inject our custom converter
+    private final JwtRoleConverter jwtRoleConverter;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                // Temporarily permit all for development, but configure JWT validation for production.
+                .requestMatchers("/api/v1/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            // Configure the resource server to use our custom JWT converter for roles
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        return http.build();
+    }
+
+    /**
+     * Creates a JwtAuthenticationConverter that uses our custom JwtRoleConverter
+     * to extract authorities (roles) from the JWT.
+     * @return A configured JwtAuthenticationConverter.
+     */
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        // Set the custom converter for authorities
+        converter.setJwtGrantedAuthoritiesConverter(jwtRoleConverter);
+        return converter;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+------------------
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.dto.ProcessRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface RequestService {
+
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException;
+
+    @PreAuthorize("hasAuthority('ROLE_CHECKER')")
+    Optional<CommonReq> updateRequestStatus(ProcessRequestDto dto, String executorId) throws JsonProcessingException;
+
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    List<CommonReq> getMyRequests(String userId, RequestType requestType);
+
+    @PreAuthorize("hasAuthority('ROLE_CHECKER')")
+    List<CommonReq> getPendingRequests();
+
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Example: Assuming role code 99 is Admin
+    List<CommonReq> getAllRequests();
+}
+
+
+
+
+
+
+
+
+---------------
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+// ... all other imports
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RequestServiceImpl implements RequestService {
+
+    private final CommonRequestRepository commonRequestRepository;
+    private final RequestStrategyFactory strategyFactory;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        // ... (no changes in this method)
+    }
+
+    @Override
+    @Transactional
+    public Optional<CommonReq> updateRequestStatus(ProcessRequestDto dto, String executorId) throws JsonProcessingException {
+        Long requestId = dto.getRequestId();
+        log.info("Attempting to update status for request ID: {} by executor: {}", requestId, executorId);
+
+        CommonReq request = commonRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request with ID " + requestId + " not found."));
+
+        // NEW: CRITICAL SELF-APPROVAL CHECK
+        if (executorId.equals(request.getCreatorId())) {
+            log.warn("SECURITY VIOLATION: User {} attempted to approve their own request (ID: {}).", executorId, requestId);
+            throw new IllegalStateException("User cannot approve or reject their own request.");
+        }
+
+        // Business rule: Only PENDING requests can be processed.
+        if (request.getReqStatus() != RequestStatus.PENDING) {
+            log.warn("Attempted to modify an already processed request. ID: {}, Current Status: {}", requestId, request.getReqStatus());
+            throw new IllegalStateException("Request has already been processed and cannot be modified.");
+        }
+
+        // ... (rest of the method is the same)
+    }
+
+    // ... (no changes in other get methods)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
