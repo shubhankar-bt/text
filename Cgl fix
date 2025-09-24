@@ -497,3 +497,113 @@ public class GlobalExceptionHandler {
 
 
 
+
+
+
+
+
+
+------------
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CglCodeStrategy implements RequestTypeStrategy {
+
+    private final CGLMasterRepository cglMasterRepository;
+    private final ObjectMapper objectMapper;
+    // The Validator is no longer needed here.
+
+    @Override
+    public RequestType getRequestType() {
+        return RequestType.CGL_CODE;
+    }
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        String payloadJson = request.getPayload();
+        log.info("Approving CGL Code request ID: {}. Deserializing payload.", request.getId());
+
+        // Step 1: Deserialize the trusted payload directly into the master entity.
+        // Since the payload was already validated on creation, we can trust its structure.
+        // If the JSON is somehow malformed (e.g., missing a required field),
+        // readValue will throw a JsonProcessingException, which our GlobalExceptionHandler will catch.
+        CGLMaster cglMaster = objectMapper.readValue(payloadJson, CGLMaster.class);
+
+        // Step 2: Save the entity to the master table.
+        cglMasterRepository.save(cglMaster);
+        log.info("Successfully saved CGL master data for request ID: {}", request.getId());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.SegmentCodeMasterRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SegmentCodeStrategy implements RequestTypeStrategy {
+
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public RequestType getRequestType() {
+        return RequestType.SEGMENT_CODE;
+    }
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        String payloadJson = request.getPayload();
+        log.info("Approving Segment Code request ID: {}. Deserializing payload.", request.getId());
+
+        // Step 1: Deserialize the trusted payload directly into the master entity.
+        SegmentCodeMaster segmentCodeMaster = objectMapper.readValue(payloadJson, SegmentCodeMaster.class);
+
+        // Step 2: Save the entity to the master table.
+        segmentCodeMasterRepository.save(segmentCodeMaster);
+        log.info("Successfully saved Segment master data for request ID: {}", request.getId());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
