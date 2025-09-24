@@ -1,0 +1,499 @@
+package com.tcs.f1.masterdata.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "CGL_MASTER")
+public class CGLMaster {
+    
+    // This is a computed column, so we mark it as insertable=false, updatable=false.
+    // The database is responsible for generating its value.
+    @Id
+    @Column(name = "CGL_NUMBER", insertable = false, updatable = false)
+    @Generated(EventType.INSERT) // Tells Hibernate to re-read the value after an insert
+    private String cglNumber;
+
+    @Column(name = "COMP_1", nullable = false)
+    private Short comp1;
+
+    @Column(name = "SEGMENT_CODE", nullable = false, length = 4)
+    private String segmentCode;
+
+    @Column(name = "COMP_2", nullable = false)
+    private Short comp2;
+
+    @Column(name = "DESCRIPTION", nullable = false, length = 100)
+    private String description;
+
+    @Column(name = "AC_CLASSIFICATION", nullable = false, length = 1)
+    private String acClassification;
+
+    @Column(name = "BAL_FWD", nullable = false)
+    private Integer balFwd;
+
+    @Column(name = "DEF_BAL_TYPE", nullable = false, length = 1)
+    private String defBalType;
+
+    @Column(name = "STATUS", nullable = false)
+    private Integer status;
+    
+    // The database defaults this value, so we mark it as insertable=false, updatable=false.
+    @Column(name = "OPEN_DATE", nullable = false, insertable = false, updatable = false)
+    @Generated(EventType.INSERT) // Tells Hibernate to re-read the value after an insert
+    private LocalDate openDate;
+
+    @Column(name = "CLOSE_DATE")
+    private LocalDate closeDate;
+
+    @Column(name = "BAL_COMPARE", nullable = false)
+    private Integer balCompare;
+
+    @Column(name = "MANUAL_POSTING", nullable = false)
+    private Integer manualPosting;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.tcs.f1.cglservice.dto.payload.Payload; // Import the new interface
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+@JsonTypeName("CGL_CODE") // This must match the RequestType enum name
+public class CglPayloadDto implements Payload { // Implement the interface
+
+    // All existing validation annotations remain the same
+    @NotNull(message = "Component 1 (comp1) cannot be null.")
+    private Short comp1;
+
+    @NotNull(message = "Segment Code cannot be null.")
+    @Size(min = 1, max = 4, message = "Segment Code must be between 1 and 4 characters.")
+    private String segmentCode;
+
+    @NotNull(message = "Component 2 (comp2) cannot be null.")
+    private Short comp2;
+    
+    // ... other validated fields ...
+    @NotNull(message = "Description cannot be null.")
+    @Size(min = 1, max = 100, message = "Description must be between 1 and 100 characters.")
+    private String description;
+
+    @NotNull(message = "A/C Classification cannot be null.")
+    @Pattern(regexp = "[ALIEM]", message = "A/C Classification must be one of: A, L, I, E, M.")
+    private String acClassification;
+
+    @NotNull(message = "Balance Forward (balFwd) flag cannot be null.")
+    private Integer balFwd;
+
+    @NotNull(message = "Default Balance Type cannot be null.")
+    @Pattern(regexp = "[CD]", message = "Default Balance Type must be 'C' or 'D'.")
+    private String defBalType;
+
+    @NotNull(message = "Status cannot be null.")
+    private Integer status;
+
+    @NotNull(message = "Balance Compare (balCompare) flag cannot be null.")
+    private Integer balCompare;
+
+    @NotNull(message = "Manual Posting flag cannot be null.")
+    private Integer manualPosting;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.CglPayloadDto;
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.Set;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CglCodeStrategy implements RequestTypeStrategy {
+
+    private final CGLMasterRepository cglMasterRepository;
+    private final ObjectMapper objectMapper;
+    private final Validator validator; // Inject the standard Jakarta Validator
+
+    @Override
+    public RequestType getRequestType() {
+        return RequestType.CGL_CODE;
+    }
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        String payloadJson = request.getPayload();
+        log.info("Approving CGL Code request ID: {}. Payload: {}", request.getId(), payloadJson);
+
+        // Step 1: Deserialize payload into the validation DTO
+        CglPayloadDto payloadDto = objectMapper.readValue(payloadJson, CglPayloadDto.class);
+
+        // Step 2: PROACTIVELY VALIDATE the payload DTO
+        Set<ConstraintViolation<CglPayloadDto>> violations = validator.validate(payloadDto);
+        if (!violations.isEmpty()) {
+            // If validation fails, throw a specific exception with a clear message.
+            // The GlobalExceptionHandler will catch this and return a 400 Bad Request.
+            log.error("Validation failed for CGL request {}: {}", request.getId(), violations);
+            throw new ConstraintViolationException("CGL payload validation failed", violations);
+        }
+        log.info("Payload for CGL request {} passed validation.", request.getId());
+
+        // Step 3: Map the validated DTO to the JPA entity
+        CGLMaster cglMaster = mapDtoToEntity(payloadDto);
+
+        // Step 4: Save the valid entity to the master table
+        cglMasterRepository.save(cglMaster);
+        log.info("Successfully saved CGL master data for request ID: {}", request.getId());
+    }
+
+    private CGLMaster mapDtoToEntity(CglPayloadDto dto) {
+        CGLMaster entity = new CGLMaster();
+        entity.setComp1(dto.getComp1());
+        entity.setSegmentCode(dto.getSegmentCode());
+        entity.setComp2(dto.getComp2());
+        entity.setDescription(dto.getDescription());
+        entity.setAcClassification(dto.getAcClassification());
+        entity.setBalFwd(dto.getBalFwd());
+        entity.setDefBalType(dto.getDefBalType());
+        entity.setStatus(dto.getStatus());
+        entity.setBalCompare(dto.getBalCompare());
+        entity.setManualPosting(dto.getManualPosting());
+        // We DO NOT set cglNumber or openDate, as the database handles them.
+        return entity;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------
+
+
+
+
+package com.tcs.f1.cglservice.dto.payload;
+
+/**
+ * A marker interface for all payload DTOs.
+ * Used for polymorphic deserialization.
+ */
+public interface Payload {
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.tcs.f1.cglservice.dto.payload.Payload; // Import the new interface
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+@JsonTypeName("CGL_CODE") // This must match the RequestType enum name
+public class CglPayloadDto implements Payload { // Implement the interface
+
+    // All existing validation annotations remain the same
+    @NotNull(message = "Component 1 (comp1) cannot be null.")
+    private Short comp1;
+
+    @NotNull(message = "Segment Code cannot be null.")
+    @Size(min = 1, max = 4, message = "Segment Code must be between 1 and 4 characters.")
+    private String segmentCode;
+
+    @NotNull(message = "Component 2 (comp2) cannot be null.")
+    private Short comp2;
+    
+    // ... other validated fields ...
+    @NotNull(message = "Description cannot be null.")
+    @Size(min = 1, max = 100, message = "Description must be between 1 and 100 characters.")
+    private String description;
+
+    @NotNull(message = "A/C Classification cannot be null.")
+    @Pattern(regexp = "[ALIEM]", message = "A/C Classification must be one of: A, L, I, E, M.")
+    private String acClassification;
+
+    @NotNull(message = "Balance Forward (balFwd) flag cannot be null.")
+    private Integer balFwd;
+
+    @NotNull(message = "Default Balance Type cannot be null.")
+    @Pattern(regexp = "[CD]", message = "Default Balance Type must be 'C' or 'D'.")
+    private String defBalType;
+
+    @NotNull(message = "Status cannot be null.")
+    private Integer status;
+
+    @NotNull(message = "Balance Compare (balCompare) flag cannot be null.")
+    private Integer balCompare;
+
+    @NotNull(message = "Manual Posting flag cannot be null.")
+    private Integer manualPosting;
+}
+
+
+
+
+
+
+
+
+
+
+---------
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.tcs.f1.cglservice.dto.payload.Payload;
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class CreateRequestDto {
+
+    @NotNull(message = "Request Type cannot be null.")
+    private RequestType requestType;
+
+    @NotNull(message = "Change Type cannot be null.")
+    private ChangeType changeType;
+
+    private String targetId;
+
+    // --- THIS IS THE MAGIC ---
+    @NotNull(message = "Payload cannot be null.")
+    @Valid // This annotation triggers the validation of the nested payload object
+    @JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXTERNAL_PROPERTY, // Use a sibling property
+        property = "requestType" // The field that determines the payload type
+    )
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = SegmentPayloadDto.class, name = "SEGMENT_CODE"),
+        @JsonSubTypes.Type(value = CglPayloadDto.class, name = "CGL_CODE")
+    })
+    private Payload payload;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----
+
+
+
+
+
+package com.tcs.f1.cglservice.service;
+
+// ... other imports
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+// ...
+
+@Service
+// ...
+public class RequestServiceImpl implements RequestService {
+
+    // ... fields
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        // The 'dto.getPayload()' is now a fully validated, specific DTO object.
+        // The framework has already guaranteed it's not null and is structurally correct.
+
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        request.setReqType(dto.getRequestType());
+        request.setChangeType(dto.getChangeType());
+        
+        // We serialize the validated payload object back to a JSON string for storage.
+        request.setPayload(objectMapper.writeValueAsString(dto.getPayload()));
+        
+        request.setTargetId(dto.getTargetId());
+        request.setReqStatus(RequestStatus.PENDING);
+
+        log.info("Saving new, validated request of type {} from user {}", dto.getRequestType(), creatorId);
+        return commonRequestRepository.save(request);
+    }
+    
+    // ... rest of the service implementation
+}
+
+
+
+
+
+
+
+
+
+
+------ 
+
+
+package com.tcs.f1.cglservice.exception;
+
+// ... other imports
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+// ...
+public class GlobalExceptionHandler {
+
+    // ... other exception handlers
+    
+    /**
+     * Handles exceptions thrown when @Valid validation fails on a request body.
+     * Returns a 400 Bad Request with a list of validation errors.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        // Collect all validation error messages into a single string.
+        String errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        
+        log.warn("Validation failed for incoming request: {}", errors);
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, "Validation Failed: " + errors);
+    }
+
+    /**
+     * Handles exceptions thrown by the Jakarta Validator, for example,
+     * when we manually trigger validation in our strategies.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<?> handleConstraintViolationException(ConstraintViolationException ex) {
+        String errors = ex.getConstraintViolations().stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
+                .collect(Collectors.joining(", "));
+                
+        log.warn("Constraint violation during processing: {}", errors);
+        return ApiResponse.error(HttpStatus.BAD_REQUEST, "Validation Failed: " + errors);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
