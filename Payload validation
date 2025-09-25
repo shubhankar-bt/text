@@ -1,0 +1,261 @@
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.tcs.f1.cglservice.model.enums.ChangeType;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+/**
+ * Simplified DTO for creating a new request.
+ * The payload is received as a generic JSON object and validated in the controller.
+ */
+@Data
+public class CreateRequestDto {
+
+    @NotNull(message = "Request Type cannot be null.")
+    private RequestType requestType;
+
+    @NotNull(message = "Change Type cannot be null.")
+    private ChangeType changeType;
+
+    private String targetId;
+
+    @NotNull(message = "Payload cannot be null.")
+    private ObjectNode payload; // A generic, flexible JSON object
+}
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.controller;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.dto.*;
+import com.tcs.f1.cglservice.mapper.CommonReqMapper;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.service.RequestService;
+import com.tcs.f1.security.util.JwtUtil;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
+import jakarta.validation.Validator;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/v1/requests")
+@RequiredArgsConstructor
+public class RequestController {
+
+    private final RequestService requestService;
+    private final CommonReqMapper commonReqMapper;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommonReqResponseDto createRequest(@Valid @RequestBody CreateRequestDto createRequestDto) throws JsonProcessingException {
+        // --- THIS IS THE NEW, SIMPLIFIED LOGIC ---
+
+        // 1. Manually convert the generic payload to the specific DTO based on requestType
+        Object validatedPayload;
+        switch (createRequestDto.getRequestType()) {
+            case SEGMENT_CODE:
+                validatedPayload = objectMapper.treeToValue(createRequestDto.getPayload(), SegmentPayloadDto.class);
+                break;
+            case CGL_CODE:
+                validatedPayload = objectMapper.treeToValue(createRequestDto.getPayload(), CglPayloadDto.class);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported request type: " + createRequestDto.getRequestType());
+        }
+
+        // 2. Manually trigger validation on the newly created specific DTO
+        Set<ConstraintViolation<Object>> violations = validator.validate(validatedPayload);
+        if (!violations.isEmpty()) {
+            // If validation fails, throw a clear exception
+            throw new ConstraintViolationException("Payload validation failed", violations);
+        }
+
+        // 3. The payload is valid. Proceed to call the service.
+        String userId = JwtUtil.getUserIdFromContext();
+        String payloadAsString = objectMapper.writeValueAsString(validatedPayload);
+
+        CommonReq createdRequest = requestService.createRequest(createRequestDto, payloadAsString, userId);
+        return commonReqMapper.toDto(createdRequest);
+    }
+    
+    // ... all other controller methods remain the same ...
+
+    @PatchMapping("/status")
+    public CommonReqResponseDto updateRequestStatus(@Valid @RequestBody ProcessRequestDto processRequestDto) throws JsonProcessingException {
+        String executorId = JwtUtil.getUserIdFromContext();
+        return requestService.updateRequestStatus(processRequestDto, executorId)
+                .map(commonReqMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Could not update request status."));
+    }
+
+    @PostMapping("/my-requests")
+    public List<CommonReqResponseDto> getMyRequests(@RequestBody MyRequestsFilterDto filterDto) {
+        String userId = JwtUtil.getUserIdFromContext();
+        return requestService.getMyRequests(userId, filterDto.getRequestType())
+                .stream()
+                .map(commonReqMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/pending")
+    public List<CommonReqResponseDto> getPendingRequests() {
+        return requestService.getPendingRequests()
+                .stream()
+                .map(commonReqMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping
+    public List<CommonReqResponseDto> getAllRequests() {
+        return requestService.getAllRequests()
+                .stream()
+                .map(commonReqMapper::toDto)
+                .collect(Collectors.toList());
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// ... imports
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+
+public interface RequestService {
+
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    CommonReq createRequest(CreateRequestDto dto, String payloadAsString, String creatorId) throws JsonProcessingException;
+
+    // ... other method signatures are unchanged ...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ... imports
+import com.tcs.f1.cglservice.dto.CreateRequestDto;
+import com.tcs.f1.cglservice.model.CommonReq;
+
+@Service
+public class RequestServiceImpl implements RequestService {
+    // ... fields
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    public CommonReq createRequest(CreateRequestDto dto, String payloadAsString, String creatorId) throws JsonProcessingException {
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        request.setReqType(dto.getRequestType());
+        request.setChangeType(dto.getChangeType());
+        request.setPayload(payloadAsString); // Use the pre-validated string directly
+        request.setTargetId(dto.getTargetId());
+        request.setReqStatus(RequestStatus.PENDING);
+
+        log.info("Saving new, validated request of type {} from user {}", dto.getRequestType(), creatorId);
+        return commonRequestRepository.save(request);
+    }
+
+    // ... rest of the implementation is unchanged ...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.tcs.f1.cglservice.dto.payload.Payload;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+/**
+ * DTO for validating the payload of a Segment Code request.
+ */
+@Data
+@JsonTypeName("SEGMENT_CODE") // This must match the RequestType enum name
+public class SegmentPayloadDto implements Payload {
+
+    @NotNull(message = "Segment Code cannot be null.")
+    @Size(min = 4, max = 4, message = "Segment Code must be exactly 4 characters.")
+    private String segmentCode;
+
+    @NotNull(message = "Description cannot be null.")
+    @Size(min = 1, max = 100, message = "Description must be between 1 and 100 characters.")
+    private String description;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
