@@ -1,0 +1,198 @@
+package com.tcs.f1.cglservice.dto.payload;
+
+/**
+ * An interface for payload DTOs that have a natural primary key
+ * which can be used as the targetId in the CommonReq table.
+ */
+public interface KeyablePayload extends Payload {
+    /**
+     * Constructs and returns the primary key from the payload's data.
+     * @return A string representation of the primary key.
+     */
+    String getKey();
+}
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.tcs.f1.cglservice.dto.payload.KeyablePayload;
+import jakarta.validation.constraints.NotNull;
+//... other imports
+
+@Data
+@JsonTypeName("SEGMENT_CODE")
+public class SegmentPayloadDto implements KeyablePayload { // Implement the new interface
+
+    @NotNull(message = "Segment Code cannot be null.")
+    @Size(min = 4, max = 4, message = "Segment Code must be exactly 4 characters.")
+    private String segmentCode;
+
+    @NotNull(message = "Description cannot be null.")
+    @Size(min = 1, max = 100, message = "Description must be between 1 and 100 characters.")
+    private String description;
+
+    @Override
+    @JsonIgnore // Exclude this method from JSON serialization
+    public String getKey() {
+        return this.segmentCode;
+    }
+}
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.tcs.f1.cglservice.dto.payload.KeyablePayload;
+//... other imports
+
+@Data
+@JsonTypeName("CGL_CODE")
+public class CglPayloadDto implements KeyablePayload { // Implement the new interface
+
+    // ... all the existing validated fields ...
+    @NotNull(message = "Component 1 (comp1) cannot be null.")
+    private Short comp1;
+    // ... etc.
+
+    @Override
+    @JsonIgnore // Exclude this method from JSON serialization
+    public String getKey() {
+        // Construct the composite primary key
+        return "" + comp1 + segmentCode + comp2;
+    }
+}
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.repository;
+
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface CommonRequestRepository extends JpaRepository<CommonReq, Long> {
+    // ... existing methods ...
+
+    /**
+     * Finds requests by their targetId where the status is NOT the one provided.
+     * Used to check for existing PENDING or ACCEPTED requests.
+     *
+     * @param targetId The target ID (e.g., CGL Number) to check for.
+     * @param status The status to exclude (i.e., REJECTED).
+     * @return A list of conflicting requests.
+     */
+    List<CommonReq> findByTargetIdAndReqStatusNot(String targetId, RequestStatus status);
+}
+
+
+
+
+
+
+
+
+
+// ... imports
+import com.tcs.f1.cglservice.dto.payload.KeyablePayload;
+import com.tcs.f1.cglservice.model.enums.RequestStatus;
+import org.springframework.dao.DataIntegrityViolationException;
+import java.util.List;
+
+@Service
+// ...
+public class RequestServiceImpl implements RequestService {
+    // ... existing fields
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasAuthority('ROLE_MAKER')")
+    public CommonReq createRequest(CreateRequestDto dto, String creatorId) throws JsonProcessingException {
+        // The payload DTO is already validated by the controller, so we can trust its structure.
+        KeyablePayload payload = (KeyablePayload) dto.getPayload();
+
+        // --- PRE-FLIGHT CHECKS ---
+        // 1. Extract the targetId from the payload.
+        String targetId = payload.getKey();
+        if (targetId == null || targetId.isBlank()) {
+            throw new IllegalArgumentException("Could not determine targetId from payload.");
+        }
+        log.info("Determined targetId for new request as: {}", targetId);
+
+        // 2. Check for duplicate PENDING or ACCEPTED requests for this targetId.
+        List<CommonReq> existingRequests = commonRequestRepository.findByTargetIdAndReqStatusNot(targetId, RequestStatus.REJECTED);
+        if (!existingRequests.isEmpty()) {
+            log.warn("Attempted to create a duplicate request for targetId {} which already has a pending/active request.", targetId);
+            throw new DataIntegrityViolationException("An active or pending request for '" + targetId + "' already exists.");
+        }
+        log.info("Uniqueness check passed for targetId: {}", targetId);
+
+        // --- ALL CHECKS PASSED, PROCEED TO CREATE ---
+        CommonReq request = new CommonReq();
+        request.setCreatorId(creatorId);
+        request.setReqType(dto.getRequestType());
+        request.setChangeType(dto.getChangeType());
+        request.setPayload(objectMapper.writeValueAsString(payload));
+        request.setTargetId(targetId); // Set the targetId at creation time.
+        request.setReqStatus(RequestStatus.PENDING);
+
+        log.info("Saving new, validated request for targetId {}", targetId);
+        return commonRequestRepository.save(request);
+    }
+    // ... rest of the service implementation is unchanged ...
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ...
+// CglCodeStrategy no longer needs CommonRequestRepository injected
+// ...
+    private void handleAdd(CommonReq request) throws JsonProcessingException {
+        CGLMaster newCgl = objectMapper.readValue(request.getPayload(), CGLMaster.class);
+        String potentialCglNumber = request.getTargetId(); // Use the already-set targetId
+
+        if (cglMasterRepository.existsById(potentialCglNumber)) {
+            throw new DataIntegrityViolationException("CGL Code '" + potentialCglNumber + "' already exists.");
+        }
+
+        cglMasterRepository.save(newCgl);
+        log.info("Successfully added new CGL with ID: {}", potentialCglNumber);
+        // NO longer need to update the request here.
+    }
+// ...
+
+
+
+
+
+
