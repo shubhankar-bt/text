@@ -259,3 +259,201 @@ public class SegmentPayloadDto implements Payload {
 
 
 
+
+
+
+
+
+
+***********+*++*+*+*++*+*+*+*+*+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.SegmentCodeMaster;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import com.tcs.f1.cglservice.repository.SegmentCodeMasterRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SegmentCodeStrategy implements RequestTypeStrategy {
+
+    private final SegmentCodeMasterRepository segmentCodeMasterRepository;
+    private final CommonRequestRepository commonRequestRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public RequestType getRequestType() {
+        return RequestType.SEGMENT_CODE;
+    }
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        switch (request.getChangeType()) {
+            case ADD:
+                handleAdd(request);
+                break;
+            case UPDATE:
+                handleUpdate(request);
+                break;
+            default:
+                throw new UnsupportedOperationException("Change type " + request.getChangeType() + " is not supported.");
+        }
+    }
+
+    private void handleAdd(CommonReq request) throws JsonProcessingException {
+        SegmentCodeMaster newSegment = objectMapper.readValue(request.getPayload(), SegmentCodeMaster.class);
+        String segmentCode = newSegment.getSegmentCode();
+        log.info("Performing uniqueness check for Segment Code: {}", segmentCode);
+
+        if (segmentCodeMasterRepository.existsById(segmentCode)) {
+            log.error("Attempted to add a Segment Code that already exists: {}", segmentCode);
+            throw new DataIntegrityViolationException("Segment Code '" + segmentCode + "' already exists.");
+        }
+
+        SegmentCodeMaster savedSegment = segmentCodeMasterRepository.save(newSegment);
+        log.info("Successfully added new Segment Code: {}", savedSegment.getSegmentCode());
+
+        // Update the request with the master record's ID for auditing.
+        request.setTargetId(savedSegment.getSegmentCode());
+        commonRequestRepository.save(request);
+    }
+
+    private void handleUpdate(CommonReq request) throws JsonProcessingException {
+        String targetId = request.getTargetId();
+        if (targetId == null || targetId.isBlank()) {
+            throw new IllegalArgumentException("Target ID is required for an UPDATE operation.");
+        }
+
+        log.info("Fetching existing Segment Code with ID: {} for update.", targetId);
+        SegmentCodeMaster existingSegment = segmentCodeMasterRepository.findById(targetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Segment Code with ID '" + targetId + "' not found for update."));
+
+        SegmentCodeMaster updates = objectMapper.readValue(request.getPayload(), SegmentCodeMaster.class);
+
+        // For Segment Code, only the description can be updated.
+        existingSegment.setDescription(updates.getDescription());
+
+        segmentCodeMasterRepository.save(existingSegment);
+        log.info("Successfully updated Segment Code with ID: {}", targetId);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.tcs.f1.cglservice.service.strategy;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tcs.f1.cglservice.exception.ResourceNotFoundException;
+import com.tcs.f1.cglservice.model.CGLMaster;
+import com.tcs.f1.cglservice.model.CommonReq;
+import com.tcs.f1.cglservice.model.enums.RequestType;
+import com.tcs.f1.cglservice.repository.CGLMasterRepository;
+import com.tcs.f1.cglservice.repository.CommonRequestRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CglCodeStrategy implements RequestTypeStrategy {
+
+    private final CGLMasterRepository cglMasterRepository;
+    private final CommonRequestRepository commonRequestRepository;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    public RequestType getRequestType() {
+        return RequestType.CGL_CODE;
+    }
+
+    @Override
+    public void approve(CommonReq request) throws JsonProcessingException {
+        switch (request.getChangeType()) {
+            case ADD:
+                handleAdd(request);
+                break;
+            case UPDATE:
+                handleUpdate(request);
+                break;
+            default:
+                throw new UnsupportedOperationException("Change type " + request.getChangeType() + " is not supported.");
+        }
+    }
+
+    private void handleAdd(CommonReq request) throws JsonProcessingException {
+        CGLMaster newCgl = objectMapper.readValue(request.getPayload(), CGLMaster.class);
+
+        // Although the DB computes the final CGL_NUMBER, we must construct it here
+        // to check for uniqueness before attempting to save.
+        String potentialCglNumber = "" + newCgl.getComp1() + newCgl.getSegmentCode() + newCgl.getComp2();
+        log.info("Performing uniqueness check for potential CGL Number: {}", potentialCglNumber);
+
+        if (cglMasterRepository.existsById(potentialCglNumber)) {
+            log.error("Attempted to add a CGL that already exists: {}", potentialCglNumber);
+            throw new DataIntegrityViolationException("CGL Code '" + potentialCglNumber + "' already exists.");
+        }
+
+        CGLMaster savedCgl = cglMasterRepository.save(newCgl);
+        log.info("Successfully added new CGL with ID: {}", savedCgl.getCglNumber());
+
+        // Update the request with the new master record's ID for auditing.
+        request.setTargetId(savedCgl.getCglNumber());
+        commonRequestRepository.save(request);
+    }
+
+    private void handleUpdate(CommonReq request) throws JsonProcessingException {
+        String targetId = request.getTargetId();
+        if (targetId == null || targetId.isBlank()) {
+            throw new IllegalArgumentException("Target ID is required for an UPDATE operation.");
+        }
+
+        log.info("Fetching existing CGL with ID: {} for update.", targetId);
+        CGLMaster existingCgl = cglMasterRepository.findById(targetId)
+                .orElseThrow(() -> new ResourceNotFoundException("CGL Code with ID '" + targetId + "' not found for update."));
+
+        // Deserialize the payload containing the changes
+        CGLMaster updates = objectMapper.readValue(request.getPayload(), CGLMaster.class);
+
+        // Apply the updates to the existing entity
+        // We only update fields that are typically allowed to change.
+        existingCgl.setDescription(updates.getDescription());
+        existingCgl.setAcClassification(updates.getAcClassification());
+        existingCgl.setBalFwd(updates.getBalFwd());
+        existingCgl.setDefBalType(updates.getDefBalType());
+        existingCgl.setStatus(updates.getStatus());
+        existingCgl.setBalCompare(updates.getBalCompare());
+        existingCgl.setManualPosting(updates.getManualPosting());
+        // We do not update comp1, comp2, segmentCode as they form the primary key.
+
+        cglMasterRepository.save(existingCgl);
+        log.info("Successfully updated CGL with ID: {}", targetId);
+    }
+}
