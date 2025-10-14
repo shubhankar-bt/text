@@ -40,3 +40,388 @@ INSERT INTO REPORT_ROLE_MAPPING (report_type_id, role_id) VALUES
 -- 'intr_report' is available only to MANAGER
 INSERT INTO REPORT_ROLE_MAPPING (report_type_id, role_id) VALUES
 ((SELECT id FROM GLIF_REPORT_TYPES WHERE report_name = 'intr_report'), (SELECT id FROM APP_ROLES WHERE role_name = 'ROLE_GLIF_MANAGER'));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------
+
+package com.fincore.reportservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.util.Set;
+
+@Entity
+@Table(name = "APP_ROLES")
+@Getter
+@Setter
+public class Role {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "role_name", nullable = false, unique = true)
+    private String roleName;
+
+    @ManyToMany(mappedBy = "roles")
+    private Set<ReportType> reportTypes;
+}
+
+
+
+
+
+
+-----
+package com.fincore.reportservice.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.Instant;
+import java.util.Set;
+
+@Entity
+@Table(name = "GLIF_REPORT_TYPES")
+@Getter
+@Setter
+public class ReportType {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "report_name", nullable = false, unique = true)
+    private String reportName;
+
+    @Column(name = "display_name", nullable = false)
+    private String displayName;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    // --- NEW MAPPING ---
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "REPORT_ROLE_MAPPING",
+            joinColumns = @JoinColumn(name = "report_type_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles;
+}
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.repository;
+
+import com.fincore.reportservice.model.ReportType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Set;
+
+@Repository
+public interface ReportTypeRepository extends JpaRepository<ReportType, Long> {
+
+    /**
+     * Finds all report types and orders them by their display name for a better user experience.
+     * @return A list of ReportType entities.
+     */
+    // This method is still useful for admins or internal tools.
+    List<ReportType> findAllByOrderByDisplayNameAsc();
+
+    /**
+     * Finds all report types that are accessible by at least one of the given user roles.
+     * This is the new method for the role-based dropdown.
+     *
+     * @param roleNames A set of role names (e.g., ["ROLE_GLIF_ANALYST", "ROLE_USER"])
+     * @return A list of accessible ReportType entities, ordered by display name.
+     */
+    @Query("SELECT DISTINCT rt FROM ReportType rt JOIN rt.roles r WHERE r.roleName IN :roleNames ORDER BY rt.displayName ASC")
+    List<ReportType> findByRoles(@Param("roleNames") Set<String> roleNames);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.service;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import org.springframework.core.io.Resource;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+public interface ReportService {
+
+    /**
+     * Retrieves all report types accessible by the given user roles.
+     *
+     * @param userRoles the set of roles assigned to the user.
+     * @return a list of {@link ReportTypeDto}
+     */
+    List<ReportTypeDto> getReportTypes(Set<String> userRoles);
+
+    /**
+     * Loads a specific report file as a resource.
+     *
+     * @param reportName the unique name of the report
+     * @param date the date for which to fetch the report
+     * @return the report file as a {@link Resource}
+     */
+    Resource getReport(String reportName, LocalDate date);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.service;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import org.springframework.core.io.Resource;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+public interface ReportService {
+
+    /**
+     * Retrieves all report types accessible by the given user roles.
+     *
+     * @param userRoles the set of roles assigned to the user.
+     * @return a list of {@link ReportTypeDto}
+     */
+    List<ReportTypeDto> getReportTypes(Set<String> userRoles);
+
+    /**
+     * Loads a specific report file as a resource.
+     *
+     * @param reportName the unique name of the report
+     * @param date the date for which to fetch the report
+     * @return the report file as a {@link Resource}
+     */
+    Resource getReport(String reportName, LocalDate date);
+}
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.service.impl;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.exception.ReportNotFoundException;
+import com.fincore.reportservice.repository.ReportTypeRepository;
+import com.fincore.reportservice.service.ReportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReportServiceImpl.class);
+    private final ReportTypeRepository reportTypeRepository;
+    private final Path fileStorageLocation;
+
+    public ReportServiceImpl(ReportTypeRepository reportTypeRepository, @Value("${glif.reports.base-path}") String basePath) {
+        this.reportTypeRepository = reportTypeRepository;
+        this.fileStorageLocation = Paths.get(basePath).toAbsolutePath().normalize();
+        logger.info("Report storage location initialized at: {}", this.fileStorageLocation);
+    }
+
+    @Override
+    public List<ReportTypeDto> getReportTypes(Set<String> userRoles) {
+        if (CollectionUtils.isEmpty(userRoles)) {
+            logger.warn("getReportTypes called with no user roles. Returning empty list.");
+            return Collections.emptyList();
+        }
+        logger.info("Fetching GLIF report types for roles: {}", userRoles);
+        return reportTypeRepository.findByRoles(userRoles).stream()
+                .map(reportType -> new ReportTypeDto(reportType.getReportName(), reportType.getDisplayName()))
+                .collect(Collectors.toList());
+    }
+    
+    // getReport method remains unchanged
+    @Override
+    public Resource getReport(String reportName, LocalDate date) {
+        // ... (The implementation from the previous response is still valid)
+        try {
+            String dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            String filename = reportName + ".xlsx"; 
+            Path targetPath = this.fileStorageLocation.resolve(dateString).resolve(filename);
+
+            logger.info("Attempting to load report from path: {}", targetPath);
+            Resource resource = new UrlResource(targetPath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                logger.info("Report found and is readable.");
+                return resource;
+            } else {
+                logger.error("Report not found or is not readable at path: {}", targetPath);
+                throw new ReportNotFoundException("Report not found for date: " + dateString + " and type: " + reportName);
+            }
+        } catch (MalformedURLException ex) {
+            logger.error("Malformed URL exception for report: {} on date: {}", reportName, date, ex);
+            throw new ReportNotFoundException("Could not read report file due to a path error.");
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.controller;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.service.ReportService;
+import com.fincore.reportservice.util.ApiResponse;
+import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+@RestController
+@RequestMapping("/api/v1/reports")
+public class ReportController {
+
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<ApiResponse<List<ReportTypeDto>>> getReportTypes() {
+        // In a real application with Spring Security, you would get roles from the security context.
+        // For example:
+        // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // Set<String> userRoles = authentication.getAuthorities().stream()
+        //         .map(GrantedAuthority::getAuthority)
+        //         .collect(Collectors.toSet());
+
+        // For now, we will mock it for demonstration purposes.
+        Set<String> userRoles = getUserRolesFromSecurityContext();
+
+        List<ReportTypeDto> reportTypes = reportService.getReportTypes(userRoles);
+        return ResponseEntity.ok(ApiResponse.success(reportTypes));
+    }
+
+    // This endpoint remains the same, but the service logic can be enhanced
+    // later to check if the user has the right role before downloading.
+    @GetMapping("/download")
+    public ResponseEntity<Resource> downloadReport(
+            @RequestParam String reportName,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        // Optional but recommended: Add an authorization check here as well.
+        // verifyUserCanAccessReport(getUserRolesFromSecurityContext(), reportName);
+        
+        Resource resource = reportService.getReport(reportName, date);
+        String filename = reportName + "_" + date + ".xlsx";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(resource);
+    }
+
+    /**
+     * MOCK-UP METHOD: Replace with actual Spring Security integration.
+     */
+    private Set<String> getUserRolesFromSecurityContext() {
+        // This simulates a logged-in user who is an Analyst.
+        // Change this to Set.of("ROLE_GLIF_MANAGER") to see the manager's reports.
+        return Set.of("ROLE_GLIF_ANALYST");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
