@@ -419,6 +419,426 @@ public class ReportController {
 
 
 
+@@-@-@-@-@-@-@-@-&-&-&@-@-@-&-&&-&-&-&-
+
+
+GLIF Report Service - Refactored for Role-Based Access
+This guide explains the updated backend service, which now fetches report types based on a specific user role ID.
+1. How to Configure the Report File Path
+In the application.properties file, you must specify the base directory where your reports are stored. The application reads this path to find the report files.
+Key Property: glif.reports.base-path
+This path is the root folder. The service will look for subfolders named after the date (YYYY-MM-DD) inside this base path.
+Example for Windows: If your reports are in D:\shared\fincore\reports, the configuration should be:
+# Use forward slashes (/) even on Windows. Spring Boot handles the conversion.
+glif.reports.base-path=D:/shared/fincore/reports
+Example for Linux or macOS: If your reports are in /var/data/fincore_reports, the configuration should be:
+glif.reports.base-path=/var/data/fincore_reports
+The final path to a file is constructed like this: {base-path}/{date}/{report-name}.xlsx. For example: D:/shared/fincore/reports/2025-10-15/balance_compare_report.xlsx
+2. The API and Request Flow
+The process of getting the dropdown values for a user is now more secure and direct.
+Step 1: Frontend Request The frontend, knowing the user's role ID (e.g., 56 for GLIF users), makes a GET request. GET http://localhost:8081/api/v1/reports/types/56
+Step 2: Controller (ReportController) The ReportController receives the request. The @PathVariable annotation captures the 56 from the URL and passes it to the service layer.
+Step 3: Service Layer (ReportServiceImpl) The ReportServiceImpl takes the roleId and calls the repository to find all reports associated with that specific role.
+Step 4: Repository Layer (ReportTypeRepository) The repository executes a JPA query against the REPORT_ROLE_MAPPING table to find the matching reports.
+Step 5: Response The list of authorized reports is returned to the frontend, which then populates the dropdown.
+3. Updated API Endpoint
+Get Report Types for a Specific Role
+URL: GET /api/v1/reports/types/{roleId}
+Description: Fetches the list of report types available for a single, specific role ID.
+Path Variable:
+roleId (long, required): The unique ID of the user's role.
+Success Response (200 OK) for .../types/56:
+{
+ "status": "success",
+ "data": [
+   { "reportName": "balance_compare_report", "displayName": "Balance Compare Report" },
+   { "reportName": "cntr_report", "displayName": "CNTR Report" },
+   { "reportName": "intr_report", "displayName": "INTR Report" }
+ ],
+ "error": null
+}
+The report download endpoint (GET /api/v1/reports/download) remains unchanged.
+
+
+
+
+
+
+
+
+
+
+--------
+
+
+# ===================================================================
+# SERVER CONFIGURATION
+# ===================================================================
+server.port=8081
+
+# ===================================================================
+# SPRING DATASOURCE (ORACLE)
+# ===================================================================
+# TODO: Replace with your Oracle DB connection details
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/XEPDB1
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+# ===================================================================
+# JPA / HIBERNATE CONFIGURATION
+# ===================================================================
+spring.jpa.database-platform=org.hibernate.dialect.OracleDialect
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# ===================================================================
+# CUSTOM APPLICATION PROPERTIES
+# ===================================================================
+# IMPORTANT: This is the base directory path where your reports are stored.
+# The application will look for date-named folders (e.g., "2025-10-15") inside this path.
+#
+# ** Use forward slashes (/) for the path, even on Windows systems. **
+# Example for Windows: C:/fincore/glif-reports
+# Example for Linux/macOS: /var/fincore/glif-reports
+glif.reports.base-path=C:/fincore/glif-reports
+
+
+
+
+
+
+
+
+
+--------
+
+
+
+
+package com.fincore.reportservice.repository;
+
+import com.fincore.reportservice.model.ReportType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+@Repository
+public interface ReportTypeRepository extends JpaRepository<ReportType, Long> {
+
+    /**
+     * Finds all report types accessible by a specific role ID.
+     * This query joins ReportType with its roles and filters by the role's primary key.
+     * The result is ordered by the display name to ensure a consistent and user-friendly order in the dropdown.
+     *
+     * @param roleId The primary key ID of the role.
+     * @return A list of accessible ReportType entities.
+     */
+    @Query("SELECT rt FROM ReportType rt JOIN rt.roles r WHERE r.id = :roleId ORDER BY rt.displayName ASC")
+    List<ReportType> findByRoleId(@Param("roleId") Long roleId);
+
+    /**
+     * Checks if a specific report is accessible by any of the given roles.
+     * This is a crucial security check to be performed before allowing a download.
+     * It prevents a user from guessing a report name in the download URL.
+     *
+     * @param reportName The unique name of the report to check.
+     * @param roleIds A set of role IDs assigned to the user.
+     * @return An Optional containing the ReportType if access is permitted, otherwise empty.
+     */
+    @Query("SELECT rt FROM ReportType rt JOIN rt.roles r WHERE rt.reportName = :reportName AND r.id IN :roleIds")
+    Optional<ReportType> findByNameAndUserRoles(@Param("reportName") String reportName, @Param("roleIds") Set<Long> roleIds);
+}
+
+
+
+
+
+
+
+-------
+
+
+
+package com.fincore.reportservice.service;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import org.springframework.core.io.Resource;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+public interface ReportService {
+
+    /**
+     * Retrieves all report types accessible by a specific user role ID.
+     *
+     * @param roleId The ID of the user's role.
+     * @return A list of {@link ReportTypeDto}.
+     */
+    List<ReportTypeDto> getReportTypes(Long roleId);
+
+    /**
+     * Loads a specific report file as a resource after verifying the user's authorization.
+     *
+     * @param reportName The unique name of the report.
+     * @param date The date for which to fetch the report.
+     * @param userRoleIds A set of the user's role IDs for an authorization check.
+     * @return The report file as a {@link Resource}.
+     */
+    Resource getReport(String reportName, LocalDate date, Set<Long> userRoleIds);
+}
+
+
+
+
+
+
+
+
+----------
+
+
+package com.fincore.reportservice.service.impl;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.exception.ReportNotFoundException;
+import com.fincore.reportservice.repository.ReportTypeRepository;
+import com.fincore.reportservice.service.ReportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Service implementation for handling business logic related to GLIF reports.
+ */
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReportServiceImpl.class);
+
+    private final ReportTypeRepository reportTypeRepository;
+    private final Path fileStorageLocation;
+
+    /**
+     * Constructor for ReportServiceImpl.
+     * Dependencies are injected by Spring.
+     *
+     * @param reportTypeRepository The repository for database operations on ReportType entities.
+     * @param basePath             The base file path for reports, injected from application.properties.
+     */
+    public ReportServiceImpl(ReportTypeRepository reportTypeRepository,
+                             @Value("${glif.reports.base-path}") String basePath) {
+        this.reportTypeRepository = reportTypeRepository;
+
+        // Normalize the base path to resolve ".." and ensure it's an absolute path.
+        // This is a security and reliability best practice.
+        this.fileStorageLocation = Paths.get(basePath).toAbsolutePath().normalize();
+        logger.info("Report storage location has been initialized at: {}", this.fileStorageLocation);
+    }
+
+    /**
+     * Retrieves a list of report types that are explicitly mapped to the given roleId.
+     *
+     * @param roleId The ID of the user's role.
+     * @return A list of DTOs representing the available reports.
+     */
+    @Override
+    public List<ReportTypeDto> getReportTypes(Long roleId) {
+        if (roleId == null || roleId <= 0) {
+            throw new IllegalArgumentException("Role ID must be a positive number.");
+        }
+        logger.info("Fetching GLIF report types for roleId: {}", roleId);
+
+        // Call the new repository method to find reports by the role's primary key.
+        return reportTypeRepository.findByRoleId(roleId).stream()
+                // Convert the JPA entities to DTOs for the API response.
+                .map(reportType -> new ReportTypeDto(reportType.getReportName(), reportType.getDisplayName()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves a report file after performing a critical authorization check.
+     *
+     * @param reportName The unique name of the report.
+     * @param date The date for which to fetch the report.
+     * @param userRoleIds The set of role IDs assigned to the current user.
+     * @return The report file as a Spring Resource.
+     * @throws AccessDeniedException if the user's roles do not grant access to the requested report.
+     * @throws ReportNotFoundException if the report file does not exist on the file system.
+     */
+    @Override
+    public Resource getReport(String reportName, LocalDate date, Set<Long> userRoleIds) {
+        // --- SECURITY CHECK ---
+        // Before touching the file system, verify that the user is allowed to access this report type.
+        // This prevents unauthorized users from even checking for the existence of a file.
+        reportTypeRepository.findByNameAndUserRoles(reportName, userRoleIds)
+                .orElseThrow(() -> {
+                    logger.warn("ACCESS DENIED: User with roles {} attempted to download unauthorized report '{}'", userRoleIds, reportName);
+                    return new AccessDeniedException("You do not have permission to access the report: " + reportName);
+                });
+
+        logger.info("Authorization successful for report '{}'. Proceeding to file system.", reportName);
+
+        try {
+            // Construct the full path to the report file.
+            // Path: {base-path}/{yyyy-MM-dd}/{reportName}.xlsx
+            String dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            String filename = reportName + ".xlsx"; // Assuming reports are always Excel files.
+            Path targetPath = this.fileStorageLocation.resolve(dateString).resolve(filename);
+
+            logger.info("Attempting to load report file from path: {}", targetPath);
+
+            Resource resource = new UrlResource(targetPath.toUri());
+
+            // Check if the file actually exists and is readable.
+            if (resource.exists() && resource.isReadable()) {
+                logger.info("Report file found and is readable.");
+                return resource;
+            } else {
+                logger.error("Report file not found or is not readable at path: {}", targetPath);
+                throw new ReportNotFoundException("Report not found for date: " + dateString + " and type: " + reportName);
+            }
+        } catch (MalformedURLException ex) {
+            // This exception typically occurs if the constructed path is invalid.
+            logger.error("Malformed URL exception for report: {} on date: {}. Check file path configuration.", reportName, date, ex);
+            throw new ReportNotFoundException("Could not read report file due to a file path configuration error.");
+        }
+    }
+}
+
+
+
+
+
+-------------
+
+package com.fincore.reportservice.controller;
+
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.service.ReportService;
+import com.fincore.reportservice.util.ApiResponse;
+import org.springframework.core.io.Resource;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+@RestController
+@RequestMapping("/api/v1/reports")
+public class ReportController {
+
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    /**
+     * Gets the list of available reports for a specific user role.
+     *
+     * @param roleId The ID of the user's role, passed in the URL path.
+     * @return A standard API response containing the list of report DTOs.
+     */
+    @GetMapping("/types/{roleId}")
+    public ResponseEntity<ApiResponse<List<ReportTypeDto>>> getReportTypes(@PathVariable Long roleId) {
+        // In a real application with Spring Security, you would not pass the roleId in the URL.
+        // Instead, you would get it from the authenticated user's details.
+        // For example:
+        //
+        // MyUserDetails userDetails = (MyUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        // Long userRoleId = userDetails.getRoleId();
+        //
+        // List<ReportTypeDto> reportTypes = reportService.getReportTypes(userRoleId);
+
+        List<ReportTypeDto> reportTypes = reportService.getReportTypes(roleId);
+        return ResponseEntity.ok(ApiResponse.success(reportTypes));
+    }
+
+    /**
+     * Handles the download of a specific report file.
+     *
+     * @param reportName The unique name of the report (e.g., 'balance_compare_report').
+     * @param date The date of the report in 'yyyy-MM-dd' format.
+     * @return A ResponseEntity containing the report file resource.
+     */
+    @GetMapping("/download")
+    public ResponseEntity<Resource> downloadReport(
+            @RequestParam String reportName,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        // Get the user's roles from their security context.
+        Set<Long> userRoleIds = getUserRoleIdsFromSecurityContext();
+
+        // The service layer will now perform the authorization check.
+        Resource resource = reportService.getReport(reportName, date, userRoleIds);
+
+        // Prepare the filename for the download prompt.
+        String filename = reportName + "_" + date.format(DateTimeFormat.ofPattern("yyyyMMdd")) + ".xlsx";
+
+        // Build the response with the correct headers for a file download.
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(resource);
+    }
+
+    /**
+     * MOCK-UP METHOD: In a real application, this would be replaced with Spring Security logic
+     * to get the currently logged-in user's role IDs.
+     *
+     * @return A hardcoded Set of role IDs for demonstration.
+     */
+    private Set<Long> getUserRoleIdsFromSecurityContext() {
+        // This simulates a logged-in GLIF user with role ID 56.
+        // In a real app, this information comes from the JWT token or session.
+        return Set.of(56L);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
