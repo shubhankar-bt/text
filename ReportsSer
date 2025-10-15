@@ -1072,3 +1072,402 @@ public class ReportController {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+)()()()()()()()()()()()()()()))()
+
+
+
+package com.fincore.reportservice.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * A DTO (Data Transfer Object) to hold the structured file data
+ * that will be sent back to the client in a JSON format.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ReportFileDto {
+
+    /**
+     * The full name of the file, including the extension.
+     * Example: "balance_compare_report_20251015.xlsx"
+     */
+    private String fileName;
+
+    /**
+     * The MIME type of the file. This is crucial for the frontend
+     * to know how to handle the content.
+     * Example: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     */
+    private String fileType;
+
+    /**
+     * The raw content of the file, encoded as a Base64 string.
+     * The frontend will decode this back into a file.
+     */
+    private String fileContent;
+}
+
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.service.impl;
+
+import com.fincore.reportservice.dto.ReportFileDto;
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.exception.ReportNotFoundException;
+import com.fincore.reportservice.model.ReportType;
+import com.fincore.reportservice.repository.ReportTypeRepository;
+import com.fincore.reportservice.service.ReportService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private final ReportTypeRepository reportTypeRepository;
+    private final Path reportsBasePath;
+
+    public ReportServiceImpl(ReportTypeRepository reportTypeRepository, @Value("${glif.reports.base-path}") String basePath) {
+        this.reportTypeRepository = reportTypeRepository;
+        this.reportsBasePath = Paths.get(basePath);
+    }
+
+    @Override
+    public List<ReportTypeDto> getReportTypes(Long roleId) {
+        return reportTypeRepository.findDistinctByRoles_Id(roleId).stream()
+                .map(rt -> new ReportTypeDto(rt.getReportName(), rt.getDisplayName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ReportFileDto getReport(String reportName, LocalDate date, Set<Long> userRoleIds) {
+        // Step 1: Verify configuration and authorization from the database.
+        // This is crucial to ensure the user is allowed to request this report name.
+        ReportType reportType = reportTypeRepository.findByReportName(reportName)
+                .orElseThrow(() -> new ReportNotFoundException("Configuration for report '" + reportName + "' not found."));
+
+        boolean isAuthorized = reportType.getRoles().stream().anyMatch(role -> userRoleIds.contains(role.getId()));
+        if (!isAuthorized) {
+            throw new AccessDeniedException("User is not authorized to access report: " + reportName);
+        }
+
+        // Step 2: Construct the search directory and the filename prefix.
+        Path searchDirectory = reportsBasePath.resolve(String.valueOf(date.getYear()))
+                .resolve(String.format("%02d", date.getMonthValue()));
+        String fileNamePrefix = reportName + "_" + date.format(DateTimeFormatter.ofPattern("ddMMyyyy"));
+
+        // Step 3: Search the directory for a file matching the prefix.
+        try (Stream<Path> files = Files.list(searchDirectory)) {
+            Optional<Path> foundFile = files
+                    .filter(path -> path.getFileName().toString().startsWith(fileNamePrefix))
+                    .findFirst();
+
+            if (foundFile.isPresent()) {
+                Path filePath = foundFile.get();
+                String fullFilename = filePath.getFileName().toString();
+                String extension = getFileExtension(fullFilename);
+                String mimeType = getMimeType(extension);
+
+                byte[] fileBytes = Files.readAllBytes(filePath);
+                String encodedContent = Base64.getEncoder().encodeToString(fileBytes);
+
+                return new ReportFileDto(fullFilename, mimeType, encodedContent);
+            } else {
+                throw new ReportNotFoundException("No report file found in " + searchDirectory + " with prefix " + fileNamePrefix);
+            }
+        } catch (IOException e) {
+            throw new ReportNotFoundException("Could not read or access report directory: " + searchDirectory);
+        }
+    }
+
+    private String getFileExtension(String filename) {
+        return Optional.ofNullable(filename)
+                .filter(f -> f.contains("."))
+                .map(f -> f.substring(f.lastIndexOf(".") + 1))
+                .orElse("");
+    }
+
+    private String getMimeType(String extension) {
+        return switch (extension.toLowerCase()) {
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xls" -> "application/vnd.ms-excel";
+            case "csv" -> "text/csv";
+            case "pdf" -> "application/pdf";
+            case "txt" -> "text/plain";
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            default -> "application/octet-stream";
+        };
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.controller;
+
+import com.fincore.reportservice.dto.ReportFileDto;
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.dto.request.ReportDownloadRequest;
+import com.fincore.reportservice.dto.request.ReportTypesRequest;
+import com.fincore.reportservice.service.ReportService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Set;
+
+@RestController
+@RequestMapping("/api/v1/reports")
+public class ReportController {
+
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    @PostMapping("/types")
+    public List<ReportTypeDto> getReportTypes(@RequestBody ReportTypesRequest request) {
+        return reportService.getReportTypes(request.getRoleId());
+    }
+
+    /**
+     * This controller method does not need to change.
+     * It correctly calls the service and returns the DTO, which is then
+     * wrapped into a JSON response. The complex file discovery logic is
+     * properly encapsulated within the service layer.
+     */
+    @PostMapping("/download")
+    public ReportFileDto downloadReport(@RequestBody ReportDownloadRequest request) {
+        Set<Long> userRoleIds = getUserRoleIdsFromSecurityContext();
+        return reportService.getReport(request.getReportName(), request.getDate(), userRoleIds);
+    }
+
+    private Set<Long> getUserRoleIdsFromSecurityContext() {
+        return Set.of(56L);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+@@@@@@@@@@@@@@@@@@@
+
+
+package com.fincore.reportservice.service.impl;
+
+import com.fincore.reportservice.dto.ReportFileDto;
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.exception.ReportNotFoundException;
+import com.fincore.reportservice.model.ReportType;
+import com.fincore.reportservice.repository.ReportTypeRepository;
+import com.fincore.reportservice.service.ReportService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@Service
+public class ReportServiceImpl implements ReportService {
+
+    private final ReportTypeRepository reportTypeRepository;
+    private final Path reportsBasePath;
+
+    public ReportServiceImpl(ReportTypeRepository reportTypeRepository, @Value("${glif.reports.base-path}") String basePath) {
+        this.reportTypeRepository = reportTypeRepository;
+        this.reportsBasePath = Paths.get(basePath);
+    }
+
+    @Override
+    public List<ReportTypeDto> getReportTypes(Long roleId) {
+        return reportTypeRepository.findDistinctByRoles_Id(roleId).stream()
+                .map(rt -> new ReportTypeDto(rt.getReportName(), rt.getDisplayName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ReportFileDto getReport(String reportName, LocalDate date, Long userRoleId) {
+        // Step 1: Find the report configuration from the database.
+        ReportType reportType = reportTypeRepository.findByReportName(reportName)
+                .orElseThrow(() -> new ReportNotFoundException("Configuration for report '" + reportName + "' not found."));
+
+        // Step 2: SIMPLIFIED AUTHORIZATION CHECK
+        // We now check if the list of roles associated with this report type
+        // contains the single roleId provided by the user.
+        boolean isAuthorized = reportType.getRoles().stream()
+                .anyMatch(role -> role.getId().equals(userRoleId));
+
+        if (!isAuthorized) {
+            throw new AccessDeniedException("Role ID " + userRoleId + " is not authorized to access report: " + reportName);
+        }
+
+        // Step 3: Construct the search directory and the filename prefix.
+        Path searchDirectory = reportsBasePath.resolve(String.valueOf(date.getYear()))
+                .resolve(String.format("%02d", date.getMonthValue()));
+        String fileNamePrefix = reportName + "_" + date.format(DateTimeFormatter.ofPattern("ddMMyyyy"));
+
+        // Step 4: Search the directory for a file matching the prefix.
+        try (Stream<Path> files = Files.list(searchDirectory)) {
+            Optional<Path> foundFile = files
+                    .filter(path -> path.getFileName().toString().startsWith(fileNamePrefix))
+                    .findFirst();
+
+            if (foundFile.isPresent()) {
+                Path filePath = foundFile.get();
+                String fullFilename = filePath.getFileName().toString();
+                String extension = getFileExtension(fullFilename);
+                String mimeType = getMimeType(extension);
+
+                byte[] fileBytes = Files.readAllBytes(filePath);
+                String encodedContent = Base64.getEncoder().encodeToString(fileBytes);
+
+                return new ReportFileDto(fullFilename, mimeType, encodedContent);
+            } else {
+                throw new ReportNotFoundException("No report file found in " + searchDirectory + " with prefix " + fileNamePrefix);
+            }
+        } catch (IOException e) {
+            throw new ReportNotFoundException("Could not read or access report directory: " + searchDirectory);
+        }
+    }
+
+    private String getFileExtension(String filename) {
+        return Optional.ofNullable(filename)
+                .filter(f -> f.contains("."))
+                .map(f -> f.substring(f.lastIndexOf(".") + 1))
+                .orElse("");
+    }
+
+    private String getMimeType(String extension) {
+        // ... this method is unchanged ...
+        return switch (extension.toLowerCase()) {
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "xls" -> "application/vnd.ms-excel";
+            case "csv" -> "text/csv";
+            case "pdf" -> "application/pdf";
+            case "txt" -> "text/plain";
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            default -> "application/octet-stream";
+        };
+    }
+}
+
+
+
+
+
+
+
+
+
+package com.fincore.reportservice.controller;
+
+import com.fincore.reportservice.dto.ReportFileDto;
+import com.fincore.reportservice.dto.ReportTypeDto;
+import com.fincore.reportservice.dto.request.ReportDownloadRequest;
+import com.fincore.reportservice.dto.request.ReportTypesRequest;
+import com.fincore.reportservice.service.ReportService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/reports")
+public class ReportController {
+
+    private final ReportService reportService;
+
+    public ReportController(ReportService reportService) {
+        this.reportService = reportService;
+    }
+
+    @PostMapping("/types")
+    public List<ReportTypeDto> getReportTypes(@RequestBody ReportTypesRequest request) {
+        return reportService.getReportTypes(request.getRoleId());
+    }
+
+    /**
+     * The controller now extracts the reportName, date, AND roleId from the
+     * request body and passes them to the service.
+     */
+    @PostMapping("/download")
+    public ReportFileDto downloadReport(@RequestBody ReportDownloadRequest request) {
+        // The service layer now handles the authorization check using the provided roleId.
+        return reportService.getReport(request.getReportName(), request.getDate(), request.getRoleId());
+    }
+}
+
+
+
+
+
+
